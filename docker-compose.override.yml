@@ -1,0 +1,19 @@
+﻿version: "3.9"
+
+services:
+  backend:
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      JwtSettings__ExpiryMinutes: "120"
+      JwtSettings__RefreshTokenExpiryDays: "30"
+    volumes:
+      - ./backend:/src
+    command: dotnet watch run --project /src
+
+  frontend:
+    environment:
+      NODE_ENV: development
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npm run dev -- --host

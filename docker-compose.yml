@@ -1,0 +1,72 @@
+﻿version: "3.9"
+
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: learnpath-db
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${DB_SA_PASSWORD}"
+      MSSQL_PID: "Developer"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqldata:/var/opt/mssql
+    healthcheck:
+      test: /opt/mssql-tools/bin/sqlcmd -S localhost
+            -U sa -P "${DB_SA_PASSWORD}"
+            -Q "SELECT 1" -b -o /dev/null
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - learnpath-net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: learnpath-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Production"
+      ConnectionStrings__DefaultConnection: >
+        Server=db,1433;Database=LearnPathDb;
+        User Id=sa;Password=${DB_SA_PASSWORD};
+        TrustServerCertificate=True;
+      JwtSettings__Secret: "${JWT_SECRET}"
+      JwtSettings__Issuer: "LearnPathAPI"
+      JwtSettings__Audience: "LearnPathClient"
+      JwtSettings__ExpiryMinutes: "60"
+      JwtSettings__RefreshTokenExpiryDays: "7"
+      AllowedOrigins: "${FRONTEND_URL}"
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - learnpath-net
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: "${VITE_API_BASE_URL}"
+    container_name: learnpath-web
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - learnpath-net
+    restart: unless-stopped
+
+volumes:
+  sqldata:
+
+networks:
+  learnpath-net:
+    driver: bridge
