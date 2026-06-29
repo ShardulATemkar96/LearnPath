@@ -1,4 +1,4 @@
-﻿tsexport interface PostSummary {
+﻿export interface PostSummary {
   id: number;
   title: string;
   contentPreview: string;

@@ -167,7 +167,7 @@ public class ProgressService : IProgressService
 
         if (alreadyIssued) return;
 
-        await _context.Certificates.AddAsync(new Certificate
+        await _context.Certificates.AddAsync(new Entities.Certificate
         {
             UserId         = userId,
             LearningPathId = pathId,

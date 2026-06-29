@@ -1,4 +1,4 @@
-﻿tsexport const dateUtils = {
+﻿export const dateUtils = {
   format: (date: string | Date, options?: Intl.DateTimeFormatOptions): string => {
     const d = typeof date === "string" ? new Date(date) : date;
     return d.toLocaleDateString("en-US", options ?? {

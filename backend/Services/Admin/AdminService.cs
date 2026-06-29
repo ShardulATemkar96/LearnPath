@@ -10,11 +10,11 @@ namespace LearnPath.API.Services.Admin;
 public class AdminService : IAdminService
 {
     private readonly ApplicationDbContext _context;
-    private readonly UserManager<User>    _userManager;
+    private readonly UserManager<Entities.User>    _userManager;
 
     public AdminService(
         ApplicationDbContext context,
-        UserManager<User> userManager)
+        UserManager<Entities.User> userManager)
     {
         _context     = context;
         _userManager = userManager;
@@ -124,7 +124,7 @@ public class AdminService : IAdminService
         await _userManager.DeleteAsync(user);
     }
 
-    private async Task<AdminUserResponseDto> BuildUserDtoAsync(User user)
+    private async Task<AdminUserResponseDto> BuildUserDtoAsync(Entities.User user)
     {
         var roles = await _userManager.GetRolesAsync(user);
 

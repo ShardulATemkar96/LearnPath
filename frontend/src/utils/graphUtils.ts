@@ -1,4 +1,4 @@
-﻿tsimport { Module, ModuleDependency } from "../types/path.types";
+﻿import { Module, ModuleDependency } from "../types/path.types";
 
 export interface GraphNode {
   id: number;

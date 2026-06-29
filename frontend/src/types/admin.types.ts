@@ -1,4 +1,4 @@
-﻿tsexport interface AdminUser {
+﻿export interface AdminUser {
   userId: string;
   fullName: string;
   email: string;

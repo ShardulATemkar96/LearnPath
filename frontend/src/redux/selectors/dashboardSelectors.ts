@@ -1,4 +1,4 @@
-﻿tsimport { RootState } from "../store";
+﻿import { RootState } from "../store";
 
 export const selectDashboardStats    = (state: RootState) => state.dashboard.stats;
 export const selectPathProgress      = (state: RootState) => state.dashboard.pathProgress;

@@ -1,4 +1,4 @@
-﻿tsimport { describe, it, expect, beforeEach } from "vitest";
+﻿import { describe, it, expect, beforeEach } from "vitest";
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer, {
   clearAuth, setUser,

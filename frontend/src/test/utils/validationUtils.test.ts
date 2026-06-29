@@ -1,4 +1,4 @@
-﻿tsimport { describe, it, expect } from "vitest";
+﻿import { describe, it, expect } from "vitest";
 import { validationUtils } from "../../utils/validationUtils";
 
 describe("validationUtils", () => {

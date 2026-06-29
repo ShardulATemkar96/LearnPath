@@ -1,4 +1,36 @@
+# Local Environment Configuration Files
 .env
 *.env.local
 *.env.production
+*.env.development
+
+# Sensitive Backend Production Appsettings
 backend/appsettings.Production.json
+
+# Node & Frontend Dependencies
+node_modules/
+**/node_modules/
+**/dist/
+
+# Global Target Cache Rule Overrides (Blocks all bin, obj, and vs subfolders)
+[Bb]in/
+[Oo]bj/
+.vs/
+**/[Bb]in/
+**/[Oo]bj/
+**/.vs/
+**/runtimes/
+
+# User-specific developer settings
+*.user
+*.suo
+
+# Explicit Global Binary & Runtime Cache Blocks
+*.dll
+*.pdb
+*.exe
+*.cache
+*.json.cache
+*.deps.json
+*.runtimeconfig.json
+*.staticwebassets.endpoints.json

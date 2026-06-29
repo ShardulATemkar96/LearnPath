@@ -1,4 +1,4 @@
-﻿tsimport { useState, useCallback } from "react";
+﻿import { useState, useCallback } from "react";
 
 export const useApiError = () => {
   const [error, setError] = useState<string | null>(null);

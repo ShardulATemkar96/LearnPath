@@ -1,6 +1,5 @@
 ﻿using System.Text;
 using FluentValidation;
-using FluentValidation.AspNetCore;
 using LearnPath.API.Authentication.Jwt;
 using LearnPath.API.Data;
 using LearnPath.API.Data.Seeders;
@@ -9,6 +8,7 @@ using LearnPath.API.Interfaces.Services;
 using LearnPath.API.Middleware;
 using LearnPath.API.Services.Admin;
 using LearnPath.API.Services.Analytics;
+using LearnPath.API.Services.Community;
 using LearnPath.API.Services.Auth;
 using LearnPath.API.Services.Classroom;
 using LearnPath.API.Services.Dashboard;
@@ -90,13 +90,11 @@ builder.Services.AddCors(options =>
             .AllowCredentials();
     });
 });
-
+/**/
 // ── AutoMapper ────────────────────────────────────────────────
-builder.Services.AddAutoMapper(typeof(Program).Assembly);
-
+builder.Services.AddAutoMapper(cfg => { }, typeof(Program).Assembly);
 // ── FluentValidation ──────────────────────────────────────────
 builder.Services.AddControllers();
-builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
 // ── Services ──────────────────────────────────────────────────
@@ -109,6 +107,7 @@ builder.Services.AddScoped<IAnalyticsService,    AnalyticsService>();
 builder.Services.AddScoped<IUserService,         UserService>();
 builder.Services.AddScoped<IAdminService,        AdminService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<ICommunityService, CommunityService>();
 
 // ── Swagger ───────────────────────────────────────────────────
 builder.Services.AddEndpointsApiExplorer();
@@ -153,6 +152,7 @@ var app = builder.Build();
 // ── Middleware Pipeline ───────────────────────────────────────
 app.UseMiddleware<ExceptionMiddleware>();
 app.UseMiddleware<LoggingMiddleware>();
+app.UseMiddleware<RateLimitingMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {

@@ -55,7 +55,7 @@ public class NotificationService : INotificationService
     public async Task CreateAsync(
         string userId, string title, string message, string type)
     {
-        await _context.Notifications.AddAsync(new Notification
+        await _context.Notifications.AddAsync(new Entities.Notification
         {
             UserId = userId,
             Title = title,

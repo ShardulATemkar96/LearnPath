@@ -12,13 +12,13 @@ namespace LearnPath.API.Services.Auth;
 
 public class AuthService : IAuthService
 {
-    private readonly UserManager<User> _userManager;
+    private readonly UserManager<Entities.User> _userManager;
     private readonly JwtTokenGenerator _jwtTokenGenerator;
     private readonly IMapper _mapper;
     private readonly ApplicationDbContext _context;
 
     public AuthService(
-        UserManager<User> userManager,
+        UserManager<Entities.User> userManager,
         JwtTokenGenerator jwtTokenGenerator,
         IMapper mapper,
         ApplicationDbContext context)
@@ -35,7 +35,7 @@ public class AuthService : IAuthService
         if (existingUser is not null)
             throw new ArgumentException("Email is already registered.");
 
-        var user = _mapper.Map<User>(dto);
+        var user = _mapper.Map<Entities.User>(dto);
         var result = await _userManager.CreateAsync(user, dto.Password);
 
         if (!result.Succeeded)
@@ -92,7 +92,7 @@ public class AuthService : IAuthService
         await _context.SaveChangesAsync();
     }
 
-    private async Task<AuthResponseDto> BuildAuthResponseAsync(User user)
+    private async Task<AuthResponseDto> BuildAuthResponseAsync(Entities.User user)
     {
         var roles = await _userManager.GetRolesAsync(user);
         var accessToken = _jwtTokenGenerator.GenerateAccessToken(user, roles);

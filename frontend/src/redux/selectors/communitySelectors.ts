@@ -1,4 +1,4 @@
-﻿tsimport { RootState } from "../store";
+﻿import { RootState } from "../store";
 
 export const selectPosts            = (s: RootState) => s.community.posts;
 export const selectSelectedPost     = (s: RootState) => s.community.selectedPost;

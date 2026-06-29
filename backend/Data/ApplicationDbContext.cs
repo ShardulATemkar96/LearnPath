@@ -19,7 +19,11 @@ public class ApplicationDbContext : IdentityDbContext<User>
     public DbSet<Submission> Submissions => Set<Submission>();
     public DbSet<Certificate> Certificates => Set<Certificate>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
-
+    public DbSet<Post> Posts => Set<Post>();
+    public DbSet<Comment> Comments => Set<Comment>();
+    public DbSet<PostVote> PostVotes => Set<PostVote>();
+    public DbSet<CommentVote> CommentVotes => Set<CommentVote>();
+    public DbSet<Notification> Notifications => Set<Notification>();
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

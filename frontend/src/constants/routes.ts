@@ -1,4 +1,4 @@
-﻿tsexport const ROUTES = {
+﻿export const ROUTES = {
   HOME:                 "/",
   LOGIN:                "/login",
   REGISTER:             "/register",
@@ -9,6 +9,7 @@
   CLASSROOM_DETAIL:     "/classrooms/:id",
   ANALYTICS:            "/analytics",
   COMMUNITY:            "/community",
+  COMMUNITY_DETAIL:     "/community/:id",
   PROFILE:              "/profile",
   SETTINGS:             "/settings",
   CERTIFICATES:         "/certificates",

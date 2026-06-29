@@ -1,4 +1,4 @@
-﻿tsimport apiClient from "./apiClient";
+﻿import apiClient from "./apiClient";
 import {
   PostListResponse, PostDetail,
   PostSummary, Comment,

@@ -1,4 +1,4 @@
-﻿tsimport apiClient from "./apiClient";
+﻿import apiClient from "./apiClient";
 import { AdminUser, AdminStats } from "../types/admin.types";
 
 export const adminService = {

@@ -1,4 +1,4 @@
-﻿tsimport { configureStore } from "@reduxjs/toolkit";
+﻿import { configureStore } from "@reduxjs/toolkit";
 import authReducer         from "./slices/authSlice";
 import dashboardReducer    from "./slices/dashboardSlice";
 import pathReducer         from "./slices/pathSlice";

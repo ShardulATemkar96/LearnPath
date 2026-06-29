@@ -1,9 +1,0 @@
-D:\FInal Project\LearnPath\backend\obj\Debug\net8.0\LearnPath.API.csproj.AssemblyReference.cache
-D:\FInal Project\LearnPath\backend\obj\Debug\net8.0\rpswa.dswa.cache.json
-D:\FInal Project\LearnPath\backend\obj\Debug\net8.0\LearnPath.API.GeneratedMSBuildEditorConfig.editorconfig
-D:\FInal Project\LearnPath\backend\obj\Debug\net8.0\LearnPath.API.AssemblyInfoInputs.cache
-D:\FInal Project\LearnPath\backend\obj\Debug\net8.0\LearnPath.API.AssemblyInfo.cs
-D:\FInal Project\LearnPath\backend\obj\Debug\net8.0\LearnPath.API.csproj.CoreCompileInputs.cache
-D:\FInal Project\LearnPath\backend\obj\Debug\net8.0\LearnPath.API.MvcApplicationPartsAssemblyInfo.cs
-D:\FInal Project\LearnPath\backend\obj\Debug\net8.0\LearnPath.API.MvcApplicationPartsAssemblyInfo.cache
-D:\FInal Project\LearnPath\backend\obj\Debug\net8.0\LearnPath.API.sourcelink.json

@@ -1,4 +1,4 @@
-﻿tsimport { useState, useMemo } from "react";
+﻿import { useState, useMemo } from "react";
 
 export const usePagination = <T>(items: T[], pageSize = 10) => {
   const [page, setPage] = useState(1);

@@ -42,3 +42,7 @@ public class ClassroomMemberDto
     public string Role { get; set; } = string.Empty;
     public DateTime JoinedAt { get; set; }
 }
+public class JoinClassroomDto
+{
+    public string InviteCode { get; set; } = string.Empty;
+}
