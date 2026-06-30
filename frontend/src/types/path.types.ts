@@ -23,6 +23,7 @@ export interface Module {
   description: string;
   contentUrl?: string;
   contentType: string;
+  contentBody?:string;
   order: number;
   learningPathId: number;
   isCompleted: boolean;

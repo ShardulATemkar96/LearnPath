@@ -5,6 +5,7 @@
   DASHBOARD:            "/dashboard",
   LEARNING_PATHS:       "/paths",
   LEARNING_PATH_DETAIL: "/paths/:id",
+  LESSON:               "/paths/:pathId/modules/:moduleId",
   CLASSROOM:            "/classrooms",
   CLASSROOM_DETAIL:     "/classrooms/:id",
   ANALYTICS:            "/analytics",
@@ -14,5 +15,8 @@
   SETTINGS:             "/settings",
   CERTIFICATES:         "/certificates",
   ADMIN:                "/admin",
+  ADMIN_PATHS:          "/admin/paths",
+  ADMIN_PATH_MODULES:   "/admin/paths/:pathId/modules",
+  ADMIN_USERS:          "/admin/users",
   NOT_FOUND:            "*",
 } as const;

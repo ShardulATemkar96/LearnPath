@@ -1,0 +1,1075 @@
+LEARNPATH — COMPLETE FEATURE GAP ANALYSIS & MASTER FEATURE INVENTORY
+Project Type: Graph-Based Learning Platform
+Tech Stack: React + TypeScript + Redux Toolkit + ASP.NET Core Web API + EF Core + SQL Server
+
+PROJECT VISION SUMMARY
+LearnPath was originally envisioned as a:
+
+
+Graph-based personalized learning platform
+
+
+Classroom learning management system
+
+
+Community-driven knowledge sharing platform
+
+
+Analytics-driven progress tracking system
+
+
+AI-assisted learning recommendation platform
+
+
+Role-based educational SaaS application
+
+
+
+IMPLEMENTATION STATUS OVERVIEW
+Fully Planned & Architecturally Defined
+
+
+Authentication System
+
+
+Role-Based Authorization
+
+
+Learning Paths
+
+
+Module System
+
+
+Classroom System
+
+
+Progress Tracking
+
+
+Community System
+
+
+Analytics System
+
+
+Certificate System
+
+
+Admin System
+
+
+Notifications
+
+
+AI Recommendation System
+
+
+Dashboard Architecture
+
+
+
+SECTION A — AUTHENTICATION MODULE
+
+Feature: User Registration
+Category:
+Authentication
+Current Status:
+Partial
+Expected Purpose:
+Allow users to create accounts.
+Expected User Flow:
+Register
+→ Validate Input
+→ Create Account
+→ Assign Role
+→ Redirect
+Backend Requirements:
+
+
+ASP.NET Identity
+
+
+User Entity
+
+
+Role Assignment
+
+
+Email Validation
+
+
+Frontend Requirements:
+
+
+Register Page
+
+
+Form Validation
+
+
+Error Handling
+
+
+Dependencies:
+
+
+Roles
+
+
+JWT
+
+
+Priority:
+CRITICAL
+
+Feature: User Login
+Category:
+Authentication
+Current Status:
+Partial
+Expected Purpose:
+Authenticate users.
+Expected User Flow:
+Login
+→ Validate Credentials
+→ Generate JWT
+→ Store Tokens
+→ Redirect Dashboard
+Backend Requirements:
+
+
+JWT Service
+
+
+Identity
+
+
+Frontend Requirements:
+
+
+Login Form
+
+
+Token Persistence
+
+
+Dependencies:
+
+
+Identity
+
+
+Redux
+
+
+Priority:
+CRITICAL
+
+Feature: Refresh Tokens
+Category:
+Authentication
+Current Status:
+Placeholder Only
+Expected Purpose:
+Maintain secure sessions.
+Backend Requirements:
+
+
+RefreshToken Table
+
+
+Rotation Logic
+
+
+Frontend Requirements:
+
+
+Axios Interceptor
+
+
+Dependencies:
+
+
+Login
+
+
+Priority:
+CRITICAL
+
+Feature: Forgot Password
+Category:
+Authentication
+Current Status:
+Missing Completely
+Expected Purpose:
+Reset credentials.
+Dependencies:
+Identity
+Priority:
+IMPORTANT
+
+Feature: Role-Based Authorization
+Category:
+Authentication
+Current Status:
+Partial
+Expected Roles:
+
+
+Learner
+
+
+Instructor
+
+
+Admin
+
+
+Dependencies:
+JWT
+Priority:
+CRITICAL
+
+SECTION B — DASHBOARD MODULE
+
+Feature: Dashboard Overview
+Category:
+Dashboard
+Current Status:
+Partial
+Expected Purpose:
+Single productivity hub.
+Widgets:
+
+
+Progress Summary
+
+
+Certificates Count
+
+
+Classroom Count
+
+
+Learning Paths Count
+
+
+AI Suggestions
+
+
+Notifications
+
+
+Weekly Analytics
+
+
+Dependencies:
+Analytics
+Notifications
+Learning Paths
+Priority:
+CRITICAL
+
+SECTION C — LEARNING PATH SYSTEM
+
+Feature: Create Learning Path
+Category:
+Learning Paths
+Current Status:
+Partial
+Expected Purpose:
+Allow learners to build learning roadmaps.
+Flow:
+Create Path
+→ Add Modules
+→ Define Dependencies
+→ Save
+Backend Requirements:
+
+
+LearningPath Entity
+
+
+Module Entity
+
+
+Dependency Entity
+
+
+Frontend Requirements:
+
+
+Path Builder
+
+
+Forms
+
+
+Dependencies:
+Authentication
+Priority:
+CRITICAL
+
+Feature: Update Learning Path
+Status:
+Partial
+Priority:
+CRITICAL
+
+Feature: Delete Learning Path
+Status:
+Partial
+Priority:
+CRITICAL
+
+Feature: Clone Public Path
+Status:
+Missing Completely
+Purpose:
+Copy community paths.
+Dependencies:
+Community
+Priority:
+IMPORTANT
+
+Feature: Publish Learning Path
+Status:
+Placeholder Only
+Purpose:
+Share paths publicly.
+Dependencies:
+Community
+Priority:
+IMPORTANT
+
+Feature: Path Search
+Status:
+Missing Completely
+Purpose:
+Discover learning paths.
+Dependencies:
+Community
+Priority:
+IMPORTANT
+
+Feature: Tag Filtering
+Status:
+Missing Completely
+Purpose:
+Categorize paths.
+Dependencies:
+Search
+Priority:
+IMPORTANT
+
+SECTION D — MODULE SYSTEM
+
+Feature: Module Management
+Category:
+Learning Paths
+Current Status:
+Partial
+Expected Features:
+
+
+Create Module
+
+
+Edit Module
+
+
+Delete Module
+
+
+Attach Resources
+
+
+Mark Complete
+
+
+Priority:
+CRITICAL
+
+Feature: Resource Management
+Status:
+Missing Completely
+Purpose:
+Store notes and references.
+Priority:
+IMPORTANT
+
+SECTION E — GRAPH SYSTEM
+
+Feature: Graph Builder
+Category:
+Graph System
+Current Status:
+Placeholder Only
+Purpose:
+Visual learning roadmap editor.
+Frontend Requirements:
+
+
+Drag Nodes
+
+
+Connect Nodes
+
+
+Minimap
+
+
+Zoom
+
+
+Backend Requirements:
+
+
+Node Storage
+
+
+Edge Storage
+
+
+Dependencies:
+Learning Paths
+Priority:
+CRITICAL
+
+Feature: DAG Validation
+Status:
+Placeholder Only
+Purpose:
+Prevent cyclic dependencies.
+Dependencies:
+Graph Builder
+Priority:
+CRITICAL
+
+Feature: Topological Sorting
+Status:
+Placeholder Only
+Purpose:
+Determine learning order.
+Dependencies:
+Dependencies Module
+Priority:
+CRITICAL
+
+Feature: Dependency Traversal
+Status:
+Placeholder Only
+Purpose:
+Unlock next modules.
+Priority:
+CRITICAL
+
+Feature: What-If Simulation
+Status:
+Missing Completely
+Purpose:
+Visualize skipped modules.
+Priority:
+OPTIONAL/FUTURE
+
+SECTION F — NOTES SYSTEM
+
+Feature: Path Notes
+Category:
+Learning Paths
+Current Status:
+Missing Completely
+Purpose:
+Store notes per learning path.
+Flow:
+Open Path
+→ Open Notes
+→ Add/Edit Notes
+Dependencies:
+Learning Paths
+Priority:
+IMPORTANT
+
+SECTION G — PROGRESS TRACKING
+
+Feature: Progress Tracking
+Category:
+Analytics
+Current Status:
+Partial
+Purpose:
+Track completion.
+Expected Features:
+
+
+Completion Percentage
+
+
+Path Progress
+
+
+Module Status
+
+
+Remaining Modules
+
+
+Dependencies:
+Learning Paths
+Priority:
+CRITICAL
+
+Feature: Learning Streaks
+Status:
+Missing Completely
+Priority:
+IMPORTANT
+
+Feature: Skill Heatmap
+Status:
+Missing Completely
+Priority:
+IMPORTANT
+
+Feature: Weekly Progress
+Status:
+Missing Completely
+Priority:
+IMPORTANT
+
+SECTION H — CLASSROOM SYSTEM
+
+Feature: Create Classroom
+Category:
+Classroom
+Current Status:
+Partial
+Priority:
+CRITICAL
+
+Feature: Join Classroom
+Status:
+Partial
+Priority:
+CRITICAL
+
+Feature: Classroom Cards
+Status:
+Placeholder Only
+Purpose:
+Google Classroom style cards.
+Priority:
+IMPORTANT
+
+Feature: Assign Learning Path
+Status:
+Partial
+Priority:
+CRITICAL
+
+Feature: Assignments
+Status:
+Partial
+Priority:
+IMPORTANT
+
+Feature: Assignment Submission
+Status:
+Partial
+Priority:
+IMPORTANT
+
+Feature: Instructor Feedback
+Status:
+Missing Completely
+Priority:
+IMPORTANT
+
+Feature: Classroom Announcements
+Status:
+Missing Completely
+Priority:
+IMPORTANT
+
+SECTION I — COMMUNITY SYSTEM
+
+Feature: Community Workspace
+Category:
+Community
+Current Status:
+Placeholder Only
+Purpose:
+Explore public paths.
+Priority:
+IMPORTANT
+
+Feature: Discussion Threads
+Status:
+Partial
+Priority:
+IMPORTANT
+
+Feature: Nested Replies
+Status:
+Missing Completely
+Priority:
+OPTIONAL
+
+Feature: Upvotes
+Status:
+Missing Completely
+Priority:
+OPTIONAL
+
+Feature: Ratings
+Status:
+Partial
+Priority:
+IMPORTANT
+
+Feature: Trending Paths
+Status:
+Missing Completely
+Priority:
+OPTIONAL
+
+Feature: Most Cloned Paths
+Status:
+Missing Completely
+Priority:
+OPTIONAL
+
+SECTION J — AI RECOMMENDATION SYSTEM
+
+Feature: Next Module Recommendation
+Category:
+AI
+Current Status:
+Placeholder Only
+Priority:
+IMPORTANT
+
+Feature: Skill Gap Detection
+Status:
+Placeholder Only
+Priority:
+IMPORTANT
+
+Feature: Recommended Public Paths
+Status:
+Placeholder Only
+Priority:
+IMPORTANT
+
+Feature: AI Chat Assistant
+Status:
+Missing Completely
+Priority:
+OPTIONAL/FUTURE
+
+Feature: Recommendation Scoring Engine
+Status:
+Placeholder Only
+Priority:
+IMPORTANT
+
+SECTION K — ANALYTICS SYSTEM
+
+Feature: Dashboard Analytics
+Status:
+Partial
+Priority:
+CRITICAL
+
+Feature: Full Analytics Page
+Status:
+Placeholder Only
+Expected Features:
+
+
+Completion Charts
+
+
+Progress Trends
+
+
+Heatmaps
+
+
+Weekly Reports
+
+
+Learning Time
+
+
+Skill Distribution
+
+
+Priority:
+IMPORTANT
+
+Feature: Activity Tracking
+Status:
+Missing Completely
+Priority:
+IMPORTANT
+
+SECTION L — CERTIFICATE SYSTEM
+
+Feature: Certificate Generation
+Category:
+Certificates
+Current Status:
+Partial
+Priority:
+IMPORTANT
+
+Feature: Certificate Download
+Status:
+Missing Completely
+Priority:
+IMPORTANT
+
+Feature: Portfolio Timeline
+Status:
+Missing Completely
+Priority:
+OPTIONAL
+
+SECTION M — NOTIFICATIONS
+
+Feature: Notification Center
+Category:
+Notifications
+Current Status:
+Placeholder Only
+Expected Notifications:
+
+
+Assignment Due
+
+
+Classroom Updates
+
+
+Comments
+
+
+Certificates
+
+
+Recommendations
+
+
+Priority:
+IMPORTANT
+
+Feature: Mark Read
+Status:
+Missing Completely
+Priority:
+IMPORTANT
+
+Feature: Clear Notifications
+Status:
+Missing Completely
+Priority:
+OPTIONAL
+
+SECTION N — PROFILE SYSTEM
+
+Feature: Profile Management
+Category:
+Profile
+Current Status:
+Partial
+Priority:
+IMPORTANT
+
+Feature: Edit Profile
+Status:
+Missing Completely
+Priority:
+IMPORTANT
+
+Feature: Profile Photo
+Status:
+Missing Completely
+Priority:
+OPTIONAL
+
+Feature: Password Change
+Status:
+Missing Completely
+Priority:
+IMPORTANT
+
+SECTION O — SETTINGS
+
+Feature: Theme Preferences
+Status:
+Missing Completely
+Priority:
+OPTIONAL
+
+Feature: Notification Preferences
+Status:
+Missing Completely
+Priority:
+OPTIONAL
+
+Feature: Privacy Preferences
+Status:
+Missing Completely
+Priority:
+OPTIONAL
+
+SECTION P — ADMIN SYSTEM
+
+Feature: User Management
+Status:
+Partial
+Priority:
+IMPORTANT
+
+Feature: Role Management
+Status:
+Missing Completely
+Priority:
+IMPORTANT
+
+Feature: Community Moderation
+Status:
+Missing Completely
+Priority:
+OPTIONAL
+
+Feature: Platform Analytics
+Status:
+Partial
+Priority:
+IMPORTANT
+
+Feature: Feature Requests Review
+Status:
+Missing Completely
+Priority:
+OPTIONAL
+
+SECTION Q — SEARCH SYSTEM
+
+Feature: Global Search
+Status:
+Missing Completely
+Expected Scope:
+
+
+Paths
+
+
+Modules
+
+
+Users
+
+
+Classrooms
+
+
+Priority:
+IMPORTANT
+
+Feature: Filters
+Status:
+Missing Completely
+Expected Filters:
+
+
+Tags
+
+
+Difficulty
+
+
+Popularity
+
+
+Completion Status
+
+
+Priority:
+IMPORTANT
+
+SECTION R — WHITEBOARD COLLABORATION
+
+Feature: Collaborative Whiteboard
+Category:
+Whiteboard
+Current Status:
+Placeholder Only
+Expected Features:
+
+
+Canvas
+
+
+Pen
+
+
+Shapes
+
+
+Eraser
+
+
+Save Snapshot
+
+
+Dependencies:
+Classrooms
+Priority:
+OPTIONAL/FUTURE
+
+Feature: Real-Time Collaboration
+Status:
+Missing Completely
+Priority:
+OPTIONAL/FUTURE
+
+HIDDEN PLANNED FEATURES INFERRED FROM ARCHITECTURE
+The architecture discussions imply these systems even if not fully designed:
+Audit Logging
+Status:
+Missing Completely
+Purpose:
+Track important actions.
+Priority:
+OPTIONAL
+
+File Upload System
+Status:
+Missing Completely
+Purpose:
+Assignments
+Notes
+Resources
+Priority:
+IMPORTANT
+
+Seed Data System
+Status:
+Partial
+Priority:
+IMPORTANT
+
+Pagination System
+Status:
+Missing Completely
+Purpose:
+
+
+Community
+
+
+Notifications
+
+
+Users
+
+
+Paths
+
+
+Classrooms
+
+
+Priority:
+IMPORTANT
+
+Lazy Loading Strategy
+Status:
+Placeholder Only
+Priority:
+IMPORTANT
+
+Eager Loading Strategy
+Status:
+Placeholder Only
+Priority:
+IMPORTANT
+
+Error Handling System
+Status:
+Partial
+Priority:
+IMPORTANT
+
+Activity Logging System
+Status:
+Missing Completely
+Priority:
+IMPORTANT
+
+FINAL MASTER IMPLEMENTATION CHECKLIST
+CRITICAL MISSING FEATURES
+☐ Refresh Token System
+☐ Graph Builder UI
+☐ DAG Validation
+☐ Topological Sorting
+☐ Dependency Traversal
+☐ Clone Learning Path
+☐ Publish Learning Path
+☐ Full Dashboard Widgets
+☐ Progress Calculation Engine
+☐ Classroom Assignment Flow
+☐ Route Authorization System
+
+MEDIUM PRIORITY FEATURES
+☐ Notes System
+☐ Path Search
+☐ Tag Filters
+☐ Learning Streaks
+☐ Skill Heatmap
+☐ Classroom Announcements
+☐ Instructor Feedback
+☐ Community Workspace
+☐ Ratings System Completion
+☐ Full Analytics Page
+☐ Notifications Center
+☐ Certificate Downloads
+☐ Profile Management
+☐ Password Change
+☐ Global Search
+☐ Pagination
+☐ File Upload System
+☐ Activity Tracking
+
+ADVANCED / FUTURE FEATURES
+☐ AI Chat Assistant
+☐ What-If Simulation
+☐ Trending Paths
+☐ Most Cloned Paths
+☐ Nested Replies
+☐ Upvotes
+☐ Whiteboard Collaboration
+☐ Real-Time Whiteboard Sync
+☐ Portfolio Timeline
+☐ Theme Preferences
+☐ Privacy Preferences
+☐ Community Moderation Tools
+☐ Audit Logging
+☐ Feature Request Management
+
+IMPLEMENTATION READINESS SUMMARY
+Fully Planned Architecturally
+≈ 90%
+Fully Implemented Functionally
+Likely < 40%
+Partially Implemented
+≈ 35%
+Placeholder Architecture
+≈ 25%
+Completely Missing Features
+≈ 35–40%
+This checklist represents the original LearnPath vision discussed throughout this chat and can serve as your master implementation tracker during development.

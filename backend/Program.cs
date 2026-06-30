@@ -164,8 +164,8 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseHttpsRedirection();
-app.UseCors("LearnPathCors");
+if (!app.Environment.IsDevelopment())
+    app.UseHttpsRedirection(); app.UseCors("LearnPathCors");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
@@ -179,6 +179,6 @@ using (var scope = app.Services.CreateScope())
     var roleManager = scope.ServiceProvider
         .GetRequiredService<RoleManager<IdentityRole>>();
     await RoleSeeder.SeedAsync(roleManager);
+    await AdminSeeder.SeedAsync(scope.ServiceProvider);
 }
-
 app.Run();
