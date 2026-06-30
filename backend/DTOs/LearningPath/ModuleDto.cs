@@ -6,6 +6,7 @@ public class CreateModuleDto
     public string Description { get; set; } = string.Empty;
     public string? ContentUrl { get; set; }
     public string ContentType { get; set; } = string.Empty;
+    public string? ContentBody { get; set; }
     public int Order { get; set; }
 }
 
@@ -15,6 +16,7 @@ public class UpdateModuleDto
     public string Description { get; set; } = string.Empty;
     public string? ContentUrl { get; set; }
     public string ContentType { get; set; } = string.Empty;
+    public string? ContentBody { get; set; }
     public int Order { get; set; }
 }
 
@@ -25,6 +27,7 @@ public class ModuleResponseDto
     public string Description { get; set; } = string.Empty;
     public string? ContentUrl { get; set; }
     public string ContentType { get; set; } = string.Empty;
+    public string? ContentBody { get; set; }
     public int Order { get; set; }
     public int LearningPathId { get; set; }
     public bool IsCompleted { get; set; }

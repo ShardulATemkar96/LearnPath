@@ -1,5 +1,5 @@
 ﻿import apiClient from "./apiClient";
-import { AdminUser, AdminStats } from "../types/admin.types";
+import { AdminUser, AdminStats, AdminPath } from "../types/admin.types";
 
 export const adminService = {
   getStats: async (): Promise<AdminStats> => {
@@ -26,5 +26,10 @@ export const adminService = {
 
   deleteUser: async (userId: string): Promise<void> => {
     await apiClient.delete(`/admin/users/${userId}`);
+  },
+
+  getAllPaths: async (): Promise<AdminPath[]> => {
+    const { data } = await apiClient.get("/admin/paths");
+    return data.data;
   },
 };

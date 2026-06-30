@@ -1,5 +1,6 @@
 ﻿using LearnPath.API.Data;
 using LearnPath.API.DTOs.Admin;
+using LearnPath.API.DTOs.LearningPath;
 using LearnPath.API.Entities;
 using LearnPath.API.Interfaces.Services;
 using Microsoft.AspNetCore.Identity;
@@ -122,6 +123,31 @@ public class AdminService : IAdminService
             ?? throw new KeyNotFoundException("User not found.");
 
         await _userManager.DeleteAsync(user);
+    }
+
+    public async Task<List<LearningPathResponseDto>> GetAllPathsAsync()
+    {
+        return await _context.LearningPaths
+            .Include(p => p.CreatedBy)
+            .Include(p => p.Modules)
+            .OrderByDescending(p => p.UpdatedAt)
+            .Select(p => new LearningPathResponseDto
+            {
+                Id = p.Id,
+                Title = p.Title,
+                Description = p.Description,
+                ThumbnailUrl = p.ThumbnailUrl,
+                IsPublished = p.IsPublished,
+                IsPublic = p.IsPublic,
+                CreatedById = p.CreatedById,
+                CreatedByName = p.CreatedBy != null
+                    ? p.CreatedBy.FirstName + " " + p.CreatedBy.LastName
+                    : "",
+                TotalModules = p.Modules.Count,
+                CreatedAt = p.CreatedAt,
+                UpdatedAt = p.UpdatedAt,
+            })
+            .ToListAsync();
     }
 
     private async Task<AdminUserResponseDto> BuildUserDtoAsync(Entities.User user)

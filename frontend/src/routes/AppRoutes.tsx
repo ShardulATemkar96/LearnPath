@@ -16,6 +16,7 @@ const RegisterPage           = lazy(() => import("../pages/auth/RegisterPage"));
 const DashboardPage          = lazy(() => import("../pages/dashboard/DashboardPage"));
 const LearningPathsPage      = lazy(() => import("../pages/learningPaths/LearningPathsPage"));
 const LearningPathDetailPage = lazy(() => import("../pages/learningPaths/LearningPathDetailPage"));
+const LessonPage             = lazy(() => import("../pages/learningPaths/LessonPage"));
 const ClassroomPage          = lazy(() => import("../pages/classroom/ClassroomPage"));
 const ClassroomDetailPage    = lazy(() => import("../pages/classroom/ClassroomDetailPage"));
 const AnalyticsPage          = lazy(() => import("../pages/analytics/AnalyticsPage"));
@@ -25,6 +26,9 @@ const CertificatesPage       = lazy(() => import("../pages/certificates/Certific
 const ProfilePage            = lazy(() => import("../pages/profile/ProfilePage"));
 const SettingsPage           = lazy(() => import("../pages/settings/SettingsPage"));
 const AdminPage              = lazy(() => import("../pages/admin/AdminPage"));
+const AdminPathsPage         = lazy(() => import("../pages/admin/AdminPathsPage"));
+const AdminModuleEditorPage  = lazy(() => import("../pages/admin/AdminModuleEditorPage"));
+const AdminUsersPage         = lazy(() => import("../pages/admin/AdminUsersPage"));
 const NotFoundPage           = lazy(() => import("../pages/errors/NotFoundPage"));
 
 const AppRoutes = () => (
@@ -43,6 +47,7 @@ const AppRoutes = () => (
             <Route path={ROUTES.DASHBOARD} element={<DashboardPage />} />
             <Route path={ROUTES.LEARNING_PATHS} element={<LearningPathsPage />} />
             <Route path={ROUTES.LEARNING_PATH_DETAIL} element={<LearningPathDetailPage />} />
+            <Route path={ROUTES.LESSON} element={<LessonPage />} />
             <Route path={ROUTES.CLASSROOM} element={<ClassroomPage />} />
             <Route path={ROUTES.CLASSROOM_DETAIL} element={<ClassroomDetailPage />} />
             <Route path={ROUTES.ANALYTICS} element={<AnalyticsPage />} />
@@ -54,6 +59,9 @@ const AppRoutes = () => (
             <Route element={<AdminRoute />}>
               <Route element={<AdminLayout />}>
                 <Route path={ROUTES.ADMIN} element={<AdminPage />} />
+                <Route path={ROUTES.ADMIN_PATHS} element={<AdminPathsPage />} />
+                <Route path={ROUTES.ADMIN_PATH_MODULES} element={<AdminModuleEditorPage />} />
+                <Route path={ROUTES.ADMIN_USERS} element={<AdminUsersPage />} />
               </Route>
             </Route>
           </Route>

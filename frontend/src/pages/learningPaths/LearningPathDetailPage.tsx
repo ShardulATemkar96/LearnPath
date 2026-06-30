@@ -22,8 +22,13 @@ import {
 import { Module } from "../../types/path.types";
 import { ROUTES } from "../../constants/routes";
 
-const ModuleCard = ({ module, dispatch, pathId }: { module: Module; dispatch: AppDispatch; pathId: number }) => (
-  <Box
+const ModuleCard = ({ module, dispatch, pathId ,navigate }: { module: Module; dispatch: AppDispatch; pathId: number ; navigate:(path:string) =>void;}) => (
+  <Box 
+    onClick={() => {
+      if(module.isUnlocked){
+        navigate(`/paths/${pathId}/modules/${module.id}`);
+      }
+    }}
     sx={{
       p: 2.5,
       borderRadius: 3,
@@ -234,7 +239,7 @@ const LearningPathDetailPage = () => {
   ) : (
     <Stack spacing={1.5}>
       {path.modules.map((module) => (
-        <ModuleCard key={module.id} module={module} dispatch={dispatch} pathId={Number(id)} />
+        <ModuleCard key={module.id} module={module} dispatch={dispatch} pathId={Number(id)} navigate={navigate} />
       ))}
     </Stack>
   )

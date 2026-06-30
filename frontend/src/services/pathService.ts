@@ -39,6 +39,11 @@ export const pathService = {
     return data.data;
   },
 
+  updateModule: async (pathId: number, moduleId: number, payload: CreateModuleRequest): Promise<Module> => {
+    const { data } = await apiClient.put(`/paths/${pathId}/modules/${moduleId}`, payload);
+    return data.data;
+  },
+
   deleteModule: async (pathId: number, moduleId: number): Promise<void> => {
     await apiClient.delete(`/paths/${pathId}/modules/${moduleId}`);
   },

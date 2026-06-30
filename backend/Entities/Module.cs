@@ -7,6 +7,7 @@ public class Module
     public string Description { get; set; } = string.Empty;
     public string? ContentUrl { get; set; }
     public string ContentType { get; set; } = string.Empty; // video, article, quiz
+    public string? ContentBody { get; set;  }
     public int Order { get; set; }
     public int LearningPathId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

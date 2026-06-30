@@ -1,3 +1,68 @@
-﻿
-using LearnPath.API.Common; using LearnPath.API.DTOs.Admin; using LearnPath.API.Interfaces.Services; using Microsoft.AspNetCore.Authorization; using Microsoft.AspNetCore.Mvc; namespace LearnPath.API.Controllers; [ApiController] [Route("api/v1/admin")] [Authorize(Roles = "Admin")] public class AdminController : ControllerBase { private readonly IAdminService _service; public AdminController(IAdminService service) => _service = service; [HttpGet("stats")] public async Task<IActionResult> GetStats() { var result = await _service.GetStatsAsync(); return Ok(ApiResponse<AdminStatsResponseDto>.Ok(result)); } [HttpGet("users")] public async Task<IActionResult> GetUsers([FromQuery] string? search) { var result = await _service.GetAllUsersAsync(search); return Ok(ApiResponse<List<AdminUserResponseDto>>.Ok(result)); } [HttpGet("users/{userId}")] public async Task<IActionResult> GetUser(string userId) { var result = await _service.GetUserByIdAsync(userId); return Ok(ApiResponse<AdminUserResponseDto>.Ok(result)); } [HttpPut("users/{userId}/role")] public async Task<IActionResult> UpdateRole( string userId, [FromBody] UpdateUserRoleDto dto) { var result = await _service.UpdateUserRoleAsync(userId, dto); return Ok(ApiResponse<AdminUserResponseDto>.Ok(result, "Role updated.")); } [HttpPut("users/{userId}/status")] public async Task<IActionResult> ToggleStatus( string userId, [FromBody] ToggleUserStatusDto dto) { var result = await _service.ToggleUserStatusAsync(userId, dto); return Ok(ApiResponse<AdminUserResponseDto>.Ok(result, "Status updated.")); } [HttpDelete("users/{userId}")] public async Task<IActionResult> DeleteUser(string userId) { await _service.DeleteUserAsync(userId); return Ok(ApiResponse<object>.Ok(null!, "User deleted.")); } }
+﻿using LearnPath.API.Common;
+using LearnPath.API.DTOs.Admin;
+using LearnPath.API.DTOs.LearningPath;
+using LearnPath.API.Interfaces.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace LearnPath.API.Controllers;
+
+[ApiController]
+[Route("api/v1/admin")]
+[Authorize(Roles = "Admin")]
+public class AdminController : ControllerBase
+{
+    private readonly IAdminService _service;
+
+    public AdminController(IAdminService service) => _service = service;
+
+    [HttpGet("stats")]
+    public async Task<IActionResult> GetStats()
+    {
+        var result = await _service.GetStatsAsync();
+        return Ok(ApiResponse<AdminStatsResponseDto>.Ok(result));
+    }
+
+    [HttpGet("users")]
+    public async Task<IActionResult> GetUsers([FromQuery] string? search)
+    {
+        var result = await _service.GetAllUsersAsync(search);
+        return Ok(ApiResponse<List<AdminUserResponseDto>>.Ok(result));
+    }
+
+    [HttpGet("users/{userId}")]
+    public async Task<IActionResult> GetUser(string userId)
+    {
+        var result = await _service.GetUserByIdAsync(userId);
+        return Ok(ApiResponse<AdminUserResponseDto>.Ok(result));
+    }
+
+    [HttpPut("users/{userId}/role")]
+    public async Task<IActionResult> UpdateRole(string userId, [FromBody] UpdateUserRoleDto dto)
+    {
+        var result = await _service.UpdateUserRoleAsync(userId, dto);
+        return Ok(ApiResponse<AdminUserResponseDto>.Ok(result, "Role updated."));
+    }
+
+    [HttpPut("users/{userId}/status")]
+    public async Task<IActionResult> ToggleStatus(string userId, [FromBody] ToggleUserStatusDto dto)
+    {
+        var result = await _service.ToggleUserStatusAsync(userId, dto);
+        return Ok(ApiResponse<AdminUserResponseDto>.Ok(result, "Status updated."));
+    }
+
+    [HttpDelete("users/{userId}")]
+    public async Task<IActionResult> DeleteUser(string userId)
+    {
+        await _service.DeleteUserAsync(userId);
+        return Ok(ApiResponse<object>.Ok(null!, "User deleted."));
+    }
+
+    [HttpGet("paths")]
+    public async Task<IActionResult> GetAllPaths()
+    {
+        var result = await _service.GetAllPathsAsync();
+        return Ok(ApiResponse<List<LearningPathResponseDto>>.Ok(result));
+    }
+}
 

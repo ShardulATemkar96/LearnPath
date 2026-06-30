@@ -18,3 +18,17 @@ export interface AdminStats {
   newUsersThisMonth: number;
   userGrowth: { month: string; count: number }[];
 }
+
+export interface AdminPath {
+  id: number;
+  title: string;
+  description: string;
+  thumbnailUrl?: string;
+  isPublished: boolean;
+  isPublic: boolean;
+  createdById: string;
+  createdByName: string;
+  totalModules: number;
+  createdAt: string;
+  updatedAt: string;
+}

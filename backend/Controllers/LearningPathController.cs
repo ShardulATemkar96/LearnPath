@@ -9,7 +9,7 @@ namespace LearnPath.API.Controllers;
 
 [ApiController]
 [Route("api/v1/paths")]
-[Authorize]
+[Authorize(Roles ="Admin")]
 public class LearningPathController : ControllerBase
 {
     private readonly ILearningPathService _service;
