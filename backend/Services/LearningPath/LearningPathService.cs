@@ -107,6 +107,7 @@ public class LearningPathService : ILearningPathService
             Description = dto.Description,
             ThumbnailUrl = dto.ThumbnailUrl,
             IsPublic = dto.IsPublic,
+            IsPublished = dto.IsPublic,
             CreatedById = userId,
         };
 
@@ -257,7 +258,7 @@ public class LearningPathService : ILearningPathService
         await _context.SaveChangesAsync();
     }
 
-    // ── Private Helpers ───────────────────────────────────────
+    // ── Private Helpers ───────────────────────────────────────                                                                                                                                                                                                               frozeSam
 
     private async Task<Entities.LearningPath> GetOwnedPathAsync(int id, string userId)
     {

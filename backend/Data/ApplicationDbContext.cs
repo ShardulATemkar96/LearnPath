@@ -11,7 +11,7 @@ public class ApplicationDbContext : IdentityDbContext<User>
 
     public DbSet<LearningPath> LearningPaths => Set<LearningPath>();
     public DbSet<Module> Modules => Set<Module>();
-    public DbSet<ModuleDependency> ModuleDependencies => Set<ModuleDependency>();
+    public DbSet<ModuleDependency> ModuleDependencies => Set<ModuleDependency>();                                                                                                                       //RomSam
     public DbSet<Progress> Progresses => Set<Progress>();
     public DbSet<Classroom> Classrooms => Set<Classroom>();
     public DbSet<UserClassroom> UserClassrooms => Set<UserClassroom>();
