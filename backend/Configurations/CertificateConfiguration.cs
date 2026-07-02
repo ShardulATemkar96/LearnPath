@@ -16,8 +16,8 @@ public class CertificateConfiguration : IEntityTypeConfiguration<Certificate>
                .WithMany()
                .HasForeignKey(c => c.UserId)
                .OnDelete(DeleteBehavior.Cascade);
-
-        builder.HasOne(c => c.LearningPath)
+                                                                                                                                                                                                                                                        //SamROm
+        builder.HasOne(c => c.LearningPath)                                                    
                .WithMany()
                .HasForeignKey(c => c.LearningPathId)
                .OnDelete(DeleteBehavior.Restrict);

@@ -55,7 +55,7 @@ public class AnalyticsService : IAnalyticsService
         // ── Streak ────────────────────────────────────────────
         var streak = CalculateStreak(recentProgress);
 
-        // ── Path completions ──────────────────────────────────
+        // ── Path completions ──────────────────────────────────                                                                                                                   Romishfroze
         var enrolledPathIds = await _context.Progresses
             .Where(p => p.UserId == userId)
             .Select(p => p.Module.LearningPathId)
