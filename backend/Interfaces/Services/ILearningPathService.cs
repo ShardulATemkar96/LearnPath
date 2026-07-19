@@ -15,6 +15,11 @@ public interface ILearningPathService
     Task<ModuleResponseDto> UpdateModuleAsync(int pathId, int moduleId, UpdateModuleDto dto, string userId);
     Task DeleteModuleAsync(int pathId, int moduleId, string userId);
 
+    Task<ModuleResponseDto> ArchiveModuleAsync(int pathId, int moduleId, string userId);
+    Task<ModuleResponseDto> UnarchiveModuleAsync(int pathId, int moduleId, string userId);
+    Task<List<ModuleResponseDto>> SearchModulesAsync(int pathId, string? search, string? contentType, int? difficulty, bool? isDraft, bool? isArchived, string userId);
+    Task ReorderModuleAsync(int pathId, int moduleId, bool moveUp, string userId);
+
     Task AddDependencyAsync(int pathId, AddDependencyDto dto, string userId);
     Task RemoveDependencyAsync(int pathId, int moduleId, int dependsOnModuleId, string userId);
 }

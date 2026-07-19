@@ -1,20 +1,27 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
-  Alert, Box, Button, Chip, Dialog, DialogContent, DialogTitle, IconButton,
+  Alert, Box, Button, Chip, Dialog, DialogContent, DialogTitle, Divider, IconButton,
   Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead,
   TableRow, TextField, Typography, CircularProgress, MenuItem, Select, InputLabel, FormControl,
+  Switch,
 } from "@mui/material";
 import {
   AddRounded, CloseRounded, DeleteRounded, EditRounded, ArrowBackRounded,
+  ArrowUpwardRounded, ArrowDownwardRounded, ArchiveRounded, UnarchiveRounded,
 } from "@mui/icons-material";
 import { pathService } from "../../services/pathService";
 import { LearningPathDetail, Module, CreateModuleRequest } from "../../types/path.types";
 
 const CONTENT_TYPES = ["video", "article", "quiz", "code", "document"];
+const DIFFICULTY_LABELS = ["Beginner", "Intermediate", "Advanced"];
 
 const emptyForm = (nextOrder: number): CreateModuleRequest => ({
   title: "", description: "", contentType: "article", contentUrl: "", order: nextOrder,
+  difficulty: 0, estimatedDurationMinutes: undefined, notesHtml: "", pdfUrl: "",
+  thumbnailUrl: "", isDraft: false, quizEnabled: false, quizQuestionCount: 10,
+  quizPassingScore: 70, quizTimeLimitMinutes: undefined,
+  resources: [], objectives: [], tags: [],
 });
 
 const AdminModuleEditorPage = () => {
@@ -30,6 +37,15 @@ const AdminModuleEditorPage = () => {
   const [editingModule, setEditingModule] = useState<Module | null>(null);
   const [form, setForm] = useState<CreateModuleRequest>(emptyForm(1));
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
+
+  const filteredModules = modules.filter(m => {
+    if (!showArchived && m.isArchived) return false;
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return m.title.toLowerCase().includes(q) || m.description.toLowerCase().includes(q);
+  });
 
   const loadPath = useCallback(async () => {
     setLoading(true);
@@ -50,7 +66,7 @@ const AdminModuleEditorPage = () => {
     setModalOpen(true);
   };
 
-  const openEdit = (mod: Module) => {
+   const openEdit = (mod: Module) => {
     setEditingModule(mod);
     setForm({
       title: mod.title,
@@ -58,6 +74,19 @@ const AdminModuleEditorPage = () => {
       contentType: mod.contentType,
       contentUrl: mod.contentUrl || "",
       order: mod.order,
+      difficulty: mod.difficulty,
+      estimatedDurationMinutes: mod.estimatedDurationMinutes,
+      notesHtml: mod.notesHtml || "",
+      pdfUrl: mod.pdfUrl || "",
+      thumbnailUrl: mod.thumbnailUrl || "",
+      isDraft: mod.isDraft,
+      quizEnabled: mod.quizEnabled,
+      quizQuestionCount: mod.quizQuestionCount,
+      quizPassingScore: mod.quizPassingScore,
+      quizTimeLimitMinutes: mod.quizTimeLimitMinutes,
+      resources: mod.resources.map(r => ({ type: r.type, title: r.title, url: r.url, orderIndex: r.orderIndex })),
+      objectives: mod.objectives.map(o => ({ objectiveText: o.objectiveText, orderIndex: o.orderIndex })),
+      tags: [...mod.tags],
     });
     setModalOpen(true);
   };
@@ -111,7 +140,19 @@ const AdminModuleEditorPage = () => {
         </Button>
       </Stack>
 
-      {modules.length === 0 ? (
+      <Stack direction="row" spacing={2} mb={2}>
+        <TextField size="small" placeholder="Search modules..." value={search}
+          onChange={(e) => setSearch(e.target.value)} sx={{ flex: 1, maxWidth: 400 }} />
+        <Button
+          variant={showArchived ? "contained" : "outlined"} size="small"
+          color={showArchived ? "warning" : "inherit"}
+          startIcon={<ArchiveRounded />}
+          onClick={() => setShowArchived(s => !s)}>
+          {showArchived ? "Hide Archived" : "Show Archived"}
+        </Button>
+      </Stack>
+
+      {filteredModules.length === 0 ? (
         <Paper sx={{ p: 4, textAlign: "center", borderRadius: 4 }}>
           <Typography color="text.secondary">No modules yet. Click "Add Module" to create one.</Typography>
         </Paper>
@@ -120,28 +161,57 @@ const AdminModuleEditorPage = () => {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell sx={{ fontWeight: 700, width: 70 }}>Order</TableCell>
+                <TableCell sx={{ fontWeight: 700, width: 50 }}>#</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Title</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Type</TableCell>
+                <TableCell sx={{ fontWeight: 700, width: 90 }}>Type</TableCell>
+                <TableCell sx={{ fontWeight: 700, width: 100 }}>Status</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Description</TableCell>
-                <TableCell sx={{ fontWeight: 700 }} align="right">Actions</TableCell>
+                <TableCell sx={{ fontWeight: 700, minWidth: 220 }} align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {modules.map((mod) => (
-                <TableRow key={mod.id} hover>
+              {filteredModules.map((mod, index) => (
+                <TableRow key={mod.id} hover sx={{ opacity: mod.isArchived ? 0.6 : 1 }}>
                   <TableCell>{mod.order}</TableCell>
                   <TableCell><Typography fontWeight={600}>{mod.title}</Typography></TableCell>
                   <TableCell><Chip label={mod.contentType} size="small" variant="outlined" /></TableCell>
                   <TableCell>
-                    <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: 300 }}>
+                    {mod.isArchived ? (
+                      <Chip label="Archived" size="small" color="warning" variant="outlined" />
+                    ) : mod.isDraft ? (
+                      <Chip label="Draft" size="small" color="default" variant="outlined" />
+                    ) : (
+                      <Chip label="Published" size="small" color="success" variant="outlined" />
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: 200 }}>
                       {mod.description}
                     </Typography>
                   </TableCell>
                   <TableCell align="right">
+                    <IconButton onClick={() => pathService.reorderModule(pid, mod.id, true).then(loadPath)}
+                      size="small" disabled={index === 0} title="Move Up">
+                      <ArrowUpwardRounded fontSize="small" />
+                    </IconButton>
+                    <IconButton onClick={() => pathService.reorderModule(pid, mod.id, false).then(loadPath)}
+                      size="small" disabled={index === filteredModules.length - 1} title="Move Down">
+                      <ArrowDownwardRounded fontSize="small" />
+                    </IconButton>
                     <IconButton onClick={() => openEdit(mod)} size="small" color="primary" title="Edit">
                       <EditRounded />
                     </IconButton>
+                    {mod.isArchived ? (
+                      <IconButton onClick={() => pathService.unarchiveModule(pid, mod.id).then(loadPath)}
+                        size="small" color="warning" title="Unarchive">
+                        <UnarchiveRounded fontSize="small" />
+                      </IconButton>
+                    ) : (
+                      <IconButton onClick={() => pathService.archiveModule(pid, mod.id).then(loadPath)}
+                        size="small" color="inherit" title="Archive">
+                        <ArchiveRounded fontSize="small" />
+                      </IconButton>
+                    )}
                     <IconButton onClick={() => handleDelete(mod.id, mod.title)} size="small" color="error" title="Delete">
                       <DeleteRounded />
                     </IconButton>
@@ -180,6 +250,120 @@ const AdminModuleEditorPage = () => {
               onChange={(e) => setForm(p => ({ ...p, contentUrl: e.target.value }))} />
             <TextField label="Order" type="number" fullWidth value={form.order}
               onChange={(e) => setForm(p => ({ ...p, order: parseInt(e.target.value) || 0 }))} />
+
+            <FormControl fullWidth>
+              <InputLabel>Difficulty</InputLabel>
+              <Select value={form.difficulty} label="Difficulty"
+                onChange={(e) => setForm(p => ({ ...p, difficulty: Number(e.target.value) }))}>
+                <MenuItem value={0}>Beginner</MenuItem>
+                <MenuItem value={1}>Intermediate</MenuItem>
+                <MenuItem value={2}>Advanced</MenuItem>
+              </Select>
+            </FormControl>
+
+            <TextField label="Estimated Duration (minutes)" type="number" fullWidth
+              value={form.estimatedDurationMinutes ?? ""}
+              onChange={(e) => setForm(p => ({ ...p, estimatedDurationMinutes: e.target.value ? parseInt(e.target.value) : undefined }))} />
+
+            <TextField label="Thumbnail URL" fullWidth value={form.thumbnailUrl}
+              onChange={(e) => setForm(p => ({ ...p, thumbnailUrl: e.target.value }))} />
+
+            <TextField label="PDF URL" fullWidth value={form.pdfUrl}
+              onChange={(e) => setForm(p => ({ ...p, pdfUrl: e.target.value }))} />
+
+            <Stack direction="row" alignItems="center">
+              <Switch checked={form.isDraft}
+                onChange={(e) => setForm(p => ({ ...p, isDraft: e.target.checked }))} />
+              <Typography variant="body2">Draft</Typography>
+            </Stack>
+
+            <Stack direction="row" alignItems="center">
+              <Switch checked={form.quizEnabled}
+                onChange={(e) => setForm(p => ({ ...p, quizEnabled: e.target.checked }))} />
+              <Typography variant="body2">Enable Quiz</Typography>
+            </Stack>
+
+            {form.quizEnabled && (
+              <Stack spacing={2}>
+                <TextField label="Question Count" type="number" fullWidth value={form.quizQuestionCount}
+                  onChange={(e) => setForm(p => ({ ...p, quizQuestionCount: parseInt(e.target.value) || 0 }))} />
+                <TextField label="Passing Score (%)" type="number" fullWidth value={form.quizPassingScore}
+                  onChange={(e) => setForm(p => ({ ...p, quizPassingScore: parseInt(e.target.value) || 0 }))} />
+                <TextField label="Time Limit (minutes)" type="number" fullWidth
+                  value={form.quizTimeLimitMinutes ?? ""}
+                  onChange={(e) => setForm(p => ({ ...p, quizTimeLimitMinutes: e.target.value ? parseInt(e.target.value) : undefined }))} />
+              </Stack>
+            )}
+
+            <TextField label="Tags (comma-separated)" fullWidth
+              value={form.tags.join(", ")}
+              onChange={(e) => setForm(p => ({ ...p, tags: e.target.value.split(",").map(t => t.trim()).filter(Boolean) }))} />
+
+            <Divider />
+
+            <Typography variant="subtitle2" fontWeight={600}>Notes</Typography>
+            <TextField label="Notes (HTML supported)" fullWidth multiline minRows={4} maxRows={12}
+              value={form.notesHtml || ""}
+              onChange={(e) => setForm(p => ({ ...p, notesHtml: e.target.value }))} />
+
+            <Divider />
+
+            <Typography variant="subtitle2" fontWeight={600}>Resources</Typography>
+            {form.resources.map((r, i) => (
+              <Stack key={i} direction="row" spacing={1} alignItems="center">
+                <TextField size="small" label="Type" value={r.type}
+                  onChange={(e) => {
+                    const updated = [...form.resources];
+                    updated[i] = { ...updated[i], type: e.target.value };
+                    setForm(p => ({ ...p, resources: updated }));
+                  }} sx={{ width: 100 }} />
+                <TextField size="small" label="Title" value={r.title}
+                  onChange={(e) => {
+                    const updated = [...form.resources];
+                    updated[i] = { ...updated[i], title: e.target.value };
+                    setForm(p => ({ ...p, resources: updated }));
+                  }} sx={{ flex: 1 }} />
+                <TextField size="small" label="URL" value={r.url}
+                  onChange={(e) => {
+                    const updated = [...form.resources];
+                    updated[i] = { ...updated[i], url: e.target.value };
+                    setForm(p => ({ ...p, resources: updated }));
+                  }} sx={{ flex: 1 }} />
+                <IconButton size="small" color="error" onClick={() =>
+                  setForm(p => ({ ...p, resources: p.resources.filter((_, j) => j !== i) }))}>
+                  <DeleteRounded fontSize="small" />
+                </IconButton>
+              </Stack>
+            ))}
+            <Button variant="outlined" size="small" startIcon={<AddRounded />}
+              onClick={() => setForm(p => ({ ...p, resources: [...p.resources, { type: "video", title: "", url: "", orderIndex: p.resources.length }] }))}>
+              Add Resource
+            </Button>
+
+            <Divider />
+
+            <Typography variant="subtitle2" fontWeight={600}>Objectives</Typography>
+            {form.objectives.map((o, i) => (
+              <Stack key={i} direction="row" spacing={1} alignItems="center">
+                <TextField size="small" label="Objective" value={o.objectiveText} fullWidth
+                  onChange={(e) => {
+                    const updated = [...form.objectives];
+                    updated[i] = { ...updated[i], objectiveText: e.target.value };
+                    setForm(p => ({ ...p, objectives: updated }));
+                  }} />
+                <IconButton size="small" color="error" onClick={() =>
+                  setForm(p => ({ ...p, objectives: p.objectives.filter((_, j) => j !== i) }))}>
+                  <DeleteRounded fontSize="small" />
+                </IconButton>
+              </Stack>
+            ))}
+            <Button variant="outlined" size="small" startIcon={<AddRounded />}
+              onClick={() => setForm(p => ({ ...p, objectives: [...p.objectives, { objectiveText: "", orderIndex: p.objectives.length }] }))}>
+              Add Objective
+            </Button>
+
+            <Divider />
+
             <Button variant="contained" fullWidth size="large" onClick={handleSave} disabled={saving}
               sx={{ background: "linear-gradient(135deg, #6C63FF, #9D97FF)", borderRadius: 2 }}>
               {saving ? <CircularProgress size={22} sx={{ color: "#fff" }} /> :

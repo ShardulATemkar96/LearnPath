@@ -46,6 +46,12 @@ public class LearningPathService : ILearningPathService
                 .ThenInclude(m => m.Dependencies)
             .Include(p => p.Modules)
                 .ThenInclude(m => m.Progresses.Where(pr => pr.UserId == userId))
+            .Include(p => p.Modules)
+                .ThenInclude(m => m.Resources)
+            .Include(p => p.Modules)
+                .ThenInclude(m => m.Objectives)
+            .Include(p => p.Modules)
+                .ThenInclude(m => m.Tags)
             .FirstOrDefaultAsync(p => p.Id == id)
             ?? throw new KeyNotFoundException("Learning path not found.");
 
@@ -70,6 +76,33 @@ public class LearningPathService : ILearningPathService
                 LearningPathId = m.LearningPathId,
                 IsCompleted = completedModuleIds.Contains(m.Id),
                 IsUnlocked = isUnlocked,
+                Difficulty = m.Difficulty,
+                EstimatedDurationMinutes = m.EstimatedDurationMinutes,
+                NotesHtml = m.NotesHtml,
+                PdfUrl = m.PdfUrl,
+                ThumbnailUrl = m.ThumbnailUrl,
+                IsDraft = m.IsDraft,
+                IsArchived = m.IsArchived,
+                ArchivedAt = m.ArchivedAt,
+                QuizEnabled = m.QuizEnabled,
+                QuizQuestionCount = m.QuizQuestionCount,
+                QuizPassingScore = m.QuizPassingScore,
+                QuizTimeLimitMinutes = m.QuizTimeLimitMinutes,
+                Resources = m.Resources.OrderBy(r => r.OrderIndex).Select(r => new ResourceDto
+                {
+                    Id = r.Id,
+                    Type = r.Type,
+                    Title = r.Title,
+                    Url = r.Url,
+                    OrderIndex = r.OrderIndex,
+                }).ToList(),
+                Objectives = m.Objectives.OrderBy(o => o.OrderIndex).Select(o => new ObjectiveDto
+                {
+                    Id = o.Id,
+                    ObjectiveText = o.ObjectiveText,
+                    OrderIndex = o.OrderIndex,
+                }).ToList(),
+                Tags = m.Tags.Select(t => t.TagName).ToList(),
             };
         }).OrderBy(m => m.Order).ToList();
 
@@ -114,6 +147,7 @@ public class LearningPathService : ILearningPathService
         await _context.LearningPaths.AddAsync(path);
         await _context.SaveChangesAsync();
 
+
         await _context.Entry(path).Reference(p => p.CreatedBy).LoadAsync();
         return MapToResponse(path);
     }
@@ -154,23 +188,45 @@ public class LearningPathService : ILearningPathService
             ContentType = dto.ContentType,
             Order = dto.Order,
             LearningPathId = pathId,
+            Difficulty = dto.Difficulty,
+            EstimatedDurationMinutes = dto.EstimatedDurationMinutes,
+            NotesHtml = dto.NotesHtml,
+            PdfUrl = dto.PdfUrl,
+            ThumbnailUrl = dto.ThumbnailUrl,
+            IsDraft = dto.IsDraft,
+            QuizEnabled = dto.QuizEnabled,
+            QuizQuestionCount = dto.QuizQuestionCount,
+            QuizPassingScore = dto.QuizPassingScore,
+            QuizTimeLimitMinutes = dto.QuizTimeLimitMinutes,
+            ContentBody = dto.ContentBody,
         };
+        // Resources
+        foreach (var r in dto.Resources)
+            module.Resources.Add(new ModuleResource
+            {
+                Type = r.Type,
+                Title = r.Title,
+                Url = r.Url,
+                OrderIndex = r.OrderIndex,
+            });
+
+        // Objectives
+        foreach (var o in dto.Objectives)
+            module.Objectives.Add(new ModuleObjective
+            {
+                ObjectiveText = o.ObjectiveText,
+                OrderIndex = o.OrderIndex,
+            });
+
+        // Tags
+        foreach (var tag in dto.Tags)
+            module.Tags.Add(new ModuleTag { TagName = tag });
+
 
         await _context.Modules.AddAsync(module);
         await _context.SaveChangesAsync();
 
-        return new ModuleResponseDto
-        {
-            Id = module.Id,
-            Title = module.Title,
-            Description = module.Description,
-            ContentUrl = module.ContentUrl,
-            ContentType = module.ContentType,
-            Order = module.Order,
-            LearningPathId = module.LearningPathId,
-            IsCompleted = false,
-            IsUnlocked = true,
-        };
+        return MapToModuleResponse(module);
     }
 
     public async Task<ModuleResponseDto> UpdateModuleAsync(
@@ -184,22 +240,43 @@ public class LearningPathService : ILearningPathService
         module.ContentUrl = dto.ContentUrl;
         module.ContentType = dto.ContentType;
         module.Order = dto.Order;
+        module.Difficulty = dto.Difficulty;
+        module.EstimatedDurationMinutes = dto.EstimatedDurationMinutes;
+        module.NotesHtml = dto.NotesHtml;
+        module.PdfUrl = dto.PdfUrl;
+        module.ThumbnailUrl = dto.ThumbnailUrl;
+        module.IsDraft = dto.IsDraft;
+        module.QuizEnabled = dto.QuizEnabled;
+        module.QuizQuestionCount = dto.QuizQuestionCount;
+        module.QuizPassingScore = dto.QuizPassingScore;
+        module.QuizTimeLimitMinutes = dto.QuizTimeLimitMinutes;
+        module.ContentBody = dto.ContentBody;
         module.UpdatedAt = DateTime.UtcNow;
 
+        // Replace resources
+        _context.ModuleResources.RemoveRange(module.Resources);
+        module.Resources = dto.Resources.Select(r => new ModuleResource
+        {
+            Type = r.Type,
+            Title = r.Title,
+            Url = r.Url,
+            OrderIndex = r.OrderIndex,
+        }).ToList();
+
+        // Replace objectives
+        _context.ModuleObjectives.RemoveRange(module.Objectives);
+        module.Objectives = dto.Objectives.Select(o => new ModuleObjective
+        {
+            ObjectiveText = o.ObjectiveText,
+            OrderIndex = o.OrderIndex,
+        }).ToList();
+
+        // Replace tags
+        _context.ModuleTags.RemoveRange(module.Tags);
+        module.Tags = dto.Tags.Select(t => new ModuleTag { TagName = t }).ToList();
         await _context.SaveChangesAsync();
 
-        return new ModuleResponseDto
-        {
-            Id = module.Id,
-            Title = module.Title,
-            Description = module.Description,
-            ContentUrl = module.ContentUrl,
-            ContentType = module.ContentType,
-            Order = module.Order,
-            LearningPathId = module.LearningPathId,
-            IsCompleted = false,
-            IsUnlocked = true,
-        };
+        return MapToModuleResponse(module);
     }
 
     public async Task DeleteModuleAsync(int pathId, int moduleId, string userId)
@@ -207,6 +284,78 @@ public class LearningPathService : ILearningPathService
         await GetOwnedPathAsync(pathId, userId);
         var module = await GetModuleAsync(moduleId, pathId);
         _context.Modules.Remove(module);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<ModuleResponseDto> ArchiveModuleAsync(int pathId, int moduleId, string userId)
+    {
+        await GetOwnedPathAsync(pathId, userId);
+        var module = await GetModuleAsync(moduleId, pathId);
+        module.IsArchived = true;
+        module.ArchivedAt = DateTime.UtcNow;
+        module.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        return MapToModuleResponse(module);
+    }
+
+    public async Task<ModuleResponseDto> UnarchiveModuleAsync(int pathId, int moduleId, string userId)
+    {
+        await GetOwnedPathAsync(pathId, userId);
+        var module = await GetModuleAsync(moduleId, pathId);
+        module.IsArchived = false;
+        module.ArchivedAt = null;
+        module.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        return MapToModuleResponse(module);
+    }
+
+    public async Task<List<ModuleResponseDto>> SearchModulesAsync(
+        int pathId, string? search, string? contentType, int? difficulty,
+        bool? isDraft, bool? isArchived, string userId)
+    {
+        await GetOwnedPathAsync(pathId, userId);
+
+        var query = _context.Modules
+            .Include(m => m.Resources)
+            .Include(m => m.Objectives)
+            .Include(m => m.Tags)
+            .Where(m => m.LearningPathId == pathId);
+
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(m => m.Title.Contains(search) || m.Description!.Contains(search));
+        if (!string.IsNullOrWhiteSpace(contentType))
+            query = query.Where(m => m.ContentType == contentType);
+        if (difficulty.HasValue)
+            query = query.Where(m => (int)m.Difficulty == difficulty.Value);
+        if (isDraft.HasValue)
+            query = query.Where(m => m.IsDraft == isDraft.Value);
+        if (isArchived.HasValue)
+            query = query.Where(m => m.IsArchived == isArchived.Value);
+
+        var modules = await query.OrderBy(m => m.Order).ToListAsync();
+        return modules.Select(MapToModuleResponse).ToList();
+    }
+
+    public async Task ReorderModuleAsync(int pathId, int moduleId, bool moveUp, string userId)
+    {
+        await GetOwnedPathAsync(pathId, userId);
+
+        var modules = await _context.Modules
+            .Where(m => m.LearningPathId == pathId)
+            .OrderBy(m => m.Order)
+            .ToListAsync();
+
+        var idx = modules.FindIndex(m => m.Id == moduleId);
+        if (idx < 0) throw new KeyNotFoundException("Module not found.");
+
+        var swapIdx = moveUp ? idx - 1 : idx + 1;
+        if (swapIdx < 0 || swapIdx >= modules.Count)
+            throw new InvalidOperationException("Module is already at the " + (moveUp ? "top" : "bottom") + ".");
+
+        (modules[idx].Order, modules[swapIdx].Order) = (modules[swapIdx].Order, modules[idx].Order);
+        modules[idx].UpdatedAt = DateTime.UtcNow;
+        modules[swapIdx].UpdatedAt = DateTime.UtcNow;
+
         await _context.SaveChangesAsync();
     }
 
@@ -276,8 +425,10 @@ public class LearningPathService : ILearningPathService
     private async Task<Entities.Module> GetModuleAsync(int moduleId, int pathId)
     {
         return await _context.Modules
-            .FirstOrDefaultAsync(m => m.Id == moduleId && m.LearningPathId == pathId)
-            ?? throw new KeyNotFoundException("Module not found.");
+             .Include(m => m.Resources)
+              .Include(m => m.Objectives)
+               .Include(m => m.Tags)
+                .FirstOrDefaultAsync(m => m.Id == moduleId && m.LearningPathId == pathId);
     }
 
     private static LearningPathResponseDto MapToResponse(Entities.LearningPath path) =>
@@ -297,4 +448,39 @@ public class LearningPathService : ILearningPathService
             CreatedAt = path.CreatedAt,
             UpdatedAt = path.UpdatedAt,
         };
+
+    private static ModuleResponseDto MapToModuleResponse(Entities.Module m) => new()
+    {
+        Id = m.Id,
+        Title = m.Title,
+        Description = m.Description,
+        ContentUrl = m.ContentUrl,
+        ContentType = m.ContentType,
+        ContentBody = m.ContentBody,
+        Order = m.Order,
+        LearningPathId = m.LearningPathId,
+        IsCompleted = false,
+        IsUnlocked = true,
+        Difficulty = m.Difficulty,
+        EstimatedDurationMinutes = m.EstimatedDurationMinutes,
+        NotesHtml = m.NotesHtml,
+        PdfUrl = m.PdfUrl,
+        ThumbnailUrl = m.ThumbnailUrl,
+        IsDraft = m.IsDraft,
+        IsArchived = m.IsArchived,
+        ArchivedAt = m.ArchivedAt,
+        QuizEnabled = m.QuizEnabled,
+        QuizQuestionCount = m.QuizQuestionCount,
+        QuizPassingScore = m.QuizPassingScore,
+        QuizTimeLimitMinutes = m.QuizTimeLimitMinutes,
+        Resources = m.Resources.OrderBy(r => r.OrderIndex).Select(r => new ResourceDto
+        {
+            Id = r.Id, Type = r.Type, Title = r.Title, Url = r.Url, OrderIndex = r.OrderIndex,
+        }).ToList(),
+        Objectives = m.Objectives.OrderBy(o => o.OrderIndex).Select(o => new ObjectiveDto
+        {
+            Id = o.Id, ObjectiveText = o.ObjectiveText, OrderIndex = o.OrderIndex,
+        }).ToList(),
+        Tags = m.Tags.Select(t => t.TagName).ToList(),
+    };
 }
