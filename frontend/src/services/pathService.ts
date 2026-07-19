@@ -48,6 +48,28 @@ export const pathService = {
     await apiClient.delete(`/paths/${pathId}/modules/${moduleId}`);
   },
 
+  archiveModule: async (pathId: number, moduleId: number): Promise<Module> => {
+    const { data } = await apiClient.put(`/paths/${pathId}/modules/${moduleId}/archive`);
+    return data.data;
+  },
+
+  unarchiveModule: async (pathId: number, moduleId: number): Promise<Module> => {
+    const { data } = await apiClient.put(`/paths/${pathId}/modules/${moduleId}/unarchive`);
+    return data.data;
+  },
+
+  searchModules: async (pathId: number, params: {
+    search?: string; contentType?: string; difficulty?: number;
+    isDraft?: boolean; isArchived?: boolean;
+  }): Promise<Module[]> => {
+    const { data } = await apiClient.get(`/paths/${pathId}/modules/search`, { params });
+    return data.data;
+  },
+
+  reorderModule: async (pathId: number, moduleId: number, moveUp: boolean): Promise<void> => {
+    await apiClient.put(`/paths/${pathId}/modules/${moduleId}/reorder?moveUp=${moveUp}`);
+  },
+
   addDependency: async (
     pathId: number, moduleId: number, dependsOnModuleId: number
   ): Promise<void> => {

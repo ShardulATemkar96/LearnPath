@@ -91,6 +91,40 @@ public class LearningPathController : ControllerBase
         return Ok(ApiResponse<object>.Ok(null!, "Module deleted."));
     }
 
+    [HttpPut("{pathId:int}/modules/{moduleId:int}/archive")]
+    public async Task<IActionResult> ArchiveModule(int pathId, int moduleId)
+    {
+        var result = await _service.ArchiveModuleAsync(pathId, moduleId, UserId);
+        return Ok(ApiResponse<ModuleResponseDto>.Ok(result, "Module archived."));
+    }
+
+    [HttpPut("{pathId:int}/modules/{moduleId:int}/unarchive")]
+    public async Task<IActionResult> UnarchiveModule(int pathId, int moduleId)
+    {
+        var result = await _service.UnarchiveModuleAsync(pathId, moduleId, UserId);
+        return Ok(ApiResponse<ModuleResponseDto>.Ok(result, "Module unarchived."));
+    }
+
+    [HttpGet("{pathId:int}/modules/search")]
+    public async Task<IActionResult> SearchModules(
+        int pathId,
+        [FromQuery] string? search,
+        [FromQuery] string? contentType,
+        [FromQuery] int? difficulty,
+        [FromQuery] bool? isDraft,
+        [FromQuery] bool? isArchived)
+    {
+        var result = await _service.SearchModulesAsync(pathId, search, contentType, difficulty, isDraft, isArchived, UserId);
+        return Ok(ApiResponse<List<ModuleResponseDto>>.Ok(result));
+    }
+
+    [HttpPut("{pathId:int}/modules/{moduleId:int}/reorder")]
+    public async Task<IActionResult> ReorderModule(int pathId, int moduleId, [FromQuery] bool moveUp)
+    {
+        await _service.ReorderModuleAsync(pathId, moduleId, moveUp, UserId);
+        return Ok(ApiResponse<object>.Ok(null!, "Module reordered."));
+    }
+
     // ── Dependencies ──────────────────────────────────────────
 
     [HttpPost("{pathId:int}/dependencies")]
