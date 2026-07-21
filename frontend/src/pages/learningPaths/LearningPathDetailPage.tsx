@@ -21,8 +21,11 @@ import {
 } from "../../redux/selectors/pathSelectors";
 import { Module } from "../../types/path.types";
 import { ROUTES } from "../../constants/routes";
+import { useAuth } from "../../hooks/useAuth";
 
-const ModuleCard = ({ module, dispatch, pathId ,navigate }: { module: Module; dispatch: AppDispatch; pathId: number ; navigate:(path:string) =>void;}) => (
+const ModuleCard = ({ module, dispatch, pathId ,navigate }: { module: Module; dispatch: AppDispatch; pathId: number ; navigate:(path:string) =>void;}) => {
+  const { isAdmin } = useAuth();
+  return (
   <Box 
     onClick={() => {
       if(module.isUnlocked){
@@ -92,7 +95,7 @@ const ModuleCard = ({ module, dispatch, pathId ,navigate }: { module: Module; di
         {module.description}
       </Typography>
     )}
-  {module.isUnlocked && !module.isCompleted && (
+  {isAdmin && module.isUnlocked && !module.isCompleted && (
   <Box mt={1.5} ml={7}>
     <Button
       size="small"
@@ -116,8 +119,8 @@ const ModuleCard = ({ module, dispatch, pathId ,navigate }: { module: Module; di
   </Box>
 )}
   </Box>
-  
-);
+  );
+};
 
 const LearningPathDetailPage = () => {
   const { id } = useParams<{ id: string }>();

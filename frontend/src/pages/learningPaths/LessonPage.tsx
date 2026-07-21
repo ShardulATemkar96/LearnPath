@@ -1,30 +1,60 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
-import { fetchPathById, clearSelectedPath } from "../../redux/slices/pathSlice";
-import { selectSelectedPath, selectPathDetailLoading } from "../../redux/selectors/pathSelectors";
+import { pathService } from "../../services/pathService";
 import { progressService } from "../../services/progressService";
-import { Box, Button, Typography, Chip, Alert, Skeleton, Stack, Divider } from "@mui/material";
-import { ArrowBackRounded, CheckCircleRounded } from "@mui/icons-material";
+import { Module } from "../../types/path.types";
+import { Box, Button, Typography, Chip, Alert, Skeleton, Stack, Divider, Grid, Paper } from "@mui/material";
+import { ArrowBackRounded, CheckCircleRounded, LockRounded, ChevronLeftRounded, ChevronRightRounded } from "@mui/icons-material";
 import { ROUTES } from "../../constants/routes";
-import { AppDispatch } from "@/redux/store";
+import QuizPage from "../../components/quiz/QuizPage";
 
 const LessonPage = () => {
   const { pathId, moduleId } = useParams<{ pathId: string; moduleId: string }>();
-  const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
-  const path = useSelector(selectSelectedPath);
-  const loading = useSelector(selectPathDetailLoading);
+  const [module, setModule] = useState<Module | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [quizActive, setQuizActive] = useState(false);
 
   useEffect(() => {
-    if (pathId) dispatch(fetchPathById(Number(pathId)));
-    return () => { dispatch(clearSelectedPath()); };
-  }, [pathId, dispatch]);
+    if (!pathId || !moduleId) return;
+    setLoading(true);
+    setError("");
+    pathService.getModuleContent(Number(pathId), Number(moduleId))
+      .then(setModule)
+      .catch((e: any) => {
+        const msg = e?.response?.data?.message || e?.message || "Failed to load module.";
+        if (e?.response?.status === 403) {
+          setError(msg);
+        } else {
+          setError("Module not found.");
+        }
+      })
+      .finally(() => setLoading(false));
+  }, [pathId, moduleId]);
 
-  const module = path?.modules?.find((m) => m.id === Number(moduleId));
+  const handleMarkComplete = async () => {
+    if (!module) return;
+    try {
+      await progressService.markComplete(module.id);
+      const updated = await pathService.getModuleContent(Number(pathId), Number(moduleId));
+      setModule(updated);
+    } catch (e: any) { console.error(e); }
+  };
 
   if (loading) return <Skeleton height={400} sx={{ borderRadius: 4 }} />;
-  if (!module) return <Alert severity="error">Module not found.</Alert>;
+
+  if (error) return (
+    <Box sx={{ textAlign: "center", py: 8 }}>
+      <LockRounded sx={{ fontSize: 64, color: "text.disabled", mb: 2 }} />
+      <Alert severity="warning" sx={{ mb: 2, maxWidth: 500, mx: "auto" }}>{error}</Alert>
+      <Button startIcon={<ArrowBackRounded />} onClick={() => navigate(ROUTES.LEARNING_PATH_DETAIL.replace(":id", pathId!))}>
+        Back to Path
+      </Button>
+    </Box>
+  );
+
+  if (!module) return null;
 
   return (
     <Box>
@@ -55,18 +85,94 @@ const LessonPage = () => {
         </Box>
       )}
 
-      {module.isUnlocked && !module.isCompleted && (
+      {module.notesHtml && (
+        <Box sx={{ p: 4, borderRadius: 4, border: "1px solid", borderColor: "divider", mb: 3, "& img": { maxWidth: "100%" } }}
+          dangerouslySetInnerHTML={{ __html: module.notesHtml }} />
+      )}
+
+      {module.pdfUrl && (
+        <Box sx={{ p: 4, borderRadius: 4, border: "1px solid", borderColor: "divider", mb: 3 }}>
+          <Typography variant="body2" color="text.secondary" mb={1}>PDF Notes:</Typography>
+          <Button variant="outlined" component="a" href={module.pdfUrl} target="_blank" rel="noopener noreferrer">
+            Open PDF
+          </Button>
+        </Box>
+      )}
+
+      {module.objectives.length > 0 && (
+        <Box sx={{ p: 4, borderRadius: 4, border: "1px solid", borderColor: "divider", mb: 3 }}>
+          <Typography variant="h6" fontWeight={600} mb={2}>Learning Objectives</Typography>
+          <ul style={{ margin: 0, paddingLeft: 20 }}>
+            {module.objectives.map((o, i) => (
+              <li key={o.id || i}><Typography variant="body2" color="text.secondary">{o.objectiveText}</Typography></li>
+            ))}
+          </ul>
+        </Box>
+      )}
+
+      {module.resources.length > 0 && (
+        <Box sx={{ p: 4, borderRadius: 4, border: "1px solid", borderColor: "divider", mb: 3 }}>
+          <Typography variant="h6" fontWeight={600} mb={2}>Resources</Typography>
+          <Stack spacing={1.5}>
+            {module.resources.map((r, i) => (
+              <Box key={r.id || i} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Chip label={r.type} size="small" variant="outlined" />
+                <Typography variant="body2" fontWeight={500}>{r.title}</Typography>
+                <Button size="small" variant="text" component="a" href={r.url} target="_blank" rel="noopener noreferrer">
+                  Open
+                </Button>
+              </Box>
+            ))}
+          </Stack>
+        </Box>
+      )}
+
+      {module.quizEnabled && !quizActive && (
+        <Box sx={{ p: 4, borderRadius: 4, border: "1px solid", borderColor: "divider", mb: 3 }}>
+          <Typography variant="h6" fontWeight={600} mb={1}>Quiz</Typography>
+          <Typography variant="body2" color="text.secondary" mb={2}>
+            Passing score: {module.quizPassingScore}% | Questions: {module.quizQuestionCount}
+            {module.quizTimeLimitMinutes && ` | Time limit: ${module.quizTimeLimitMinutes} min`}
+          </Typography>
+          <Button variant="contained" sx={{ borderRadius: 2 }} onClick={() => setQuizActive(true)}>
+            Start Quiz
+          </Button>
+        </Box>
+      )}
+
+      {quizActive && (
+        <QuizPage
+          moduleId={module.id}
+          onClose={() => setQuizActive(false)}
+        />
+      )}
+
+      {!module.isCompleted && (
         <Button variant="contained" size="large" fullWidth sx={{ borderRadius: 3, py: 1.5 }}
           startIcon={<CheckCircleRounded />}
-          onClick={async () => {
-            try {
-              await progressService.markComplete(module.id);
-              if (pathId) dispatch(fetchPathById(Number(pathId)));
-            } catch (e: any) { console.error(e); }
-          }}>
+          onClick={handleMarkComplete}>
           Mark as Complete
         </Button>
       )}
+
+      <Stack direction="row" justifyContent="space-between" mt={4}>
+        <Button
+          startIcon={<ChevronLeftRounded />}
+          variant="outlined"
+          disabled={!module.previousModuleId}
+          onClick={() => navigate(`/paths/${pathId}/modules/${module.previousModuleId}`)}
+          sx={{ borderRadius: 2 }}>
+          Previous
+        </Button>
+        <Button
+          endIcon={<ChevronRightRounded />}
+          variant="outlined"
+          disabled={!module.nextModuleId}
+          onClick={() => navigate(`/paths/${pathId}/modules/${module.nextModuleId}`)}
+          sx={{ borderRadius: 2 }}>
+          Next
+        </Button>
+      </Stack>
     </Box>
   );
 };

@@ -28,6 +28,7 @@ const SettingsPage           = lazy(() => import("../pages/settings/SettingsPage
 const AdminPage              = lazy(() => import("../pages/admin/AdminPage"));
 const AdminPathsPage         = lazy(() => import("../pages/admin/AdminPathsPage"));
 const AdminModuleEditorPage  = lazy(() => import("../pages/admin/AdminModuleEditorPage"));
+const AdminQuizEditorPage    = lazy(() => import("../pages/admin/AdminQuizEditorPage"));
 const AdminUsersPage         = lazy(() => import("../pages/admin/AdminUsersPage"));
 const NotFoundPage           = lazy(() => import("../pages/errors/NotFoundPage"));
 
@@ -61,6 +62,7 @@ const AppRoutes = () => (
                 <Route path={ROUTES.ADMIN} element={<AdminPage />} />
                 <Route path={ROUTES.ADMIN_PATHS} element={<AdminPathsPage />} />
                 <Route path={ROUTES.ADMIN_PATH_MODULES} element={<AdminModuleEditorPage />} />
+                <Route path={ROUTES.ADMIN_QUIZ_EDITOR} element={<AdminQuizEditorPage />} />
                 <Route path={ROUTES.ADMIN_USERS} element={<AdminUsersPage />} />
               </Route>
             </Route>
