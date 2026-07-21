@@ -15,8 +15,8 @@ export const pathService = {
     return data.data;
   },
 
-  getById: async (id: number): Promise<LearningPathDetail> => {
-    const { data } = await apiClient.get(`/paths/${id}`);
+  getById: async (id: number, includeUnpublished = false): Promise<LearningPathDetail> => {
+    const { data } = await apiClient.get(`/paths/${id}`, { params: { includeUnpublished } });
     return data.data;
   },
 
@@ -34,6 +34,11 @@ export const pathService = {
     await apiClient.delete(`/paths/${id}`);
   },
 
+  getModuleContent: async (pathId: number, moduleId: number): Promise<Module> => {
+    const { data } = await apiClient.get(`/paths/${pathId}/modules/${moduleId}`);
+    return data.data;
+  },
+
   addModule: async (pathId: number, payload: CreateModuleRequest): Promise<Module> => {
     const { data } = await apiClient.post(`/paths/${pathId}/modules`, payload);
     return data.data;
@@ -46,6 +51,16 @@ export const pathService = {
 
   deleteModule: async (pathId: number, moduleId: number): Promise<void> => {
     await apiClient.delete(`/paths/${pathId}/modules/${moduleId}`);
+  },
+
+  publishModule: async (pathId: number, moduleId: number): Promise<Module> => {
+    const { data } = await apiClient.put(`/paths/${pathId}/modules/${moduleId}/publish`);
+    return data.data;
+  },
+
+  unpublishModule: async (pathId: number, moduleId: number): Promise<Module> => {
+    const { data } = await apiClient.put(`/paths/${pathId}/modules/${moduleId}/unpublish`);
+    return data.data;
   },
 
   archiveModule: async (pathId: number, moduleId: number): Promise<Module> => {

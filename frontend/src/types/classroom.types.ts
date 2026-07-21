@@ -33,6 +33,11 @@ export interface Assignment {
   classroomId: number;
   submissionCount: number;
   hasSubmitted: boolean;
+  mySubmissionId?: number;
+  myContentUrl?: string;
+  mySubmissionStatus?: string;
+  myGrade?: number;
+  myFeedback?: string;
   createdAt: string;
 }
 
@@ -42,6 +47,7 @@ export interface Submission {
   userId: string;
   userFullName: string;
   contentUrl: string;
+  status: string;
   feedback?: string;
   grade?: number;
   submittedAt: string;

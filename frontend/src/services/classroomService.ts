@@ -37,6 +37,10 @@ export const classroomService = {
     await apiClient.post(`/classrooms/${id}/leave`);
   },
 
+  removeMember: async (classroomId: number, memberUserId: string): Promise<void> => {
+    await apiClient.delete(`/classrooms/${classroomId}/members/${memberUserId}`);
+  },
+
   createAssignment: async (
     classroomId: number, payload: CreateAssignmentRequest
   ): Promise<Assignment> => {
@@ -66,6 +70,20 @@ export const classroomService = {
     const { data } = await apiClient.get(
       `/classrooms/${classroomId}/assignments/${assignmentId}/submissions`
     );
+    return data.data;
+  },
+
+  deleteSubmission: async (classroomId: number, assignmentId: number): Promise<void> => {
+    await apiClient.delete(`/classrooms/${classroomId}/assignments/${assignmentId}/submissions/mine`);
+  },
+
+  verifySubmission: async (classroomId: number, assignmentId: number, submissionId: number): Promise<Submission> => {
+    const { data } = await apiClient.put(`/classrooms/${classroomId}/assignments/${assignmentId}/submissions/${submissionId}/verify`);
+    return data.data;
+  },
+
+  completeSubmission: async (classroomId: number, assignmentId: number, submissionId: number): Promise<Submission> => {
+    const { data } = await apiClient.put(`/classrooms/${classroomId}/assignments/${assignmentId}/submissions/${submissionId}/complete`);
     return data.data;
   },
 
