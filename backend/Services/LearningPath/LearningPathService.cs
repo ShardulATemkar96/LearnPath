@@ -38,11 +38,11 @@ public class LearningPathService : ILearningPathService
             .ToListAsync();
     }
 
-    public async Task<LearningPathDetailResponseDto> GetByIdAsync(int id, string userId)
+    public async Task<LearningPathDetailResponseDto> GetByIdAsync(int id, string userId, bool includeUnpublished = false)
     {
         var path = await _context.LearningPaths
             .Include(p => p.CreatedBy)
-            .Include(p => p.Modules)
+            .Include(p => p.Modules.Where(m => includeUnpublished || m.IsPublished))
                 .ThenInclude(m => m.Dependencies)
             .Include(p => p.Modules)
                 .ThenInclude(m => m.Progresses.Where(pr => pr.UserId == userId))
@@ -82,6 +82,7 @@ public class LearningPathService : ILearningPathService
                 PdfUrl = m.PdfUrl,
                 ThumbnailUrl = m.ThumbnailUrl,
                 IsDraft = m.IsDraft,
+                IsPublished = m.IsPublished,
                 IsArchived = m.IsArchived,
                 ArchivedAt = m.ArchivedAt,
                 QuizEnabled = m.QuizEnabled,
@@ -176,9 +177,60 @@ public class LearningPathService : ILearningPathService
 
     // ── Modules ───────────────────────────────────────────────
 
+    public async Task<ModuleResponseDto> GetModuleContentAsync(int pathId, int moduleId, string userId)
+    {
+        var path = await _context.LearningPaths
+            .Include(p => p.Modules.Where(m => m.IsPublished))
+                .ThenInclude(m => m.Dependencies)
+            .Include(p => p.Modules)
+                .ThenInclude(m => m.Progresses.Where(pr => pr.UserId == userId))
+            .FirstOrDefaultAsync(p => p.Id == pathId)
+            ?? throw new KeyNotFoundException("Learning path not found.");
+
+        var module = path.Modules.FirstOrDefault(m => m.Id == moduleId)
+            ?? throw new KeyNotFoundException("Module not found or not published.");
+
+        var completedModuleIds = path.Modules
+            .Where(m => m.Progresses.Any(p => p.UserId == userId && p.IsCompleted))
+            .Select(m => m.Id)
+            .ToHashSet();
+
+        var dependencyIds = module.Dependencies.Select(d => d.DependsOnModuleId).ToList();
+        var isUnlocked = dependencyIds.All(dId => completedModuleIds.Contains(dId));
+        var isCompleted = completedModuleIds.Contains(module.Id);
+
+        if (!isUnlocked)
+            throw new UnauthorizedAccessException("Complete all prerequisite modules first.");
+
+        // Reload with full includes for the response
+        var fullModule = await _context.Modules
+            .Include(m => m.Resources)
+            .Include(m => m.Objectives)
+            .Include(m => m.Tags)
+            .FirstAsync(m => m.Id == moduleId);
+
+        var dto = MapToModuleResponse(fullModule);
+        dto.IsCompleted = isCompleted;
+        dto.IsUnlocked = true;
+
+        var sortedModules = path.Modules.OrderBy(m => m.Order).ToList();
+        var currentIndex = sortedModules.FindIndex(m => m.Id == moduleId);
+        if (currentIndex > 0)
+            dto.PreviousModuleId = sortedModules[currentIndex - 1].Id;
+        if (currentIndex < sortedModules.Count - 1)
+            dto.NextModuleId = sortedModules[currentIndex + 1].Id;
+
+        return dto;
+    }
+
     public async Task<ModuleResponseDto> AddModuleAsync(int pathId, CreateModuleDto dto, string userId)
     {
         await GetOwnedPathAsync(pathId, userId);
+
+        var titleExists = await _context.Modules
+            .AnyAsync(m => m.LearningPathId == pathId && m.Title == dto.Title);
+        if (titleExists)
+            throw new ArgumentException("A module with this title already exists in this learning path.");
 
         var module = new Entities.Module
         {
@@ -193,7 +245,6 @@ public class LearningPathService : ILearningPathService
             NotesHtml = dto.NotesHtml,
             PdfUrl = dto.PdfUrl,
             ThumbnailUrl = dto.ThumbnailUrl,
-            IsDraft = dto.IsDraft,
             QuizEnabled = dto.QuizEnabled,
             QuizQuestionCount = dto.QuizQuestionCount,
             QuizPassingScore = dto.QuizPassingScore,
@@ -234,6 +285,11 @@ public class LearningPathService : ILearningPathService
     {
         await GetOwnedPathAsync(pathId, userId);
         var module = await GetModuleAsync(moduleId, pathId);
+
+        var titleExists = await _context.Modules
+            .AnyAsync(m => m.LearningPathId == pathId && m.Title == dto.Title && m.Id != moduleId);
+        if (titleExists)
+            throw new ArgumentException("A module with this title already exists in this learning path.");
 
         module.Title = dto.Title;
         module.Description = dto.Description;
@@ -283,8 +339,63 @@ public class LearningPathService : ILearningPathService
     {
         await GetOwnedPathAsync(pathId, userId);
         var module = await GetModuleAsync(moduleId, pathId);
+
+        var dependents = await _context.ModuleDependencies
+            .Where(d => d.DependsOnModuleId == moduleId)
+            .Select(d => d.Module.Title)
+            .ToListAsync();
+
+        if (dependents.Count != 0)
+            throw new ArgumentException(
+                $"Cannot delete module \"{module.Title}\". The following modules depend on it: {string.Join(", ", dependents)}. Remove or reassign dependencies first.");
+
         _context.Modules.Remove(module);
         await _context.SaveChangesAsync();
+    }
+
+    public async Task<ModuleResponseDto> PublishModuleAsync(int pathId, int moduleId, string userId)
+    {
+        await GetOwnedPathAsync(pathId, userId);
+        var module = await GetModuleAsync(moduleId, pathId);
+
+        if (module.IsArchived)
+            throw new InvalidOperationException("Cannot publish an archived module.");
+
+        if (string.IsNullOrWhiteSpace(module.Title))
+            throw new ArgumentException("Module title is required before publishing.");
+
+        if (string.IsNullOrWhiteSpace(module.Description))
+            throw new ArgumentException("Module description is required before publishing.");
+
+        var hasContent = !string.IsNullOrWhiteSpace(module.ContentBody)
+                      || !string.IsNullOrWhiteSpace(module.ContentUrl)
+                      || !string.IsNullOrWhiteSpace(module.NotesHtml)
+                      || module.Resources.Any();
+        if (!hasContent)
+            throw new ArgumentException("At least one content item (notes, video, resource, or content body) is required before publishing.");
+
+        module.IsDraft = false;
+        module.IsPublished = true;
+        module.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return MapToModuleResponse(module);
+    }
+
+    public async Task<ModuleResponseDto> UnpublishModuleAsync(int pathId, int moduleId, string userId)
+    {
+        await GetOwnedPathAsync(pathId, userId);
+        var module = await GetModuleAsync(moduleId, pathId);
+
+        if (module.IsArchived)
+            throw new InvalidOperationException("Cannot unpublish an archived module.");
+
+        module.IsDraft = true;
+        module.IsPublished = false;
+        module.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return MapToModuleResponse(module);
     }
 
     public async Task<ModuleResponseDto> ArchiveModuleAsync(int pathId, int moduleId, string userId)
@@ -467,6 +578,7 @@ public class LearningPathService : ILearningPathService
         PdfUrl = m.PdfUrl,
         ThumbnailUrl = m.ThumbnailUrl,
         IsDraft = m.IsDraft,
+        IsPublished = m.IsPublished,
         IsArchived = m.IsArchived,
         ArchivedAt = m.ArchivedAt,
         QuizEnabled = m.QuizEnabled,

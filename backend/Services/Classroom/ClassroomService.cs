@@ -56,16 +56,25 @@ public class ClassroomService : IClassroomService
             JoinedAt = uc.JoinedAt,
         }).ToList();
 
-        var assignments = classroom.Assignments.Select(a => new AssignmentResponseDto
+        var assignments = classroom.Assignments.Select(a =>
         {
-            Id = a.Id,
-            Title = a.Title,
-            Description = a.Description,
-            DueDate = a.DueDate,
-            ClassroomId = a.ClassroomId,
-            SubmissionCount = a.Submissions.Count,
-            HasSubmitted = a.Submissions.Any(s => s.UserId == userId),
-            CreatedAt = a.CreatedAt,
+            var mySubmission = a.Submissions.FirstOrDefault(s => s.UserId == userId);
+            return new AssignmentResponseDto
+            {
+                Id = a.Id,
+                Title = a.Title,
+                Description = a.Description,
+                DueDate = a.DueDate,
+                ClassroomId = a.ClassroomId,
+                SubmissionCount = a.Submissions.Count,
+                HasSubmitted = mySubmission != null,
+                MySubmissionId = mySubmission?.Id,
+                MyContentUrl = mySubmission?.ContentUrl,
+                MySubmissionStatus = mySubmission?.Status,
+                MyGrade = mySubmission?.Grade,
+                MyFeedback = mySubmission?.Feedback,
+                CreatedAt = a.CreatedAt,
+            };
         }).ToList();
 
         return new ClassroomDetailResponseDto
@@ -170,6 +179,21 @@ public class ClassroomService : IClassroomService
         await _context.SaveChangesAsync();
     }
 
+    public async Task RemoveMemberAsync(int classroomId, string memberUserId, string userId)
+    {
+        await EnsureInstructorAsync(classroomId, userId);
+
+        var membership = await _context.UserClassrooms
+            .FirstOrDefaultAsync(uc => uc.ClassroomId == classroomId && uc.UserId == memberUserId)
+            ?? throw new KeyNotFoundException("Member not found.");
+
+        if (membership.Role == "Instructor")
+            throw new ArgumentException("Cannot remove an instructor.");
+
+        _context.UserClassrooms.Remove(membership);
+        await _context.SaveChangesAsync();
+    }
+
     public async Task<List<ClassroomMemberDto>> GetMembersAsync(int id, string userId)
     {
         var isMember = await _context.UserClassrooms
@@ -195,7 +219,7 @@ public class ClassroomService : IClassroomService
     public async Task<AssignmentResponseDto> CreateAssignmentAsync(
         int classroomId, CreateAssignmentDto dto, string userId)
     {
-        await EnsureInstructorAsync(classroomId, userId);
+        await EnsureAdminAsync(classroomId, userId);
 
         var assignment = new Assignment
         {
@@ -261,33 +285,71 @@ public class ClassroomService : IClassroomService
             .AnyAsync(uc => uc.ClassroomId == classroomId && uc.UserId == userId);
         if (!isMember) throw new UnauthorizedAccessException("Not a member.");
 
-        var assignment = await GetAssignmentAsync(assignmentId, classroomId);
+        await GetAssignmentAsync(assignmentId, classroomId);
 
-        var already = await _context.Submissions
-            .AnyAsync(s => s.AssignmentId == assignmentId && s.UserId == userId);
-        if (already) throw new ArgumentException("Already submitted.");
+        var existing = await _context.Submissions
+            .FirstOrDefaultAsync(s => s.AssignmentId == assignmentId && s.UserId == userId);
+        if (existing != null)
+        {
+            if (existing.Status == "Pending" || existing.Status == "Verified")
+                throw new ArgumentException("Already submitted. Cancel or wait for review.");
+            if (existing.Status == "Completed")
+                throw new ArgumentException("Assignment already completed.");
+            // Resubmit path (status was Resubmit)
+            existing.ContentUrl = dto.ContentUrl;
+            existing.Status = "Pending";
+            existing.Grade = null;
+            existing.Feedback = null;
+            existing.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            var user3 = await _context.Users.FindAsync(userId);
+            return new SubmissionResponseDto
+            {
+                Id = existing.Id, AssignmentId = existing.AssignmentId,
+                UserId = existing.UserId, UserFullName = $"{user3!.FirstName} {user3.LastName}",
+                ContentUrl = existing.ContentUrl, Status = existing.Status,
+                SubmittedAt = existing.SubmittedAt,
+            };
+        }
 
         var submission = new Submission
         {
             AssignmentId = assignmentId,
             UserId = userId,
             ContentUrl = dto.ContentUrl,
+            Status = "Pending",
         };
 
         await _context.Submissions.AddAsync(submission);
         await _context.SaveChangesAsync();
 
-        var user = await _context.Users.FindAsync(userId);
+        var user2 = await _context.Users.FindAsync(userId);
 
         return new SubmissionResponseDto
         {
-            Id = submission.Id,
-            AssignmentId = submission.AssignmentId,
-            UserId = submission.UserId,
-            UserFullName = $"{user!.FirstName} {user.LastName}",
-            ContentUrl = submission.ContentUrl,
+            Id = submission.Id, AssignmentId = submission.AssignmentId,
+            UserId = submission.UserId, UserFullName = $"{user2!.FirstName} {user2.LastName}",
+            ContentUrl = submission.ContentUrl, Status = submission.Status,
             SubmittedAt = submission.SubmittedAt,
         };
+    }
+
+    public async Task DeleteSubmissionAsync(int classroomId, int assignmentId, string userId)
+    {
+        var isMember = await _context.UserClassrooms
+            .AnyAsync(uc => uc.ClassroomId == classroomId && uc.UserId == userId);
+        if (!isMember) throw new UnauthorizedAccessException("Not a member.");
+
+        var submission = await _context.Submissions
+            .FirstOrDefaultAsync(s => s.AssignmentId == assignmentId && s.UserId == userId)
+            ?? throw new KeyNotFoundException("Submission not found.");
+
+        if (submission.Status != "Pending")
+            throw new ArgumentException("Can only cancel a pending submission.");
+
+        _context.Submissions.Remove(submission);
+        await _context.SaveChangesAsync();
     }
 
     public async Task<List<SubmissionResponseDto>> GetSubmissionsAsync(
@@ -300,13 +362,11 @@ public class ClassroomService : IClassroomService
             .Include(s => s.User)
             .Select(s => new SubmissionResponseDto
             {
-                Id = s.Id,
-                AssignmentId = s.AssignmentId,
+                Id = s.Id, AssignmentId = s.AssignmentId,
                 UserId = s.UserId,
                 UserFullName = $"{s.User.FirstName} {s.User.LastName}",
-                ContentUrl = s.ContentUrl,
-                Feedback = s.Feedback,
-                Grade = s.Grade,
+                ContentUrl = s.ContentUrl, Status = s.Status,
+                Feedback = s.Feedback, Grade = s.Grade,
                 SubmittedAt = s.SubmittedAt,
             })
             .ToListAsync();
@@ -325,18 +385,70 @@ public class ClassroomService : IClassroomService
 
         submission.Grade = dto.Grade;
         submission.Feedback = dto.Feedback;
+        submission.Status = "Verified";
         submission.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
         return new SubmissionResponseDto
         {
-            Id = submission.Id,
-            AssignmentId = submission.AssignmentId,
+            Id = submission.Id, AssignmentId = submission.AssignmentId,
             UserId = submission.UserId,
             UserFullName = $"{submission.User.FirstName} {submission.User.LastName}",
-            ContentUrl = submission.ContentUrl,
-            Feedback = submission.Feedback,
-            Grade = submission.Grade,
+            ContentUrl = submission.ContentUrl, Status = submission.Status,
+            Feedback = submission.Feedback, Grade = submission.Grade,
+            SubmittedAt = submission.SubmittedAt,
+        };
+    }
+
+    public async Task<SubmissionResponseDto> VerifySubmissionAsync(
+        int classroomId, int assignmentId, int submissionId, string userId)
+    {
+        await EnsureInstructorAsync(classroomId, userId);
+
+        var submission = await _context.Submissions
+            .Include(s => s.User)
+            .FirstOrDefaultAsync(s => s.Id == submissionId && s.AssignmentId == assignmentId)
+            ?? throw new KeyNotFoundException("Submission not found.");
+
+        submission.Status = "Verified";
+        submission.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return new SubmissionResponseDto
+        {
+            Id = submission.Id, AssignmentId = submission.AssignmentId,
+            UserId = submission.UserId,
+            UserFullName = $"{submission.User.FirstName} {submission.User.LastName}",
+            ContentUrl = submission.ContentUrl, Status = submission.Status,
+            Feedback = submission.Feedback, Grade = submission.Grade,
+            SubmittedAt = submission.SubmittedAt,
+        };
+    }
+
+    public async Task<SubmissionResponseDto> CompleteSubmissionAsync(
+        int classroomId, int assignmentId, int submissionId, string userId)
+    {
+        await EnsureInstructorAsync(classroomId, userId);
+
+        var submission = await _context.Submissions
+            .Include(s => s.User)
+            .FirstOrDefaultAsync(s => s.Id == submissionId && s.AssignmentId == assignmentId)
+            ?? throw new KeyNotFoundException("Submission not found.");
+
+        if (submission.Grade == null)
+            throw new ArgumentException("Grade must be set before completing.");
+
+        submission.Status = submission.Grade >= 5 ? "Completed" : "Resubmit";
+        submission.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return new SubmissionResponseDto
+        {
+            Id = submission.Id, AssignmentId = submission.AssignmentId,
+            UserId = submission.UserId,
+            UserFullName = $"{submission.User.FirstName} {submission.User.LastName}",
+            ContentUrl = submission.ContentUrl, Status = submission.Status,
+            Feedback = submission.Feedback, Grade = submission.Grade,
             SubmittedAt = submission.SubmittedAt,
         };
     }
@@ -366,6 +478,24 @@ public class ClassroomService : IClassroomService
 
         if (membership.Role != "Instructor")
             throw new UnauthorizedAccessException("Instructor access required.");
+    }
+
+    private async Task EnsureAdminAsync(int classroomId, string userId)
+    {
+        var isMember = await _context.UserClassrooms
+            .AnyAsync(uc => uc.ClassroomId == classroomId && uc.UserId == userId);
+        if (!isMember) throw new UnauthorizedAccessException("Not a member.");
+
+        var adminRoleId = await _context.Roles
+            .Where(r => r.Name == "Admin")
+            .Select(r => r.Id)
+            .FirstOrDefaultAsync();
+
+        var isAdmin = adminRoleId != null && await _context.UserRoles
+            .AnyAsync(ur => ur.UserId == userId && ur.RoleId == adminRoleId);
+
+        if (!isAdmin)
+            throw new UnauthorizedAccessException("Admin access required.");
     }
 
     private async Task<Assignment> GetAssignmentAsync(int assignmentId, int classroomId)

@@ -9,7 +9,7 @@ namespace LearnPath.API.Controllers;
 
 [ApiController]
 [Route("api/v1/paths")]
-[Authorize(Roles ="Admin")]
+[Authorize]
 public class LearningPathController : ControllerBase
 {
     private readonly ILearningPathService _service;
@@ -39,12 +39,13 @@ public class LearningPathController : ControllerBase
     }
 
     [HttpGet("{id:int}")]
-    public async Task<IActionResult> GetById(int id)
+    public async Task<IActionResult> GetById(int id, [FromQuery] bool includeUnpublished = false)
     {
-        var result = await _service.GetByIdAsync(id, UserId);
+        var result = await _service.GetByIdAsync(id, UserId, includeUnpublished);
         return Ok(ApiResponse<LearningPathDetailResponseDto>.Ok(result));
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateLearningPathDto dto)
     {
@@ -53,6 +54,7 @@ public class LearningPathController : ControllerBase
             ApiResponse<LearningPathResponseDto>.Ok(result, "Learning path created."));
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateLearningPathDto dto)
     {
@@ -60,6 +62,7 @@ public class LearningPathController : ControllerBase
         return Ok(ApiResponse<LearningPathResponseDto>.Ok(result, "Learning path updated."));
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
@@ -69,6 +72,21 @@ public class LearningPathController : ControllerBase
 
     // ── Modules ───────────────────────────────────────────────
 
+    [HttpGet("{pathId:int}/modules/{moduleId:int}")]
+    public async Task<IActionResult> GetModuleContent(int pathId, int moduleId)
+    {
+        try
+        {
+            var result = await _service.GetModuleContentAsync(pathId, moduleId, UserId);
+            return Ok(ApiResponse<ModuleResponseDto>.Ok(result));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, ApiResponse<object>.Fail(ex.Message));
+        }
+    }
+
+    [Authorize(Roles = "Admin")]
     [HttpPost("{pathId:int}/modules")]
     public async Task<IActionResult> AddModule(int pathId, [FromBody] CreateModuleDto dto)
     {
@@ -76,6 +94,7 @@ public class LearningPathController : ControllerBase
         return Ok(ApiResponse<ModuleResponseDto>.Ok(result, "Module added."));
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPut("{pathId:int}/modules/{moduleId:int}")]
     public async Task<IActionResult> UpdateModule(
         int pathId, int moduleId, [FromBody] UpdateModuleDto dto)
@@ -84,6 +103,7 @@ public class LearningPathController : ControllerBase
         return Ok(ApiResponse<ModuleResponseDto>.Ok(result, "Module updated."));
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpDelete("{pathId:int}/modules/{moduleId:int}")]
     public async Task<IActionResult> DeleteModule(int pathId, int moduleId)
     {
@@ -91,6 +111,7 @@ public class LearningPathController : ControllerBase
         return Ok(ApiResponse<object>.Ok(null!, "Module deleted."));
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPut("{pathId:int}/modules/{moduleId:int}/archive")]
     public async Task<IActionResult> ArchiveModule(int pathId, int moduleId)
     {
@@ -98,6 +119,7 @@ public class LearningPathController : ControllerBase
         return Ok(ApiResponse<ModuleResponseDto>.Ok(result, "Module archived."));
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPut("{pathId:int}/modules/{moduleId:int}/unarchive")]
     public async Task<IActionResult> UnarchiveModule(int pathId, int moduleId)
     {
@@ -105,6 +127,23 @@ public class LearningPathController : ControllerBase
         return Ok(ApiResponse<ModuleResponseDto>.Ok(result, "Module unarchived."));
     }
 
+    [Authorize(Roles = "Admin")]
+    [HttpPut("{pathId:int}/modules/{moduleId:int}/publish")]
+    public async Task<IActionResult> PublishModule(int pathId, int moduleId)
+    {
+        var result = await _service.PublishModuleAsync(pathId, moduleId, UserId);
+        return Ok(ApiResponse<ModuleResponseDto>.Ok(result, "Module published."));
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPut("{pathId:int}/modules/{moduleId:int}/unpublish")]
+    public async Task<IActionResult> UnpublishModule(int pathId, int moduleId)
+    {
+        var result = await _service.UnpublishModuleAsync(pathId, moduleId, UserId);
+        return Ok(ApiResponse<ModuleResponseDto>.Ok(result, "Module unpublished."));
+    }
+
+    [Authorize(Roles = "Admin")]
     [HttpGet("{pathId:int}/modules/search")]
     public async Task<IActionResult> SearchModules(
         int pathId,
@@ -118,6 +157,7 @@ public class LearningPathController : ControllerBase
         return Ok(ApiResponse<List<ModuleResponseDto>>.Ok(result));
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPut("{pathId:int}/modules/{moduleId:int}/reorder")]
     public async Task<IActionResult> ReorderModule(int pathId, int moduleId, [FromQuery] bool moveUp)
     {
@@ -127,6 +167,7 @@ public class LearningPathController : ControllerBase
 
     // ── Dependencies ──────────────────────────────────────────
 
+    [Authorize(Roles = "Admin")]
     [HttpPost("{pathId:int}/dependencies")]
     public async Task<IActionResult> AddDependency(
         int pathId, [FromBody] AddDependencyDto dto)
@@ -135,6 +176,7 @@ public class LearningPathController : ControllerBase
         return Ok(ApiResponse<object>.Ok(null!, "Dependency added."));
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpDelete("{pathId:int}/dependencies/{moduleId:int}/{dependsOnModuleId:int}")]
     public async Task<IActionResult> RemoveDependency(
         int pathId, int moduleId, int dependsOnModuleId)
