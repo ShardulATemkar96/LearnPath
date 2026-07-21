@@ -108,6 +108,7 @@ builder.Services.AddScoped<IUserService,         UserService>();
 builder.Services.AddScoped<IAdminService,        AdminService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<ICommunityService, CommunityService>();
+builder.Services.AddScoped<LearnPath.API.Services.Quiz.IQuizService, LearnPath.API.Services.Quiz.QuizService>();
 
 // ── Swagger ───────────────────────────────────────────────────
 builder.Services.AddEndpointsApiExplorer();

@@ -34,12 +34,15 @@ export interface Module {
   pdfUrl?: string;
   thumbnailUrl?: string;
   isDraft: boolean;
+  isPublished: boolean;
   isArchived: boolean;
   archivedAt?: string;
   quizEnabled: boolean;
   quizQuestionCount: number;
   quizPassingScore: number;
   quizTimeLimitMinutes?: number;
+  previousModuleId?: number;
+  nextModuleId?: number;
   resources: ResourceItem[];
   objectives: ObjectiveItem[];
   tags: string[];

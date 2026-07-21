@@ -66,9 +66,12 @@ public class ModuleResponseDto
     public string? PdfUrl { get; set; }
     public string? ThumbnailUrl { get; set; }
     public bool IsDraft { get; set; }
+    public bool IsPublished { get; set; }
     public bool IsArchived { get; set; }
     public DateTime? ArchivedAt { get; set; }
     public bool QuizEnabled { get; set; }
+    public int? PreviousModuleId { get; set; }
+    public int? NextModuleId { get; set; }
     public int QuizQuestionCount { get; set; }
     public int QuizPassingScore { get; set; }
     public int? QuizTimeLimitMinutes { get; set; }

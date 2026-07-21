@@ -4,6 +4,7 @@ using LearnPath.API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LearnPath.API.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260720115405_AddModuleIsPublished")]
+    partial class AddModuleIsPublished
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -353,9 +356,6 @@ namespace LearnPath.API.Migrations
 
                     b.HasIndex("LearningPathId");
 
-                    b.HasIndex("Title", "LearningPathId")
-                        .IsUnique();
-
                     b.ToTable("Modules");
                 });
 
@@ -623,229 +623,6 @@ namespace LearnPath.API.Migrations
                         .IsUnique();
 
                     b.ToTable("Progresses");
-                });
-
-            modelBuilder.Entity("LearnPath.API.Entities.Quiz", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<bool>("IsMandatory")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
-                    b.Property<bool>("IsPublished")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
-                    b.Property<int>("MaxAttempts")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
-
-                    b.Property<int>("ModuleId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("PassingScore")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("ShowResults")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
-
-                    b.Property<bool>("ShuffleQuestions")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
-                    b.Property<int?>("TimeLimitMinutes")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ModuleId")
-                        .IsUnique();
-
-                    b.ToTable("Quizzes");
-                });
-
-            modelBuilder.Entity("LearnPath.API.Entities.QuizAnswer", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("AnsweredAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool?>("IsCorrect")
-                        .HasColumnType("bit");
-
-                    b.Property<int?>("PointsAwarded")
-                        .HasColumnType("int");
-
-                    b.Property<int>("QuizAttemptId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("QuizQuestionId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("SelectedOptionId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("TextAnswer")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("QuizAttemptId");
-
-                    b.HasIndex("QuizQuestionId");
-
-                    b.HasIndex("SelectedOptionId");
-
-                    b.ToTable("QuizAnswers");
-                });
-
-            modelBuilder.Entity("LearnPath.API.Entities.QuizAttempt", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime?>("CompletedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool?>("IsPassed")
-                        .HasColumnType("bit");
-
-                    b.Property<int>("QuizId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("Score")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("StartedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("Status")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
-
-                    b.Property<int?>("TimeLimitMinutes")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("TotalPoints")
-                        .HasColumnType("int");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("QuizId", "UserId")
-                        .HasDatabaseName("IX_QuizAttempt_OneActivePerUser")
-                        .HasFilter("[Status] = 0");
-
-                    b.ToTable("QuizAttempts");
-                });
-
-            modelBuilder.Entity("LearnPath.API.Entities.QuizOption", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<bool>("IsCorrect")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
-                    b.Property<string>("OptionText")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<int>("OrderIndex")
-                        .HasColumnType("int");
-
-                    b.Property<int>("QuizQuestionId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("QuizQuestionId");
-
-                    b.ToTable("QuizOptions");
-                });
-
-            modelBuilder.Entity("LearnPath.API.Entities.QuizQuestion", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Explanation")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("OrderIndex")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Points")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(1);
-
-                    b.Property<string>("QuestionText")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("QuestionType")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
-
-                    b.Property<int>("QuizId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("QuizId");
-
-                    b.ToTable("QuizQuestions");
                 });
 
             modelBuilder.Entity("LearnPath.API.Entities.RefreshToken", b =>
@@ -1411,84 +1188,6 @@ namespace LearnPath.API.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("LearnPath.API.Entities.Quiz", b =>
-                {
-                    b.HasOne("LearnPath.API.Entities.Module", "Module")
-                        .WithMany("Quizzes")
-                        .HasForeignKey("ModuleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Module");
-                });
-
-            modelBuilder.Entity("LearnPath.API.Entities.QuizAnswer", b =>
-                {
-                    b.HasOne("LearnPath.API.Entities.QuizAttempt", "Attempt")
-                        .WithMany("Answers")
-                        .HasForeignKey("QuizAttemptId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("LearnPath.API.Entities.QuizQuestion", "Question")
-                        .WithMany("Answers")
-                        .HasForeignKey("QuizQuestionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("LearnPath.API.Entities.QuizOption", "SelectedOption")
-                        .WithMany()
-                        .HasForeignKey("SelectedOptionId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Attempt");
-
-                    b.Navigation("Question");
-
-                    b.Navigation("SelectedOption");
-                });
-
-            modelBuilder.Entity("LearnPath.API.Entities.QuizAttempt", b =>
-                {
-                    b.HasOne("LearnPath.API.Entities.Quiz", "Quiz")
-                        .WithMany("Attempts")
-                        .HasForeignKey("QuizId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("LearnPath.API.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Quiz");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("LearnPath.API.Entities.QuizOption", b =>
-                {
-                    b.HasOne("LearnPath.API.Entities.QuizQuestion", "Question")
-                        .WithMany("Options")
-                        .HasForeignKey("QuizQuestionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Question");
-                });
-
-            modelBuilder.Entity("LearnPath.API.Entities.QuizQuestion", b =>
-                {
-                    b.HasOne("LearnPath.API.Entities.Quiz", "Quiz")
-                        .WithMany("Questions")
-                        .HasForeignKey("QuizId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Quiz");
-                });
-
             modelBuilder.Entity("LearnPath.API.Entities.RefreshToken", b =>
                 {
                     b.HasOne("LearnPath.API.Entities.User", "User")
@@ -1625,8 +1324,6 @@ namespace LearnPath.API.Migrations
 
                     b.Navigation("Progresses");
 
-                    b.Navigation("Quizzes");
-
                     b.Navigation("Resources");
 
                     b.Navigation("Tags");
@@ -1637,25 +1334,6 @@ namespace LearnPath.API.Migrations
                     b.Navigation("Comments");
 
                     b.Navigation("Votes");
-                });
-
-            modelBuilder.Entity("LearnPath.API.Entities.Quiz", b =>
-                {
-                    b.Navigation("Attempts");
-
-                    b.Navigation("Questions");
-                });
-
-            modelBuilder.Entity("LearnPath.API.Entities.QuizAttempt", b =>
-                {
-                    b.Navigation("Answers");
-                });
-
-            modelBuilder.Entity("LearnPath.API.Entities.QuizQuestion", b =>
-                {
-                    b.Navigation("Answers");
-
-                    b.Navigation("Options");
                 });
 
             modelBuilder.Entity("LearnPath.API.Entities.User", b =>

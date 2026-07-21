@@ -15,9 +15,11 @@ import PathCard from "../../components/learningPath/PathCard/PathCard";
 import CreatePathModal from "../../components/learningPath/CreatePathModal/CreatePathModal";
 import EmptyState from "../../components/common/EmptyState/EmptyState";
 import { LayersRounded } from "@mui/icons-material";
+import { useAuth } from "../../hooks/useAuth";
 
 const LearningPathsPage = () => {
   const dispatch = useDispatch<AppDispatch>();
+  const { isAdmin } = useAuth();
   const [tab, setTab] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -28,8 +30,8 @@ const LearningPathsPage = () => {
 
   useEffect(() => {
     dispatch(fetchPublicPaths());
-    dispatch(fetchMyPaths());
-  }, [dispatch]);
+    if (isAdmin) dispatch(fetchMyPaths());
+  }, [dispatch, isAdmin]);
 
   const displayedPaths = tab === 0 ? publicPaths : myPaths;
 
@@ -43,19 +45,18 @@ const LearningPathsPage = () => {
             Explore curated graph-based learning journeys.
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddRounded />}
-          onClick={() => setModalOpen(true)}
-          sx={{ background: "linear-gradient(135deg, #6C63FF, #9D97FF)", borderRadius: 2 }}
-        >
-          New Path
-        </Button>
+        {isAdmin && (
+          <Button variant="contained" startIcon={<AddRounded />}
+            onClick={() => setModalOpen(true)}
+            sx={{ background: "linear-gradient(135deg, #6C63FF, #9D97FF)", borderRadius: 2 }}>
+            New Path
+          </Button>
+        )}
       </Stack>
 
       {/* Tabs */}
       <Tabs
-        value={tab}
+        value={isAdmin ? tab : 0}
         onChange={(_, v) => setTab(v)}
         sx={{
           mb: 3,
@@ -68,7 +69,7 @@ const LearningPathsPage = () => {
         }}
       >
         <Tab label={`Public Paths (${publicPaths.length})`} />
-        <Tab label={`My Paths (${myPaths.length})`} />
+        {isAdmin && <Tab label={`My Paths (${myPaths.length})`} />}
       </Tabs>
 
       {error && (

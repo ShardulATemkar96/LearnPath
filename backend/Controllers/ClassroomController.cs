@@ -67,6 +67,13 @@ public class ClassroomController : ControllerBase
         return Ok(ApiResponse<object>.Ok(null!, "Left classroom."));
     }
 
+    [HttpDelete("{id:int}/members/{memberUserId}")]
+    public async Task<IActionResult> RemoveMember(int id, string memberUserId)
+    {
+        await _service.RemoveMemberAsync(id, memberUserId, UserId);
+        return Ok(ApiResponse<object>.Ok(null!, "Member removed."));
+    }
+
     [HttpGet("{id:int}/members")]
     public async Task<IActionResult> GetMembers(int id)
     {
@@ -119,5 +126,26 @@ public class ClassroomController : ControllerBase
         var result = await _service.GradeSubmissionAsync(
             classroomId, assignmentId, submissionId, dto, UserId);
         return Ok(ApiResponse<SubmissionResponseDto>.Ok(result, "Graded."));
+    }
+
+    [HttpPut("{classroomId:int}/assignments/{assignmentId:int}/submissions/{submissionId:int}/verify")]
+    public async Task<IActionResult> Verify(int classroomId, int assignmentId, int submissionId)
+    {
+        var result = await _service.VerifySubmissionAsync(classroomId, assignmentId, submissionId, UserId);
+        return Ok(ApiResponse<SubmissionResponseDto>.Ok(result, "Verified."));
+    }
+
+    [HttpPut("{classroomId:int}/assignments/{assignmentId:int}/submissions/{submissionId:int}/complete")]
+    public async Task<IActionResult> Complete(int classroomId, int assignmentId, int submissionId)
+    {
+        var result = await _service.CompleteSubmissionAsync(classroomId, assignmentId, submissionId, UserId);
+        return Ok(ApiResponse<SubmissionResponseDto>.Ok(result, "Completed."));
+    }
+
+    [HttpDelete("{classroomId:int}/assignments/{assignmentId:int}/submissions/mine")]
+    public async Task<IActionResult> DeleteMySubmission(int classroomId, int assignmentId)
+    {
+        await _service.DeleteSubmissionAsync(classroomId, assignmentId, UserId);
+        return Ok(ApiResponse<object>.Ok(null!, "Submission cancelled."));
     }
 }

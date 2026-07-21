@@ -9,9 +9,11 @@ import {
 import {
   AddRounded, CloseRounded, DeleteRounded, EditRounded, ArrowBackRounded,
   ArrowUpwardRounded, ArrowDownwardRounded, ArchiveRounded, UnarchiveRounded,
+  PublishRounded, QuizRounded, UndoRounded,
 } from "@mui/icons-material";
 import { pathService } from "../../services/pathService";
 import { LearningPathDetail, Module, CreateModuleRequest } from "../../types/path.types";
+import { ROUTES } from "../../constants/routes";
 
 const CONTENT_TYPES = ["video", "article", "quiz", "code", "document"];
 const DIFFICULTY_LABELS = ["Beginner", "Intermediate", "Advanced"];
@@ -19,7 +21,7 @@ const DIFFICULTY_LABELS = ["Beginner", "Intermediate", "Advanced"];
 const emptyForm = (nextOrder: number): CreateModuleRequest => ({
   title: "", description: "", contentType: "article", contentUrl: "", order: nextOrder,
   difficulty: 0, estimatedDurationMinutes: undefined, notesHtml: "", pdfUrl: "",
-  thumbnailUrl: "", isDraft: false, quizEnabled: false, quizQuestionCount: 10,
+  thumbnailUrl: "", isDraft: true, quizEnabled: false, quizQuestionCount: 10,
   quizPassingScore: 70, quizTimeLimitMinutes: undefined,
   resources: [], objectives: [], tags: [],
 });
@@ -50,7 +52,7 @@ const AdminModuleEditorPage = () => {
   const loadPath = useCallback(async () => {
     setLoading(true);
     try {
-      const detail = await pathService.getById(pid);
+      const detail = await pathService.getById(pid, true);
       setPathDetail(detail);
       setModules(detail.modules.sort((a, b) => a.order - b.order));
     } catch { setError("Failed to load path."); }
@@ -79,7 +81,7 @@ const AdminModuleEditorPage = () => {
       notesHtml: mod.notesHtml || "",
       pdfUrl: mod.pdfUrl || "",
       thumbnailUrl: mod.thumbnailUrl || "",
-      isDraft: mod.isDraft,
+      isDraft: true,
       quizEnabled: mod.quizEnabled,
       quizQuestionCount: mod.quizQuestionCount,
       quizPassingScore: mod.quizPassingScore,
@@ -178,10 +180,10 @@ const AdminModuleEditorPage = () => {
                   <TableCell>
                     {mod.isArchived ? (
                       <Chip label="Archived" size="small" color="warning" variant="outlined" />
-                    ) : mod.isDraft ? (
-                      <Chip label="Draft" size="small" color="default" variant="outlined" />
-                    ) : (
+                    ) : mod.isPublished ? (
                       <Chip label="Published" size="small" color="success" variant="outlined" />
+                    ) : (
+                      <Chip label="Draft" size="small" color="default" variant="outlined" />
                     )}
                   </TableCell>
                   <TableCell>
@@ -201,6 +203,17 @@ const AdminModuleEditorPage = () => {
                     <IconButton onClick={() => openEdit(mod)} size="small" color="primary" title="Edit">
                       <EditRounded />
                     </IconButton>
+                    {mod.isPublished ? (
+                      <IconButton onClick={() => pathService.unpublishModule(pid, mod.id).then(loadPath)}
+                        size="small" color="default" title="Unpublish">
+                        <UndoRounded fontSize="small" />
+                      </IconButton>
+                    ) : !mod.isArchived ? (
+                      <IconButton onClick={() => pathService.publishModule(pid, mod.id).then(loadPath)}
+                        size="small" color="success" title="Publish">
+                        <PublishRounded fontSize="small" />
+                      </IconButton>
+                    ) : null}
                     {mod.isArchived ? (
                       <IconButton onClick={() => pathService.unarchiveModule(pid, mod.id).then(loadPath)}
                         size="small" color="warning" title="Unarchive">
@@ -212,9 +225,13 @@ const AdminModuleEditorPage = () => {
                         <ArchiveRounded fontSize="small" />
                       </IconButton>
                     )}
-                    <IconButton onClick={() => handleDelete(mod.id, mod.title)} size="small" color="error" title="Delete">
+                      <IconButton onClick={() => navigate(ROUTES.ADMIN_QUIZ_EDITOR.replace(":pathId", String(pid)).replace(":moduleId", String(mod.id)))}
+                        size="small" color="info" title="Manage Quiz">
+                        <QuizRounded fontSize="small" />
+                      </IconButton>
+                      <IconButton onClick={() => handleDelete(mod.id, mod.title)} size="small" color="error" title="Delete">
                       <DeleteRounded />
-                    </IconButton>
+                      </IconButton>
                   </TableCell>
                 </TableRow>
               ))}

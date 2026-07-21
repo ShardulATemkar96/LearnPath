@@ -13,7 +13,8 @@ public class Module
     public string? NotesHtml { get; set; }
     public string? PdfUrl { get; set; }
     public string? ThumbnailUrl { get; set; }
-    public bool IsDraft { get; set; } = false;
+    public bool IsDraft { get; set; } = true;
+    public bool IsPublished { get; set; } = false;
     public bool IsArchived { get; set; } = false;
     public DateTime? ArchivedAt { get; set; }
     public int Order { get; set; }
@@ -32,4 +33,5 @@ public class Module
     public ICollection<ModuleResource> Resources { get; set; } = [];
     public ICollection<ModuleObjective> Objectives { get; set; } = [];
     public ICollection<ModuleTag> Tags { get; set; } = [];
+    public ICollection<Quiz> Quizzes { get; set; } = [];
 }

@@ -23,6 +23,11 @@ public class AssignmentResponseDto
     public int ClassroomId { get; set; }
     public int SubmissionCount { get; set; }
     public bool HasSubmitted { get; set; }
+    public int? MySubmissionId { get; set; }
+    public string? MyContentUrl { get; set; }
+    public string? MySubmissionStatus { get; set; }
+    public int? MyGrade { get; set; }
+    public string? MyFeedback { get; set; }
     public DateTime CreatedAt { get; set; }
 }
 
@@ -38,6 +43,7 @@ public class SubmissionResponseDto
     public string UserId { get; set; } = string.Empty;
     public string UserFullName { get; set; } = string.Empty;
     public string ContentUrl { get; set; } = string.Empty;
+    public string Status { get; set; } = "Pending";
     public string? Feedback { get; set; }
     public int? Grade { get; set; }
     public DateTime SubmittedAt { get; set; }
