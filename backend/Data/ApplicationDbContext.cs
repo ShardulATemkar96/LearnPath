@@ -14,7 +14,12 @@ public class ApplicationDbContext : IdentityDbContext<User>
     public DbSet<ModuleResource> ModuleResources => Set<ModuleResource>();
     public DbSet<ModuleObjective> ModuleObjectives => Set<ModuleObjective>();
     public DbSet<ModuleTag> ModuleTags => Set<ModuleTag>();
-    public DbSet<ModuleDependency> ModuleDependencies => Set<ModuleDependency>();                                                                                                                       //RomSam
+    public DbSet<ModuleDependency> ModuleDependencies => Set<ModuleDependency>();
+    public DbSet<Quiz> Quizzes => Set<Quiz>();
+    public DbSet<QuizQuestion> QuizQuestions => Set<QuizQuestion>();
+    public DbSet<QuizOption> QuizOptions => Set<QuizOption>();
+    public DbSet<QuizAttempt> QuizAttempts => Set<QuizAttempt>();
+    public DbSet<QuizAnswer> QuizAnswers => Set<QuizAnswer>();
     public DbSet<Progress> Progresses => Set<Progress>();
     public DbSet<Classroom> Classrooms => Set<Classroom>();
     public DbSet<UserClassroom> UserClassrooms => Set<UserClassroom>();

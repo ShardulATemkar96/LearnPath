@@ -8,6 +8,7 @@ public class Submission
     public string ContentUrl { get; set; } = string.Empty;
     public string? Feedback { get; set; }
     public int? Grade { get; set; }
+    public string Status { get; set; } = "Pending"; // Pending | Verified | Completed
     public DateTime SubmittedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
