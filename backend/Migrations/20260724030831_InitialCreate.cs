@@ -58,6 +58,29 @@ namespace LearnPath.API.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "QuestionBanks",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Title = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    Subject = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Tags = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    Version = table.Column<int>(type: "int", nullable: false, defaultValue: 1),
+                    OriginalFileName = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    StoredJson = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    QuestionCount = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
+                    Status = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
+                    CreatedBy = table.Column<string>(type: "nvarchar(450)", maxLength: 450, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ArchivedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_QuestionBanks", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "AspNetRoleClaims",
                 columns: table => new
                 {
@@ -237,6 +260,58 @@ namespace LearnPath.API.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Questions",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    QuestionBankId = table.Column<int>(type: "int", nullable: false),
+                    QuestionText = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Difficulty = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
+                    Explanation = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Questions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Questions_QuestionBanks_QuestionBankId",
+                        column: x => x.QuestionBankId,
+                        principalTable: "QuestionBanks",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Quizzes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Title = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    QuestionBankId = table.Column<int>(type: "int", nullable: false),
+                    QuestionCount = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
+                    DifficultyFilter = table.Column<int>(type: "int", nullable: true),
+                    SelectionMode = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
+                    TimeLimitMinutes = table.Column<int>(type: "int", nullable: true),
+                    PassingPercentage = table.Column<int>(type: "int", nullable: false, defaultValue: 40),
+                    MaximumAttempts = table.Column<int>(type: "int", nullable: false, defaultValue: 3),
+                    Status = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ArchivedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Quizzes", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Quizzes_QuestionBanks_QuestionBankId",
+                        column: x => x.QuestionBankId,
+                        principalTable: "QuestionBanks",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Certificates",
                 columns: table => new
                 {
@@ -305,7 +380,18 @@ namespace LearnPath.API.Migrations
                     Description = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     ContentUrl = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     ContentType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    ContentBody = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Difficulty = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
+                    EstimatedDurationMinutes = table.Column<int>(type: "int", nullable: true),
+                    NotesHtml = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    PdfUrl = table.Column<string>(type: "nvarchar(2048)", maxLength: 2048, nullable: true),
+                    ThumbnailUrl = table.Column<string>(type: "nvarchar(2048)", maxLength: 2048, nullable: true),
+                    IsDraft = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
+                    IsPublished = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    IsArchived = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    ArchivedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     Order = table.Column<int>(type: "int", nullable: false),
+                    Status = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
                     LearningPathId = table.Column<int>(type: "int", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
@@ -353,6 +439,28 @@ namespace LearnPath.API.Migrations
                         principalTable: "LearningPaths",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Options",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    QuestionId = table.Column<int>(type: "int", nullable: false),
+                    OptionText = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    IsCorrect = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false, defaultValue: 0)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Options", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Options_Questions_QuestionId",
+                        column: x => x.QuestionId,
+                        principalTable: "Questions",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -430,6 +538,99 @@ namespace LearnPath.API.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "ModuleObjectives",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ModuleId = table.Column<int>(type: "int", nullable: false),
+                    ObjectiveText = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    OrderIndex = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ModuleObjectives", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ModuleObjectives_Modules_ModuleId",
+                        column: x => x.ModuleId,
+                        principalTable: "Modules",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ModuleQuizzes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ModuleId = table.Column<int>(type: "int", nullable: false),
+                    QuizId = table.Column<int>(type: "int", nullable: false),
+                    AssignedBy = table.Column<string>(type: "nvarchar(450)", maxLength: 450, nullable: false),
+                    AssignedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Active = table.Column<bool>(type: "bit", nullable: false, defaultValue: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ModuleQuizzes", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ModuleQuizzes_Modules_ModuleId",
+                        column: x => x.ModuleId,
+                        principalTable: "Modules",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ModuleQuizzes_Quizzes_QuizId",
+                        column: x => x.QuizId,
+                        principalTable: "Quizzes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ModuleResources",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ModuleId = table.Column<int>(type: "int", nullable: false),
+                    Type = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Title = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    Url = table.Column<string>(type: "nvarchar(2048)", maxLength: 2048, nullable: false),
+                    OrderIndex = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ModuleResources", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ModuleResources_Modules_ModuleId",
+                        column: x => x.ModuleId,
+                        principalTable: "Modules",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ModuleTags",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ModuleId = table.Column<int>(type: "int", nullable: false),
+                    TagName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ModuleTags", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ModuleTags_Modules_ModuleId",
+                        column: x => x.ModuleId,
+                        principalTable: "Modules",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Progresses",
                 columns: table => new
                 {
@@ -457,6 +658,48 @@ namespace LearnPath.API.Migrations
                         principalTable: "Modules",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "QuizAttempts",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    QuizId = table.Column<int>(type: "int", nullable: false),
+                    ModuleId = table.Column<int>(type: "int", nullable: false),
+                    AttemptNumber = table.Column<int>(type: "int", nullable: false),
+                    StartedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    SubmittedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    TimeSpentSeconds = table.Column<int>(type: "int", nullable: true),
+                    Score = table.Column<int>(type: "int", nullable: true),
+                    Percentage = table.Column<decimal>(type: "decimal(5,2)", nullable: true),
+                    Passed = table.Column<bool>(type: "bit", nullable: true),
+                    Status = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
+                    RandomSeed = table.Column<int>(type: "int", nullable: false, defaultValue: 0)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_QuizAttempts", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_QuizAttempts_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_QuizAttempts_Modules_ModuleId",
+                        column: x => x.ModuleId,
+                        principalTable: "Modules",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_QuizAttempts_Quizzes_QuizId",
+                        column: x => x.QuizId,
+                        principalTable: "Quizzes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -534,6 +777,7 @@ namespace LearnPath.API.Migrations
                     ContentUrl = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
                     Feedback = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
                     Grade = table.Column<int>(type: "int", nullable: true),
+                    Status = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     SubmittedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
@@ -550,6 +794,40 @@ namespace LearnPath.API.Migrations
                         name: "FK_Submissions_Assignments_AssignmentId",
                         column: x => x.AssignmentId,
                         principalTable: "Assignments",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "StudentAnswers",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    QuizAttemptId = table.Column<int>(type: "int", nullable: false),
+                    QuestionId = table.Column<int>(type: "int", nullable: false),
+                    OptionId = table.Column<int>(type: "int", nullable: false),
+                    AnsweredAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_StudentAnswers", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_StudentAnswers_Options_OptionId",
+                        column: x => x.OptionId,
+                        principalTable: "Options",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_StudentAnswers_Questions_QuestionId",
+                        column: x => x.QuestionId,
+                        principalTable: "Questions",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_StudentAnswers_QuizAttempts_QuizAttemptId",
+                        column: x => x.QuizAttemptId,
+                        principalTable: "QuizAttempts",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -690,14 +968,51 @@ namespace LearnPath.API.Migrations
                 column: "DependsOnModuleId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_ModuleObjectives_ModuleId",
+                table: "ModuleObjectives",
+                column: "ModuleId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ModuleQuizzes_ModuleId",
+                table: "ModuleQuizzes",
+                column: "ModuleId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ModuleQuizzes_QuizId",
+                table: "ModuleQuizzes",
+                column: "QuizId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ModuleResources_ModuleId",
+                table: "ModuleResources",
+                column: "ModuleId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Modules_LearningPathId",
                 table: "Modules",
                 column: "LearningPathId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Modules_Title_LearningPathId",
+                table: "Modules",
+                columns: new[] { "Title", "LearningPathId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ModuleTags_ModuleId",
+                table: "ModuleTags",
+                column: "ModuleId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Notifications_UserId_IsRead",
                 table: "Notifications",
                 columns: new[] { "UserId", "IsRead" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Options_QuestionId_DisplayOrder",
+                table: "Options",
+                columns: new[] { "QuestionId", "DisplayOrder" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Posts_AuthorId",
@@ -742,9 +1057,50 @@ namespace LearnPath.API.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_Questions_QuestionBankId",
+                table: "Questions",
+                column: "QuestionBankId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_QuizAttempts_ModuleId",
+                table: "QuizAttempts",
+                column: "ModuleId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_QuizAttempts_QuizId_UserId_AttemptNumber",
+                table: "QuizAttempts",
+                columns: new[] { "QuizId", "UserId", "AttemptNumber" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_QuizAttempts_UserId",
+                table: "QuizAttempts",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Quizzes_QuestionBankId",
+                table: "Quizzes",
+                column: "QuestionBankId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_RefreshTokens_UserId",
                 table: "RefreshTokens",
                 column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_StudentAnswers_OptionId",
+                table: "StudentAnswers",
+                column: "OptionId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_StudentAnswers_QuestionId",
+                table: "StudentAnswers",
+                column: "QuestionId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_StudentAnswers_QuizAttemptId_QuestionId",
+                table: "StudentAnswers",
+                columns: new[] { "QuizAttemptId", "QuestionId" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_Submissions_AssignmentId_UserId",
@@ -791,6 +1147,18 @@ namespace LearnPath.API.Migrations
                 name: "ModuleDependencies");
 
             migrationBuilder.DropTable(
+                name: "ModuleObjectives");
+
+            migrationBuilder.DropTable(
+                name: "ModuleQuizzes");
+
+            migrationBuilder.DropTable(
+                name: "ModuleResources");
+
+            migrationBuilder.DropTable(
+                name: "ModuleTags");
+
+            migrationBuilder.DropTable(
                 name: "Notifications");
 
             migrationBuilder.DropTable(
@@ -801,6 +1169,9 @@ namespace LearnPath.API.Migrations
 
             migrationBuilder.DropTable(
                 name: "RefreshTokens");
+
+            migrationBuilder.DropTable(
+                name: "StudentAnswers");
 
             migrationBuilder.DropTable(
                 name: "Submissions");
@@ -815,7 +1186,10 @@ namespace LearnPath.API.Migrations
                 name: "Comments");
 
             migrationBuilder.DropTable(
-                name: "Modules");
+                name: "Options");
+
+            migrationBuilder.DropTable(
+                name: "QuizAttempts");
 
             migrationBuilder.DropTable(
                 name: "Assignments");
@@ -824,7 +1198,19 @@ namespace LearnPath.API.Migrations
                 name: "Posts");
 
             migrationBuilder.DropTable(
+                name: "Questions");
+
+            migrationBuilder.DropTable(
+                name: "Modules");
+
+            migrationBuilder.DropTable(
+                name: "Quizzes");
+
+            migrationBuilder.DropTable(
                 name: "Classrooms");
+
+            migrationBuilder.DropTable(
+                name: "QuestionBanks");
 
             migrationBuilder.DropTable(
                 name: "LearningPaths");

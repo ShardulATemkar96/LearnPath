@@ -1,26 +1,23 @@
 namespace LearnPath.API.Entities;
 
-public enum AttemptStatus
-{
-    InProgress = 0,
-    Completed = 1,
-    TimedOut = 2
-}
-
 public class QuizAttempt
 {
     public int Id { get; set; }
-    public int QuizId { get; set; }
     public string UserId { get; set; } = string.Empty;
-    public int? Score { get; set; }
-    public int? TotalPoints { get; set; }
-    public bool? IsPassed { get; set; }
-    public AttemptStatus Status { get; set; } = AttemptStatus.InProgress;
+    public int QuizId { get; set; }
+    public int ModuleId { get; set; }
+    public int AttemptNumber { get; set; }
     public DateTime StartedAt { get; set; } = DateTime.UtcNow;
-    public DateTime? CompletedAt { get; set; }
-    public int? TimeLimitMinutes { get; set; }
+    public DateTime? SubmittedAt { get; set; }
+    public int? TimeSpentSeconds { get; set; }
+    public int? Score { get; set; }
+    public decimal? Percentage { get; set; }
+    public bool? Passed { get; set; }
+    public AttemptStatus Status { get; set; } = AttemptStatus.Created;
+    public int RandomSeed { get; set; }
 
     public Quiz Quiz { get; set; } = null!;
+    public Module Module { get; set; } = null!;
     public User User { get; set; } = null!;
-    public ICollection<QuizAnswer> Answers { get; set; } = [];
+    public ICollection<StudentAnswer> Answers { get; set; } = [];
 }
