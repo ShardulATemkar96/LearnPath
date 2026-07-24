@@ -6,7 +6,7 @@ import {
 } from "@mui/material";
 import {
   RouteRounded, PeopleRounded, ClassRounded, WorkspacePremiumRounded,
-  AdminPanelSettingsRounded,
+  QuizRounded, BarChartRounded, CloudUploadRounded,
 } from "@mui/icons-material";
 import { adminService } from "../../services/adminService";
 import { AdminStats } from "../../types/admin.types";
@@ -14,6 +14,9 @@ import { AdminStats } from "../../types/admin.types";
 const NAV_CARDS = [
   { label: "Manage Paths", desc: "Edit, delete, or manage modules", path: "/admin/paths", icon: <RouteRounded sx={{ fontSize: 40 }} /> },
   { label: "Manage Users", desc: "Change roles, activate, delete users", path: "/admin/users", icon: <PeopleRounded sx={{ fontSize: 40 }} /> },
+  { label: "Question Banks", desc: "Upload, version, and archive question banks", path: "/admin/question-banks", icon: <CloudUploadRounded sx={{ fontSize: 40 }} /> },
+  { label: "Manage Quizzes", desc: "Create, publish, and archive quizzes", path: "/admin/quizzes", icon: <QuizRounded sx={{ fontSize: 40 }} /> },
+  { label: "Quiz Analytics", desc: "View quiz performance and stats", path: "/admin/quiz-analytics", icon: <BarChartRounded sx={{ fontSize: 40 }} /> },
 ];
 
 const AdminPage = () => {

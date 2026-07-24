@@ -1,15 +1,14 @@
 using LearnPath.API.Common;
 using LearnPath.API.DTOs.Quiz;
-using LearnPath.API.Services.Quiz;
+using LearnPath.API.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace LearnPath.API.Controllers;
 
 [ApiController]
-[Route("api/v1/modules/{moduleId}/quiz")]
+[Route("api/v1")]
 [Authorize]
 public class QuizController : ControllerBase
 {
@@ -22,28 +21,22 @@ public class QuizController : ControllerBase
 
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
-    // ── Admin: Quiz CRUD ───────────────────────────────────────
-
-    [HttpGet]
-    public async Task<IActionResult> GetQuiz(int moduleId)
+    [Authorize(Roles = "Admin")]
+    [HttpGet("quizzes")]
+    public async Task<IActionResult> GetAll()
     {
-        var result = await _service.GetQuizByModuleAsync(moduleId);
-        if (result is null)
-            return NotFound(ApiResponse<object>.Fail("No quiz configured for this module."));
-        return Ok(ApiResponse<QuizResponseDto>.Ok(result));
+        var result = await _service.GetAllAsync();
+        return Ok(ApiResponse<List<QuizResponseDto>>.Ok(result));
     }
 
-    [HttpPost]
-    public async Task<IActionResult> CreateQuiz(int moduleId, [FromBody] CreateQuizDto dto)
+    [Authorize(Roles = "Admin")]
+    [HttpGet("quizzes/{id:int}")]
+    public async Task<IActionResult> GetById(int id)
     {
         try
         {
-            var result = await _service.CreateQuizAsync(moduleId, dto);
-            return Ok(ApiResponse<QuizResponseDto>.Ok(result, "Quiz created."));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(ApiResponse<object>.Fail(ex.Message));
+            var result = await _service.GetByIdAsync(id);
+            return Ok(ApiResponse<QuizResponseDto>.Ok(result));
         }
         catch (KeyNotFoundException ex)
         {
@@ -51,121 +44,89 @@ public class QuizController : ControllerBase
         }
     }
 
-    [HttpPut("{quizId:int}")]
-    public async Task<IActionResult> UpdateQuiz(int moduleId, int quizId, [FromBody] CreateQuizDto dto)
-    {
-        var result = await _service.UpdateQuizAsync(quizId, dto);
-        if (result is null)
-            return NotFound(ApiResponse<object>.Fail("Quiz not found."));
-        return Ok(ApiResponse<QuizResponseDto>.Ok(result, "Quiz updated."));
-    }
-
-    [HttpDelete("{quizId:int}")]
-    public async Task<IActionResult> DeleteQuiz(int moduleId, int quizId)
-    {
-        var deleted = await _service.DeleteQuizAsync(quizId);
-        if (!deleted)
-            return NotFound(ApiResponse<object>.Fail("Quiz not found."));
-        return Ok(ApiResponse<object>.Ok(null!, "Quiz deleted."));
-    }
-
-    // ── Admin: Question CRUD ───────────────────────────────────
-
-    [HttpPost("{quizId:int}/questions")]
-    public async Task<IActionResult> AddQuestion(int moduleId, int quizId, [FromBody] CreateQuestionDto dto)
+    [Authorize(Roles = "Admin")]
+    [HttpPost("quizzes")]
+    public async Task<IActionResult> Create([FromBody] CreateQuizDto dto)
     {
         try
         {
-            var result = await _service.AddQuestionAsync(quizId, dto);
-            return Ok(ApiResponse<AdminQuestionResponseDto>.Ok(result, "Question added."));
+            var result = await _service.CreateAsync(dto);
+            return CreatedAtAction(nameof(GetById), new { id = result.Id },
+                ApiResponse<QuizResponseDto>.Ok(result, "Quiz created."));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+        }
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPut("quizzes/{id:int}")]
+    public async Task<IActionResult> Update(int id, [FromBody] UpdateQuizDto dto)
+    {
+        try
+        {
+            var result = await _service.UpdateAsync(id, dto);
+            return Ok(ApiResponse<QuizResponseDto>.Ok(result, "Quiz updated."));
         }
         catch (KeyNotFoundException ex)
         {
             return NotFound(ApiResponse<object>.Fail(ex.Message));
         }
-        catch (InvalidOperationException ex)
+        catch (ArgumentException ex)
         {
             return BadRequest(ApiResponse<object>.Fail(ex.Message));
         }
     }
 
-    [HttpPut("{quizId:int}/questions/{questionId:int}")]
-    public async Task<IActionResult> UpdateQuestion(int moduleId, int quizId, int questionId, [FromBody] CreateQuestionDto dto)
+    [Authorize(Roles = "Admin")]
+    [HttpPatch("quizzes/{id:int}/archive")]
+    public async Task<IActionResult> Archive(int id)
     {
-        var result = await _service.UpdateQuestionAsync(questionId, dto);
+        var result = await _service.ArchiveAsync(id);
         if (result is null)
-            return NotFound(ApiResponse<object>.Fail("Question not found."));
-        return Ok(ApiResponse<AdminQuestionResponseDto>.Ok(result, "Question updated."));
-    }
-
-    [HttpDelete("{quizId:int}/questions/{questionId:int}")]
-    public async Task<IActionResult> DeleteQuestion(int moduleId, int quizId, int questionId)
-    {
-        var deleted = await _service.DeleteQuestionAsync(questionId);
-        if (!deleted)
-            return NotFound(ApiResponse<object>.Fail("Question not found."));
-        return Ok(ApiResponse<object>.Ok(null!, "Question deleted."));
-    }
-
-    // ── Learner: Attempt flow ──────────────────────────────────
-
-    [HttpPost("start")]
-    public async Task<IActionResult> StartAttempt(int moduleId)
-    {
-        var (available, reason) = await _service.CheckQuizAvailableAsync(moduleId);
-        if (!available)
-            return BadRequest(ApiResponse<object>.Fail(reason!));
-
-        var quiz = await _service.GetQuizByModuleAsync(moduleId);
-        if (quiz is null)
             return NotFound(ApiResponse<object>.Fail("Quiz not found."));
 
-        var result = await _service.StartAttemptAsync(quiz.Id);
-        if (result is null)
-            return NotFound(ApiResponse<object>.Fail("Failed to start attempt."));
-        return Ok(ApiResponse<StartAttemptResponseDto>.Ok(result));
+        return Ok(ApiResponse<QuizResponseDto>.Ok(result, "Quiz archived."));
     }
 
-    [HttpPost("submit")]
-    public async Task<IActionResult> SubmitAttempt(int moduleId, [FromBody] SubmitAnswersDto dto)
+    [Authorize(Roles = "Admin")]
+    [HttpPost("modules/{moduleId:int}/quiz")]
+    public async Task<IActionResult> LinkQuiz(int moduleId, [FromBody] LinkQuizDto dto)
     {
         try
         {
-            var result = await _service.SubmitAttemptAsync(dto);
-            if (result is null)
-                return NotFound(ApiResponse<object>.Fail("Attempt not found."));
-            return Ok(ApiResponse<AttemptResultDto>.Ok(result));
+            var result = await _service.LinkToModuleAsync(moduleId, dto.QuizId, UserId);
+            return Ok(ApiResponse<ModuleQuizResponseDto>.Ok(result, "Quiz assigned to module."));
         }
-        catch (InvalidOperationException ex)
+        catch (KeyNotFoundException ex)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            return NotFound(ApiResponse<object>.Fail(ex.Message));
         }
     }
 
-    [HttpGet("attempts/{attemptId:int}/result")]
-    public async Task<IActionResult> GetAttemptResult(int moduleId, int attemptId)
+    [Authorize(Roles = "Admin")]
+    [HttpDelete("modules/{moduleId:int}/quiz")]
+    public async Task<IActionResult> UnlinkQuiz(int moduleId)
     {
-        var result = await _service.GetAttemptResultAsync(attemptId);
+        try
+        {
+            await _service.UnlinkFromModuleAsync(moduleId);
+            return Ok(ApiResponse<object>.Ok(null!, "Quiz unlinked from module."));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.Fail(ex.Message));
+        }
+    }
+
+    [HttpGet("modules/{moduleId:int}/quiz")]
+    public async Task<IActionResult> GetModuleQuiz(int moduleId)
+    {
+        var result = await _service.GetModuleQuizAsync(moduleId);
         if (result is null)
-            return NotFound(ApiResponse<object>.Fail("Attempt not found."));
-        return Ok(ApiResponse<AttemptResultDto>.Ok(result));
-    }
+            return Ok(ApiResponse<object>.Ok(null!, "No quiz linked to this module."));
 
-    [HttpGet("attempts")]
-    public async Task<IActionResult> GetAttemptHistory(int moduleId)
-    {
-        var quiz = await _service.GetQuizByModuleAsync(moduleId);
-        if (quiz is null)
-            return Ok(ApiResponse<List<AttemptSummaryDto>>.Ok([]));
-
-        var history = await _service.GetAttemptHistoryAsync(quiz.Id);
-        return Ok(ApiResponse<List<AttemptSummaryDto>>.Ok(history));
-    }
-
-    [HttpGet("check")]
-    public async Task<IActionResult> CheckAvailability(int moduleId)
-    {
-        var (available, reason) = await _service.CheckQuizAvailableAsync(moduleId);
-        return Ok(ApiResponse<object>.Ok(new { available, reason }));
+        return Ok(ApiResponse<ModuleQuizResponseDto>.Ok(result));
     }
 }

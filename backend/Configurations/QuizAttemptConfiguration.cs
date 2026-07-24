@@ -9,13 +9,19 @@ public class QuizAttemptConfiguration : IEntityTypeConfiguration<QuizAttempt>
     public void Configure(EntityTypeBuilder<QuizAttempt> builder)
     {
         builder.HasKey(a => a.Id);
-        builder.Property(a => a.Status)
-               .HasConversion<int>()
-               .HasDefaultValue(AttemptStatus.InProgress);
+        builder.Property(a => a.Score);
+        builder.Property(a => a.Percentage).HasColumnType("decimal(5,2)");
+        builder.Property(a => a.Status).HasConversion<int>().HasDefaultValue(AttemptStatus.Created);
+        builder.Property(a => a.RandomSeed).HasDefaultValue(0);
 
         builder.HasOne(a => a.Quiz)
-               .WithMany(q => q.Attempts)
+               .WithMany()
                .HasForeignKey(a => a.QuizId)
+               .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(a => a.Module)
+               .WithMany()
+               .HasForeignKey(a => a.ModuleId)
                .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(a => a.User)
@@ -23,8 +29,6 @@ public class QuizAttemptConfiguration : IEntityTypeConfiguration<QuizAttempt>
                .HasForeignKey(a => a.UserId)
                .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasIndex(a => new { a.QuizId, a.UserId })
-               .HasFilter("[Status] = 0")
-               .HasDatabaseName("IX_QuizAttempt_OneActivePerUser");
+        builder.HasIndex(a => new { a.QuizId, a.UserId, a.AttemptNumber });
     }
 }

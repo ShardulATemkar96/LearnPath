@@ -85,10 +85,6 @@ public class LearningPathService : ILearningPathService
                 IsPublished = m.IsPublished,
                 IsArchived = m.IsArchived,
                 ArchivedAt = m.ArchivedAt,
-                QuizEnabled = m.QuizEnabled,
-                QuizQuestionCount = m.QuizQuestionCount,
-                QuizPassingScore = m.QuizPassingScore,
-                QuizTimeLimitMinutes = m.QuizTimeLimitMinutes,
                 Resources = m.Resources.OrderBy(r => r.OrderIndex).Select(r => new ResourceDto
                 {
                     Id = r.Id,
@@ -245,10 +241,6 @@ public class LearningPathService : ILearningPathService
             NotesHtml = dto.NotesHtml,
             PdfUrl = dto.PdfUrl,
             ThumbnailUrl = dto.ThumbnailUrl,
-            QuizEnabled = dto.QuizEnabled,
-            QuizQuestionCount = dto.QuizQuestionCount,
-            QuizPassingScore = dto.QuizPassingScore,
-            QuizTimeLimitMinutes = dto.QuizTimeLimitMinutes,
             ContentBody = dto.ContentBody,
         };
         // Resources
@@ -302,10 +294,6 @@ public class LearningPathService : ILearningPathService
         module.PdfUrl = dto.PdfUrl;
         module.ThumbnailUrl = dto.ThumbnailUrl;
         module.IsDraft = dto.IsDraft;
-        module.QuizEnabled = dto.QuizEnabled;
-        module.QuizQuestionCount = dto.QuizQuestionCount;
-        module.QuizPassingScore = dto.QuizPassingScore;
-        module.QuizTimeLimitMinutes = dto.QuizTimeLimitMinutes;
         module.ContentBody = dto.ContentBody;
         module.UpdatedAt = DateTime.UtcNow;
 
@@ -581,10 +569,6 @@ public class LearningPathService : ILearningPathService
         IsPublished = m.IsPublished,
         IsArchived = m.IsArchived,
         ArchivedAt = m.ArchivedAt,
-        QuizEnabled = m.QuizEnabled,
-        QuizQuestionCount = m.QuizQuestionCount,
-        QuizPassingScore = m.QuizPassingScore,
-        QuizTimeLimitMinutes = m.QuizTimeLimitMinutes,
         Resources = m.Resources.OrderBy(r => r.OrderIndex).Select(r => new ResourceDto
         {
             Id = r.Id, Type = r.Type, Title = r.Title, Url = r.Url, OrderIndex = r.OrderIndex,

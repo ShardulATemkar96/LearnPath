@@ -18,10 +18,7 @@ public class Module
     public bool IsArchived { get; set; } = false;
     public DateTime? ArchivedAt { get; set; }
     public int Order { get; set; }
-    public bool QuizEnabled { get; set; } = false;
-    public int QuizQuestionCount { get; set; } = 0;
-    public int QuizPassingScore { get; set; } = 0;
-    public int? QuizTimeLimitMinutes { get; set; }
+    public ModuleStatus Status { get; set; } = ModuleStatus.NotStarted;
     public int LearningPathId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
@@ -33,5 +30,5 @@ public class Module
     public ICollection<ModuleResource> Resources { get; set; } = [];
     public ICollection<ModuleObjective> Objectives { get; set; } = [];
     public ICollection<ModuleTag> Tags { get; set; } = [];
-    public ICollection<Quiz> Quizzes { get; set; } = [];
+    public ModuleQuiz? ModuleQuiz { get; set; }
 }

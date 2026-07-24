@@ -21,9 +21,9 @@ public class ModuleConfiguration : IEntityTypeConfiguration<Module>
         builder.Property(m => m.IsDraft).HasDefaultValue(true);
         builder.Property(m => m.IsPublished).HasDefaultValue(false);
         builder.Property(m => m.IsArchived).HasDefaultValue(false);
-        builder.Property(m => m.QuizEnabled).HasDefaultValue(false);
-        builder.Property(m => m.QuizQuestionCount).HasDefaultValue(0);
-        builder.Property(m => m.QuizPassingScore).HasDefaultValue(0);
+        builder.Property(m => m.Status)
+               .HasConversion<int>()
+               .HasDefaultValue(ModuleStatus.NotStarted);
 
         builder.HasOne(m => m.LearningPath)
                .WithMany(p => p.Modules)

@@ -10,18 +10,16 @@ public class QuizConfiguration : IEntityTypeConfiguration<Quiz>
     {
         builder.HasKey(q => q.Id);
         builder.Property(q => q.Title).HasMaxLength(200).IsRequired();
-        builder.Property(q => q.Description).HasMaxLength(1000);
-        builder.Property(q => q.MaxAttempts).HasDefaultValue(0);
-        builder.Property(q => q.ShuffleQuestions).HasDefaultValue(false);
-        builder.Property(q => q.ShowResults).HasDefaultValue(true);
-        builder.Property(q => q.IsMandatory).HasDefaultValue(false);
-        builder.Property(q => q.IsPublished).HasDefaultValue(false);
+        builder.Property(q => q.QuestionCount).HasDefaultValue(0);
+        builder.Property(q => q.DifficultyFilter).HasConversion<int?>().IsRequired(false);
+        builder.Property(q => q.SelectionMode).HasConversion<int>().HasDefaultValue(SelectionMode.Random);
+        builder.Property(q => q.PassingPercentage).HasDefaultValue(40);
+        builder.Property(q => q.MaximumAttempts).HasDefaultValue(3);
+        builder.Property(q => q.Status).HasConversion<int>().HasDefaultValue(QuizStatus.Draft);
 
-        builder.HasOne(q => q.Module)
-               .WithMany(m => m.Quizzes)
-               .HasForeignKey(q => q.ModuleId)
-               .OnDelete(DeleteBehavior.Cascade);
-
-        builder.HasIndex(q => q.ModuleId).IsUnique();
+        builder.HasOne(q => q.QuestionBank)
+               .WithMany(qb => qb.Quizzes)
+               .HasForeignKey(q => q.QuestionBankId)
+               .OnDelete(DeleteBehavior.Restrict);
     }
 }

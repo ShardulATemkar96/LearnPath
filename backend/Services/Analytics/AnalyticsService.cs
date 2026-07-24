@@ -1,5 +1,6 @@
 using LearnPath.API.Data;
 using LearnPath.API.DTOs.Analytics;
+using LearnPath.API.Entities;
 using LearnPath.API.Interfaces.Services;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,6 +13,94 @@ public class AnalyticsService : IAnalyticsService
     public AnalyticsService(ApplicationDbContext context)
     {
         _context = context;
+    }
+
+    public async Task<QuizAnalyticsResponseDto> GetQuizAnalyticsAsync(int quizId)
+    {
+        var quiz = await _context.Quizzes
+            .FirstOrDefaultAsync(q => q.Id == quizId)
+            ?? throw new KeyNotFoundException("Quiz not found.");
+
+        var attempts = await _context.QuizAttempts
+            .Where(a => a.QuizId == quizId && a.Status >= AttemptStatus.Submitted)
+            .ToListAsync();
+
+        var scoredAttempts = attempts.Where(a => a.Percentage.HasValue).ToList();
+        var totalAttempts = scoredAttempts.Count;
+        var uniqueStudents = attempts.Select(a => a.UserId).Distinct().Count();
+
+        var avgScore = totalAttempts > 0
+            ? (double)Math.Round(scoredAttempts.Average(a => a.Percentage!.Value), 1)
+            : 0.0;
+
+        var passed = scoredAttempts.Count(a => a.Passed == true);
+        var failed = scoredAttempts.Count(a => a.Passed == false);
+        var passPct = totalAttempts > 0
+            ? Math.Round((double)passed / totalAttempts * 100, 1)
+            : 0.0;
+
+        var distribution = new List<ScoreDistributionDto>
+        {
+            new() { Range = "0-20%", Count = scoredAttempts.Count(a => a.Percentage <= 20) },
+            new() { Range = "21-40%", Count = scoredAttempts.Count(a => a.Percentage > 20 && a.Percentage <= 40) },
+            new() { Range = "41-60%", Count = scoredAttempts.Count(a => a.Percentage > 40 && a.Percentage <= 60) },
+            new() { Range = "61-80%", Count = scoredAttempts.Count(a => a.Percentage > 60 && a.Percentage <= 80) },
+            new() { Range = "81-100%", Count = scoredAttempts.Count(a => a.Percentage > 80) },
+        };
+
+        var questionStats = await GetQuestionAnalyticsAsync(quizId, quiz.QuestionBankId);
+        var sorted = questionStats.OrderBy(q => q.SuccessRate).ToList();
+        var mostIncorrect = sorted.FirstOrDefault();
+        var hardest = sorted.FirstOrDefault();
+
+        return new QuizAnalyticsResponseDto
+        {
+            QuizId = quizId,
+            QuizTitle = quiz.Title,
+            TotalAttempts = totalAttempts,
+            UniqueStudents = uniqueStudents,
+            AverageScore = avgScore,
+            PassPercentage = passPct,
+            TotalPassed = passed,
+            TotalFailed = failed,
+            ScoreDistribution = distribution,
+            QuestionAnalytics = questionStats,
+            MostIncorrectQuestion = mostIncorrect,
+            HardestQuestion = hardest,
+        };
+    }
+
+    private async Task<List<QuestionAnalyticsDto>> GetQuestionAnalyticsAsync(int quizId, int questionBankId)
+    {
+        var questions = await _context.Questions
+            .Where(q => q.QuestionBankId == questionBankId)
+            .ToListAsync();
+
+        var answers = await _context.StudentAnswers
+            .Where(sa => sa.Attempt.QuizId == quizId && sa.Attempt.Status >= AttemptStatus.Submitted)
+            .Include(sa => sa.Option)
+            .ToListAsync();
+
+        return questions.Select(q =>
+        {
+            var qAnswers = answers.Where(a => a.QuestionId == q.Id).ToList();
+            var timesAnswered = qAnswers.Count;
+            var timesCorrect = qAnswers.Count(a => a.Option.IsCorrect);
+
+            return new QuestionAnalyticsDto
+            {
+                QuestionId = q.Id,
+                QuestionText = q.QuestionText.Length > 100
+                    ? q.QuestionText[..100] + "..."
+                    : q.QuestionText,
+                TimesAnswered = timesAnswered,
+                TimesCorrect = timesCorrect,
+                SuccessRate = timesAnswered > 0
+                    ? Math.Round((double)timesCorrect / timesAnswered * 100, 1)
+                    : 0.0,
+                Difficulty = q.Difficulty.ToString(),
+            };
+        }).ToList();
     }
 
     public async Task<UserAnalyticsResponseDto> GetUserAnalyticsAsync(string userId)

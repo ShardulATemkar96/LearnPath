@@ -15,11 +15,13 @@ public class ApplicationDbContext : IdentityDbContext<User>
     public DbSet<ModuleObjective> ModuleObjectives => Set<ModuleObjective>();
     public DbSet<ModuleTag> ModuleTags => Set<ModuleTag>();
     public DbSet<ModuleDependency> ModuleDependencies => Set<ModuleDependency>();
+    public DbSet<QuestionBank> QuestionBanks => Set<QuestionBank>();
+    public DbSet<ModuleQuiz> ModuleQuizzes => Set<ModuleQuiz>();
     public DbSet<Quiz> Quizzes => Set<Quiz>();
-    public DbSet<QuizQuestion> QuizQuestions => Set<QuizQuestion>();
-    public DbSet<QuizOption> QuizOptions => Set<QuizOption>();
+    public DbSet<Question> Questions => Set<Question>();
+    public DbSet<Option> Options => Set<Option>();
     public DbSet<QuizAttempt> QuizAttempts => Set<QuizAttempt>();
-    public DbSet<QuizAnswer> QuizAnswers => Set<QuizAnswer>();
+    public DbSet<StudentAnswer> StudentAnswers => Set<StudentAnswer>();
     public DbSet<Progress> Progresses => Set<Progress>();
     public DbSet<Classroom> Classrooms => Set<Classroom>();
     public DbSet<UserClassroom> UserClassrooms => Set<UserClassroom>();

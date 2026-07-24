@@ -37,10 +37,6 @@ export interface Module {
   isPublished: boolean;
   isArchived: boolean;
   archivedAt?: string;
-  quizEnabled: boolean;
-  quizQuestionCount: number;
-  quizPassingScore: number;
-  quizTimeLimitMinutes?: number;
   previousModuleId?: number;
   nextModuleId?: number;
   resources: ResourceItem[];
@@ -72,10 +68,6 @@ export interface CreateModuleRequest {
   pdfUrl?: string;
   thumbnailUrl?: string;
   isDraft: boolean;
-  quizEnabled: boolean;
-  quizQuestionCount: number;
-  quizPassingScore: number;
-  quizTimeLimitMinutes?: number;
   resources: { type: string; title: string; url: string; orderIndex: number }[];
   objectives: { objectiveText: string; orderIndex: number }[];
   tags: string[];

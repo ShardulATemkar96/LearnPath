@@ -1,9 +1,8 @@
 import { Box, Button, CircularProgress, Stack, Typography } from "@mui/material";
 import { useCallback, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { quizService } from "../../services/quizService";
 import {
-  AttemptQuestionDto, AttemptResultDto, StartAttemptResponse,
+  AttemptQuestionDto, AttemptResponseDto,
 } from "../../types/quiz.types";
 import QuestionCard from "./QuestionCard";
 import QuizResult from "./QuizResult";
@@ -17,12 +16,11 @@ interface QuizPageProps {
 type QuizPhase = "intro" | "loading" | "active" | "submitting" | "result" | "error";
 
 const QuizPage = ({ moduleId, onClose }: QuizPageProps) => {
-  const navigate = useNavigate();
   const [phase, setPhase] = useState<QuizPhase>("intro");
-  const [attempt, setAttempt] = useState<StartAttemptResponse | null>(null);
+  const [attempt, setAttempt] = useState<AttemptResponseDto | null>(null);
   const [selected, setSelected] = useState<Record<number, number>>({});
   const [textAnswers, setTextAnswers] = useState<Record<number, string>>({});
-  const [result, setResult] = useState<AttemptResultDto | null>(null);
+  const [result, setResult] = useState<AttemptResponseDto | null>(null);
 
   const startQuiz = useCallback(async () => {
     setPhase("loading");
@@ -52,13 +50,13 @@ const QuizPage = ({ moduleId, onClose }: QuizPageProps) => {
         selectedOptionId: selected[q.questionId],
         textAnswer: textAnswers[q.questionId],
       }));
-      const data = await quizService.submitAttempt(moduleId, { attemptId: attempt.attemptId, answers });
+      const data = await quizService.submitAttempt(attempt.id, { answers });
       setResult(data);
       setPhase("result");
     } catch {
       setPhase("error");
     }
-  }, [attempt, moduleId, selected, textAnswers]);
+  }, [attempt, selected, textAnswers]);
 
   const timeUp = useCallback(() => {
     submitQuiz();
@@ -74,12 +72,11 @@ const QuizPage = ({ moduleId, onClose }: QuizPageProps) => {
           Answer the questions to test your knowledge.
         </Typography>
         <Stack direction="row" spacing={2} justifyContent="center">
-          <Button variant="contained" size="large" onClick={startQuiz}>
+          <Button variant="contained" size="large" onClick={startQuiz}
+            sx={{ background: "linear-gradient(135deg, #6C63FF, #9D97FF)", borderRadius: 2 }}>
             Start Quiz
           </Button>
-          <Button variant="outlined" size="large" onClick={onClose}>
-            Cancel
-          </Button>
+          <Button variant="outlined" size="large" onClick={onClose}>Cancel</Button>
         </Stack>
       </Box>
     );
@@ -97,9 +94,7 @@ const QuizPage = ({ moduleId, onClose }: QuizPageProps) => {
   if (phase === "error") {
     return (
       <Box sx={{ textAlign: "center", py: 6 }}>
-        <Typography variant="h5" color="error" gutterBottom>
-          Something went wrong
-        </Typography>
+        <Typography variant="h5" color="error" gutterBottom>Something went wrong</Typography>
         <Stack direction="row" spacing={2} justifyContent="center">
           <Button variant="contained" onClick={startQuiz}>Try Again</Button>
           <Button variant="outlined" onClick={onClose}>Back</Button>
@@ -109,32 +104,16 @@ const QuizPage = ({ moduleId, onClose }: QuizPageProps) => {
   }
 
   if (phase === "result" && result) {
-    return (
-      <QuizResult
-        result={result}
-        onRetry={startQuiz}
-        onClose={onClose}
-      />
-    );
+    return <QuizResult result={result} onRetry={startQuiz} onClose={onClose} />;
   }
 
-  const allAnswered = attempt?.questions.every(
-    (q) => q.questionType === 2
-      ? (textAnswers[q.questionId]?.trim() ?? "") !== ""
-      : selected[q.questionId] !== undefined,
-  );
+  // Active phase
+  const hasTimeLimit = false;
 
   return (
     <Box sx={{ maxWidth: 800, mx: "auto", py: 3 }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h5" fontWeight={700}>Quiz</Typography>
-        {attempt?.timeLimitMinutes && (
-          <QuizTimer
-            timeLimitMinutes={attempt.timeLimitMinutes}
-            onTimeUp={timeUp}
-            isActive={phase === "active"}
-          />
-        )}
       </Stack>
 
       {attempt?.questions.map((q: AttemptQuestionDto, i: number) => (
@@ -150,12 +129,8 @@ const QuizPage = ({ moduleId, onClose }: QuizPageProps) => {
       ))}
 
       <Box sx={{ textAlign: "center", mt: 3 }}>
-        <Button
-          variant="contained"
-          size="large"
-          onClick={submitQuiz}
-          disabled={!allAnswered}
-        >
+        <Button variant="contained" size="large" onClick={submitQuiz
+        } sx={{ background: "linear-gradient(135deg, #6C63FF, #9D97FF)", borderRadius: 2 }}>
           Submit Answers
         </Button>
       </Box>

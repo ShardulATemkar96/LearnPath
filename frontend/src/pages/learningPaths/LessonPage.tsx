@@ -5,23 +5,30 @@ import { progressService } from "../../services/progressService";
 import { Module } from "../../types/path.types";
 import { Box, Button, Typography, Chip, Alert, Skeleton, Stack, Divider, Grid, Paper } from "@mui/material";
 import { ArrowBackRounded, CheckCircleRounded, LockRounded, ChevronLeftRounded, ChevronRightRounded } from "@mui/icons-material";
+import { quizService } from "../../services/quizService";
+import { ModuleQuizResponseDto } from "../../types/quiz.types";
 import { ROUTES } from "../../constants/routes";
-import QuizPage from "../../components/quiz/QuizPage";
 
 const LessonPage = () => {
   const { pathId, moduleId } = useParams<{ pathId: string; moduleId: string }>();
   const navigate = useNavigate();
   const [module, setModule] = useState<Module | null>(null);
+  const [moduleQuiz, setModuleQuiz] = useState<ModuleQuizResponseDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [quizActive, setQuizActive] = useState(false);
 
   useEffect(() => {
     if (!pathId || !moduleId) return;
     setLoading(true);
     setError("");
-    pathService.getModuleContent(Number(pathId), Number(moduleId))
-      .then(setModule)
+    Promise.all([
+      pathService.getModuleContent(Number(pathId), Number(moduleId)),
+      quizService.getModuleQuiz(Number(moduleId)).catch(() => null),
+    ])
+      .then(([mod, mq]) => {
+        setModule(mod);
+        setModuleQuiz(mq);
+      })
       .catch((e: any) => {
         const msg = e?.response?.data?.message || e?.message || "Failed to load module.";
         if (e?.response?.status === 403) {
@@ -127,24 +134,17 @@ const LessonPage = () => {
         </Box>
       )}
 
-      {module.quizEnabled && !quizActive && (
+      {moduleQuiz && (
         <Box sx={{ p: 4, borderRadius: 4, border: "1px solid", borderColor: "divider", mb: 3 }}>
           <Typography variant="h6" fontWeight={600} mb={1}>Quiz</Typography>
-          <Typography variant="body2" color="text.secondary" mb={2}>
-            Passing score: {module.quizPassingScore}% | Questions: {module.quizQuestionCount}
-            {module.quizTimeLimitMinutes && ` | Time limit: ${module.quizTimeLimitMinutes} min`}
+          <Typography variant="body2" color="text.secondary" mb={1}>
+            {moduleQuiz.quizTitle}
           </Typography>
-          <Button variant="contained" sx={{ borderRadius: 2 }} onClick={() => setQuizActive(true)}>
+          <Button variant="contained" sx={{ borderRadius: 2 }}
+            onClick={() => navigate(`/quiz/instructions/${moduleId}`)}>
             Start Quiz
           </Button>
         </Box>
-      )}
-
-      {quizActive && (
-        <QuizPage
-          moduleId={module.id}
-          onClose={() => setQuizActive(false)}
-        />
       )}
 
       {!module.isCompleted && (
