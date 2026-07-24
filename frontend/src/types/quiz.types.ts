@@ -1,131 +1,182 @@
-export enum QuizQuestionType {
-  MultipleChoice = 0,
-  TrueFalse = 1,
-  ShortAnswer = 2,
+export enum Difficulty {
+  Easy = 0,
+  Medium = 1,
+  Hard = 2,
+}
+
+export enum SelectionMode {
+  Random = 0,
+  Sequential = 1,
+}
+
+export enum QuizStatus {
+  Draft = 0,
+  Published = 1,
+  Archived = 2,
+}
+
+export enum AttemptStatus {
+  Created = 0,
+  InProgress = 1,
+  Submitted = 2,
+  Evaluated = 3,
+  Expired = 4,
+}
+
+export interface CreateQuizDto {
+  title: string;
+  questionBankId: number;
+  questionCount: number;
+  difficultyFilter?: Difficulty;
+  selectionMode: SelectionMode;
+  timeLimitMinutes?: number;
+  passingPercentage: number;
+  maximumAttempts: number;
+}
+
+export interface UpdateQuizDto {
+  title: string;
+  questionBankId: number;
+  questionCount: number;
+  difficultyFilter?: Difficulty;
+  selectionMode: SelectionMode;
+  timeLimitMinutes?: number;
+  passingPercentage: number;
+  maximumAttempts: number;
 }
 
 export interface QuizResponseDto {
   id: number;
-  moduleId: number;
   title: string;
-  description?: string;
-  passingScore?: number;
-  timeLimitMinutes?: number;
-  maxAttempts: number;
-  shuffleQuestions: boolean;
-  showResults: boolean;
-  isMandatory: boolean;
-  isPublished: boolean;
+  questionBankId: number;
+  questionBankTitle: string;
+  questionBankVersion: number;
   questionCount: number;
-  questions: AdminQuestionDto[];
+  difficultyFilter: Difficulty | null;
+  selectionMode: SelectionMode;
+  timeLimitMinutes: number | null;
+  passingPercentage: number;
+  maximumAttempts: number;
+  status: QuizStatus;
+  createdAt: string;
+  archivedAt: string | null;
 }
 
-export interface AdminQuestionDto {
+export interface ModuleQuizResponseDto {
   id: number;
-  questionText: string;
-  questionType: QuizQuestionType;
-  points: number;
-  orderIndex: number;
-  explanation?: string;
-  options: AdminOptionDto[];
+  moduleId: number;
+  quizId: number;
+  quizTitle: string;
+  assignedBy: string;
+  assignedAt: string;
+  active: boolean;
 }
 
-export interface AdminOptionDto {
-  id: number;
-  optionText: string;
-  isCorrect: boolean;
-  orderIndex: number;
+export interface LinkQuizDto {
+  quizId: number;
 }
 
-export interface CreateQuizRequest {
-  title: string;
-  description?: string;
-  passingScore?: number;
-  timeLimitMinutes?: number;
-  maxAttempts: number;
-  shuffleQuestions: boolean;
-  showResults: boolean;
-  isMandatory: boolean;
-}
+// ── Attempt DTOs ────────────────────────────────────────
 
-export interface CreateQuestionRequest {
-  questionText: string;
-  questionType: QuizQuestionType;
-  points: number;
-  orderIndex: number;
-  explanation?: string;
-  options: CreateOptionRequest[];
-}
-
-export interface CreateOptionRequest {
-  optionText: string;
-  isCorrect: boolean;
-  orderIndex: number;
-}
-
-export interface StartAttemptResponse {
+export interface AttemptStartResponseDto {
   attemptId: number;
-  timeLimitMinutes?: number;
+  quizId: number;
+  quizTitle: string;
+  moduleId: number;
+  attemptNumber: number;
+  status: AttemptStatus;
+  startedAt: string;
+  timeLimitMinutes: number | null;
+  timeSpentSeconds: number | null;
   questions: AttemptQuestionDto[];
 }
 
 export interface AttemptQuestionDto {
   questionId: number;
   questionText: string;
-  questionType: QuizQuestionType;
-  points: number;
-  orderIndex: number;
+  displayOrder: number;
+  selectedOptionId: number | null;
   options: AttemptOptionDto[];
 }
 
 export interface AttemptOptionDto {
-  id: number;
+  optionId: number;
   optionText: string;
-  orderIndex: number;
+  displayOrder: number;
 }
 
-export interface SubmitAnswersRequest {
-  attemptId: number;
-  answers: AnswerSubmissionDto[];
-}
-
-export interface AnswerSubmissionDto {
+export interface SaveAnswerRequestDto {
   questionId: number;
-  selectedOptionId?: number;
-  textAnswer?: string;
+  optionId: number;
 }
 
-export interface AttemptResultDto {
+export interface SubmitResponseDto {
   attemptId: number;
   score: number;
-  totalPoints: number;
-  isPassed: boolean;
-  status: string;
+  totalQuestions: number;
+  percentage: number;
+  passed: boolean;
+  timeSpentSeconds: number;
   attemptNumber: number;
-  maxAttempts: number;
-  questionResults: QuestionResultDto[];
+  passingPercentage: number;
 }
 
-export interface QuestionResultDto {
+export interface ReviewResponseDto {
+  attemptId: number;
+  score: number;
+  totalQuestions: number;
+  percentage: number;
+  passed: boolean;
+  timeSpentSeconds: number;
+  attemptNumber: number;
+  questions: ReviewQuestionDto[];
+}
+
+export interface ReviewQuestionDto {
   questionId: number;
   questionText: string;
-  questionType: QuizQuestionType;
-  points: number;
-  pointsAwarded: number;
+  explanation: string | null;
+  selectedOptionId: number | null;
+  correctOptionId: number;
   isCorrect: boolean;
-  selectedOptionId?: number;
-  correctOptionId?: number;
-  textAnswer?: string;
-  correctAnswerText?: string;
-  explanation?: string;
+  options: ReviewOptionDto[];
 }
 
-export interface AttemptSummaryDto {
-  attemptId: number;
-  score: number;
-  totalPoints: number;
-  isPassed: boolean;
-  status: string;
-  startedAt: string;
-  completedAt?: string;
+export interface ReviewOptionDto {
+  optionId: number;
+  optionText: string;
+  isCorrect: boolean;
+  isSelected: boolean;
+  displayOrder: number;
+}
+
+// ── Analytics DTOs ──────────────────────────────────────
+
+export interface QuizAnalyticsResponseDto {
+  quizId: number;
+  quizTitle: string;
+  totalAttempts: number;
+  uniqueStudents: number;
+  averageScore: number;
+  passPercentage: number;
+  totalPassed: number;
+  totalFailed: number;
+  scoreDistribution: ScoreDistributionDto[];
+  questionAnalytics: QuestionAnalyticsDto[];
+  mostIncorrectQuestion: QuestionAnalyticsDto | null;
+  hardestQuestion: QuestionAnalyticsDto | null;
+}
+
+export interface ScoreDistributionDto {
+  range: string;
+  count: number;
+}
+
+export interface QuestionAnalyticsDto {
+  questionId: number;
+  questionText: string;
+  timesAnswered: number;
+  timesCorrect: number;
+  successRate: number;
+  difficulty: string;
 }

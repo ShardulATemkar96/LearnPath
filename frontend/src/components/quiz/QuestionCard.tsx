@@ -1,5 +1,5 @@
 import { Box, FormControlLabel, Radio, RadioGroup, TextField, Typography } from "@mui/material";
-import { AttemptQuestionDto, AttemptOptionDto } from "../../types/quiz.types";
+import { AttemptQuestionDto } from "../../types/quiz.types";
 
 interface QuestionCardProps {
   question: AttemptQuestionDto;
@@ -47,7 +47,7 @@ const QuestionCard = ({
           value={selectedOptionId ?? ""}
           onChange={(e) => onSelectOption(question.questionId, Number(e.target.value))}
         >
-          {question.options.map((opt: AttemptOptionDto) => (
+          {question.options.map((opt) => (
             <FormControlLabel
               key={opt.id}
               value={opt.id}

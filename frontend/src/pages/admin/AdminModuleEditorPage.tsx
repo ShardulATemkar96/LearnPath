@@ -13,6 +13,7 @@ import {
 } from "@mui/icons-material";
 import { pathService } from "../../services/pathService";
 import { LearningPathDetail, Module, CreateModuleRequest } from "../../types/path.types";
+import { quizService } from "../../services/quizService";
 import { ROUTES } from "../../constants/routes";
 
 const CONTENT_TYPES = ["video", "article", "quiz", "code", "document"];
@@ -21,8 +22,7 @@ const DIFFICULTY_LABELS = ["Beginner", "Intermediate", "Advanced"];
 const emptyForm = (nextOrder: number): CreateModuleRequest => ({
   title: "", description: "", contentType: "article", contentUrl: "", order: nextOrder,
   difficulty: 0, estimatedDurationMinutes: undefined, notesHtml: "", pdfUrl: "",
-  thumbnailUrl: "", isDraft: true, quizEnabled: false, quizQuestionCount: 10,
-  quizPassingScore: 70, quizTimeLimitMinutes: undefined,
+  thumbnailUrl: "", isDraft: true,
   resources: [], objectives: [], tags: [],
 });
 
@@ -82,10 +82,6 @@ const AdminModuleEditorPage = () => {
       pdfUrl: mod.pdfUrl || "",
       thumbnailUrl: mod.thumbnailUrl || "",
       isDraft: true,
-      quizEnabled: mod.quizEnabled,
-      quizQuestionCount: mod.quizQuestionCount,
-      quizPassingScore: mod.quizPassingScore,
-      quizTimeLimitMinutes: mod.quizTimeLimitMinutes,
       resources: mod.resources.map(r => ({ type: r.type, title: r.title, url: r.url, orderIndex: r.orderIndex })),
       objectives: mod.objectives.map(o => ({ objectiveText: o.objectiveText, orderIndex: o.orderIndex })),
       tags: [...mod.tags],
@@ -293,24 +289,6 @@ const AdminModuleEditorPage = () => {
                 onChange={(e) => setForm(p => ({ ...p, isDraft: e.target.checked }))} />
               <Typography variant="body2">Draft</Typography>
             </Stack>
-
-            <Stack direction="row" alignItems="center">
-              <Switch checked={form.quizEnabled}
-                onChange={(e) => setForm(p => ({ ...p, quizEnabled: e.target.checked }))} />
-              <Typography variant="body2">Enable Quiz</Typography>
-            </Stack>
-
-            {form.quizEnabled && (
-              <Stack spacing={2}>
-                <TextField label="Question Count" type="number" fullWidth value={form.quizQuestionCount}
-                  onChange={(e) => setForm(p => ({ ...p, quizQuestionCount: parseInt(e.target.value) || 0 }))} />
-                <TextField label="Passing Score (%)" type="number" fullWidth value={form.quizPassingScore}
-                  onChange={(e) => setForm(p => ({ ...p, quizPassingScore: parseInt(e.target.value) || 0 }))} />
-                <TextField label="Time Limit (minutes)" type="number" fullWidth
-                  value={form.quizTimeLimitMinutes ?? ""}
-                  onChange={(e) => setForm(p => ({ ...p, quizTimeLimitMinutes: e.target.value ? parseInt(e.target.value) : undefined }))} />
-              </Stack>
-            )}
 
             <TextField label="Tags (comma-separated)" fullWidth
               value={form.tags.join(", ")}

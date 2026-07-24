@@ -17,11 +17,16 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor — handle 401 + refresh
+// Response interceptor — handle 401 + refresh (skip login endpoint)
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const original = error.config;
+
+    // Do not intercept 401 on login/register — let the caller handle it
+    if (original?.url?.includes("/auth/login") || original?.url?.includes("/auth/register")) {
+      return Promise.reject(error);
+    }
 
     if (error.response?.status === 401 && !original._retry) {
       original._retry = true;

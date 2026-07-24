@@ -1,65 +1,92 @@
 import apiClient from "./apiClient";
 import {
-  QuizResponseDto, AdminQuestionDto, CreateQuizRequest, CreateQuestionRequest,
-  StartAttemptResponse, SubmitAnswersRequest, AttemptResultDto, AttemptSummaryDto,
+  CreateQuizDto, UpdateQuizDto, QuizResponseDto,
+  ModuleQuizResponseDto, LinkQuizDto,
+  AttemptStartResponseDto, SaveAnswerRequestDto,
+  SubmitResponseDto, ReviewResponseDto,
+  QuizAnalyticsResponseDto,
 } from "../types/quiz.types";
 
+interface ApiResponse<T> {
+  success: boolean;
+  message: string;
+  data: T;
+  errors: string[];
+  timestamp: string;
+}
+
 export const quizService = {
-  getQuiz: async (moduleId: number): Promise<QuizResponseDto> => {
-    const { data } = await apiClient.get(`/modules/${moduleId}/quiz`);
+  // ── Quiz CRUD ────────────────────────────────────────────
+  getAll: async (): Promise<QuizResponseDto[]> => {
+    const { data } = await apiClient.get<ApiResponse<QuizResponseDto[]>>("/quizzes");
     return data.data;
   },
 
-  createQuiz: async (moduleId: number, payload: CreateQuizRequest): Promise<QuizResponseDto> => {
-    const { data } = await apiClient.post(`/modules/${moduleId}/quiz`, payload);
+  getById: async (id: number): Promise<QuizResponseDto> => {
+    const { data } = await apiClient.get<ApiResponse<QuizResponseDto>>(`/quizzes/${id}`);
     return data.data;
   },
 
-  updateQuiz: async (moduleId: number, quizId: number, payload: CreateQuizRequest): Promise<QuizResponseDto> => {
-    const { data } = await apiClient.put(`/modules/${moduleId}/quiz/${quizId}`, payload);
+  create: async (payload: CreateQuizDto): Promise<QuizResponseDto> => {
+    const { data } = await apiClient.post<ApiResponse<QuizResponseDto>>("/quizzes", payload);
     return data.data;
   },
 
-  deleteQuiz: async (moduleId: number, quizId: number): Promise<void> => {
-    await apiClient.delete(`/modules/${moduleId}/quiz/${quizId}`);
-  },
-
-  addQuestion: async (moduleId: number, quizId: number, payload: CreateQuestionRequest): Promise<AdminQuestionDto> => {
-    const { data } = await apiClient.post(`/modules/${moduleId}/quiz/${quizId}/questions`, payload);
+  update: async (id: number, payload: UpdateQuizDto): Promise<QuizResponseDto> => {
+    const { data } = await apiClient.put<ApiResponse<QuizResponseDto>>(`/quizzes/${id}`, payload);
     return data.data;
   },
 
-  updateQuestion: async (moduleId: number, quizId: number, questionId: number, payload: CreateQuestionRequest): Promise<AdminQuestionDto> => {
-    const { data } = await apiClient.put(`/modules/${moduleId}/quiz/${quizId}/questions/${questionId}`, payload);
+  archive: async (id: number): Promise<QuizResponseDto> => {
+    const { data } = await apiClient.patch<ApiResponse<QuizResponseDto>>(`/quizzes/${id}/archive`);
     return data.data;
   },
 
-  deleteQuestion: async (moduleId: number, quizId: number, questionId: number): Promise<void> => {
-    await apiClient.delete(`/modules/${moduleId}/quiz/${quizId}/questions/${questionId}`);
-  },
-
-  startAttempt: async (moduleId: number): Promise<StartAttemptResponse> => {
-    const { data } = await apiClient.post(`/modules/${moduleId}/quiz/start`);
+  // ── Module-Quiz Linking ──────────────────────────────────
+  getModuleQuiz: async (moduleId: number): Promise<ModuleQuizResponseDto | null> => {
+    const { data } = await apiClient.get<ApiResponse<ModuleQuizResponseDto | null>>(`/modules/${moduleId}/quiz`);
     return data.data;
   },
 
-  submitAttempt: async (moduleId: number, payload: SubmitAnswersRequest): Promise<AttemptResultDto> => {
-    const { data } = await apiClient.post(`/modules/${moduleId}/quiz/submit`, payload);
+  linkQuiz: async (moduleId: number, quizId: number): Promise<ModuleQuizResponseDto> => {
+    const { data } = await apiClient.post<ApiResponse<ModuleQuizResponseDto>>(`/modules/${moduleId}/quiz`, { quizId } as LinkQuizDto);
     return data.data;
   },
 
-  getAttemptResult: async (moduleId: number, attemptId: number): Promise<AttemptResultDto> => {
-    const { data } = await apiClient.get(`/modules/${moduleId}/quiz/attempts/${attemptId}/result`);
+  unlinkQuiz: async (moduleId: number): Promise<void> => {
+    await apiClient.delete(`/modules/${moduleId}/quiz`);
+  },
+
+  // ── Attempt Flow ─────────────────────────────────────────
+  startAttempt: async (quizId: number, moduleId: number): Promise<AttemptStartResponseDto> => {
+    const { data } = await apiClient.post<ApiResponse<AttemptStartResponseDto>>(`/quizzes/${quizId}/attempt`, null, {
+      params: { moduleId },
+    });
     return data.data;
   },
 
-  getAttemptHistory: async (moduleId: number): Promise<AttemptSummaryDto[]> => {
-    const { data } = await apiClient.get(`/modules/${moduleId}/quiz/attempts`);
+  getAttempt: async (attemptId: number): Promise<AttemptStartResponseDto> => {
+    const { data } = await apiClient.get<ApiResponse<AttemptStartResponseDto>>(`/attempts/${attemptId}`);
     return data.data;
   },
 
-  checkAvailability: async (moduleId: number): Promise<{ available: boolean; reason?: string }> => {
-    const { data } = await apiClient.get(`/modules/${moduleId}/quiz/check`);
+  saveAnswer: async (attemptId: number, payload: SaveAnswerRequestDto): Promise<void> => {
+    await apiClient.put(`/attempts/${attemptId}/answer`, payload);
+  },
+
+  submitAttempt: async (attemptId: number): Promise<SubmitResponseDto> => {
+    const { data } = await apiClient.post<ApiResponse<SubmitResponseDto>>(`/attempts/${attemptId}/submit`);
+    return data.data;
+  },
+
+  getReview: async (attemptId: number): Promise<ReviewResponseDto> => {
+    const { data } = await apiClient.get<ApiResponse<ReviewResponseDto>>(`/attempts/${attemptId}/review`);
+    return data.data;
+  },
+
+  // ── Analytics ────────────────────────────────────────────
+  getAnalytics: async (quizId: number): Promise<QuizAnalyticsResponseDto> => {
+    const { data } = await apiClient.get<ApiResponse<QuizAnalyticsResponseDto>>(`/quizzes/${quizId}/analytics`);
     return data.data;
   },
 };

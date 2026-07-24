@@ -30,6 +30,13 @@ const AdminPathsPage         = lazy(() => import("../pages/admin/AdminPathsPage"
 const AdminModuleEditorPage  = lazy(() => import("../pages/admin/AdminModuleEditorPage"));
 const AdminQuizEditorPage    = lazy(() => import("../pages/admin/AdminQuizEditorPage"));
 const AdminUsersPage         = lazy(() => import("../pages/admin/AdminUsersPage"));
+const AdminQuestionBanksPage = lazy(() => import("../pages/admin/AdminQuestionBanksPage"));
+const AdminQuizManagementPage = lazy(() => import("../pages/admin/AdminQuizManagementPage"));
+const AdminQuizAnalyticsPage = lazy(() => import("../pages/admin/AdminQuizAnalyticsPage"));
+const QuizInstructionsPage = lazy(() => import("../pages/quiz/QuizInstructionsPage"));
+const QuizAttemptPage      = lazy(() => import("../pages/quiz/QuizAttemptPage"));
+const QuizResultPage       = lazy(() => import("../pages/quiz/QuizResultPage"));
+const QuizReviewPage       = lazy(() => import("../pages/quiz/QuizReviewPage"));
 const NotFoundPage           = lazy(() => import("../pages/errors/NotFoundPage"));
 
 const AppRoutes = () => (
@@ -44,6 +51,10 @@ const AppRoutes = () => (
           </Route>
         </Route>
         <Route element={<ProtectedRoute />}>
+          <Route path={ROUTES.QUIZ_INSTRUCTIONS} element={<QuizInstructionsPage />} />
+          <Route path={ROUTES.QUIZ_ATTEMPT} element={<QuizAttemptPage />} />
+          <Route path={ROUTES.QUIZ_RESULT} element={<QuizResultPage />} />
+          <Route path={ROUTES.QUIZ_REVIEW} element={<QuizReviewPage />} />
           <Route element={<DashboardLayout />}>
             <Route path={ROUTES.DASHBOARD} element={<DashboardPage />} />
             <Route path={ROUTES.LEARNING_PATHS} element={<LearningPathsPage />} />
@@ -64,6 +75,9 @@ const AppRoutes = () => (
                 <Route path={ROUTES.ADMIN_PATH_MODULES} element={<AdminModuleEditorPage />} />
                 <Route path={ROUTES.ADMIN_QUIZ_EDITOR} element={<AdminQuizEditorPage />} />
                 <Route path={ROUTES.ADMIN_USERS} element={<AdminUsersPage />} />
+                <Route path={ROUTES.ADMIN_QUESTION_BANKS} element={<AdminQuestionBanksPage />} />
+                <Route path={ROUTES.ADMIN_QUIZZES} element={<AdminQuizManagementPage />} />
+                <Route path={ROUTES.ADMIN_QUIZ_ANALYTICS} element={<AdminQuizAnalyticsPage />} />
               </Route>
             </Route>
           </Route>
