@@ -32,3 +32,35 @@ public class ModuleTypeBreakdownDto
     public string ContentType { get; set; } = string.Empty;
     public int Count { get; set; }
 }
+
+public class QuizAnalyticsResponseDto
+{
+    public int QuizId { get; set; }
+    public string QuizTitle { get; set; } = string.Empty;
+    public int TotalAttempts { get; set; }
+    public int UniqueStudents { get; set; }
+    public double AverageScore { get; set; }
+    public double PassPercentage { get; set; }
+    public int TotalPassed { get; set; }
+    public int TotalFailed { get; set; }
+    public List<ScoreDistributionDto> ScoreDistribution { get; set; } = [];
+    public List<QuestionAnalyticsDto> QuestionAnalytics { get; set; } = [];
+    public QuestionAnalyticsDto? MostIncorrectQuestion { get; set; }
+    public QuestionAnalyticsDto? HardestQuestion { get; set; }
+}
+
+public class ScoreDistributionDto
+{
+    public string Range { get; set; } = string.Empty;
+    public int Count { get; set; }
+}
+
+public class QuestionAnalyticsDto
+{
+    public int QuestionId { get; set; }
+    public string QuestionText { get; set; } = string.Empty;
+    public int TimesAnswered { get; set; }
+    public int TimesCorrect { get; set; }
+    public double SuccessRate { get; set; }
+    public string Difficulty { get; set; } = string.Empty;
+}

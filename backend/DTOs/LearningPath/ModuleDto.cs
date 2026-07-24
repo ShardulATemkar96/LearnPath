@@ -16,10 +16,6 @@ public class CreateModuleDto
     public string? PdfUrl { get; set; }
     public string? ThumbnailUrl { get; set; }
     public bool IsDraft { get; set; }
-    public bool QuizEnabled { get; set; }
-    public int QuizQuestionCount { get; set; }
-    public int QuizPassingScore { get; set; }
-    public int? QuizTimeLimitMinutes { get; set; }
     public List<CreateResourceDto> Resources { get; set; } = [];
     public List<CreateObjectiveDto> Objectives { get; set; } = [];
     public List<string> Tags { get; set; } = [];
@@ -39,10 +35,6 @@ public class UpdateModuleDto
     public string? PdfUrl { get; set; }
     public string? ThumbnailUrl { get; set; }
     public bool IsDraft { get; set; }
-    public bool QuizEnabled { get; set; }
-    public int QuizQuestionCount { get; set; }
-    public int QuizPassingScore { get; set; }
-    public int? QuizTimeLimitMinutes { get; set; }
     public List<CreateResourceDto> Resources { get; set; } = [];
     public List<CreateObjectiveDto> Objectives { get; set; } = [];
     public List<string> Tags { get; set; } = [];
@@ -69,12 +61,8 @@ public class ModuleResponseDto
     public bool IsPublished { get; set; }
     public bool IsArchived { get; set; }
     public DateTime? ArchivedAt { get; set; }
-    public bool QuizEnabled { get; set; }
     public int? PreviousModuleId { get; set; }
     public int? NextModuleId { get; set; }
-    public int QuizQuestionCount { get; set; }
-    public int QuizPassingScore { get; set; }
-    public int? QuizTimeLimitMinutes { get; set; }
     public List<ResourceDto> Resources { get; set; } = [];
     public List<ObjectiveDto> Objectives { get; set; } = [];
     public List<string> Tags { get; set; } = [];

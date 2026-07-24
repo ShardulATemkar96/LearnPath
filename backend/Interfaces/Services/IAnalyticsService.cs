@@ -5,4 +5,5 @@ namespace LearnPath.API.Interfaces.Services;
 public interface IAnalyticsService
 {
     Task<UserAnalyticsResponseDto> GetUserAnalyticsAsync(string userId);
+    Task<QuizAnalyticsResponseDto> GetQuizAnalyticsAsync(int quizId);
 }

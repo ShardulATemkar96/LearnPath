@@ -46,12 +46,12 @@ public class DashboardServiceTests
         await context.Modules.AddRangeAsync(m1, m2);
 
         await context.Progresses.AddRangeAsync(
-            new Entities.Progress
+            new Progress
             {
                 UserId = userId, ModuleId = 1,
                 IsCompleted = true, CompletedAt = DateTime.UtcNow,
             },
-            new Entities.Progress
+            new Progress
             {
                 UserId = userId, ModuleId = 2,
                 IsCompleted = true, CompletedAt = DateTime.UtcNow,

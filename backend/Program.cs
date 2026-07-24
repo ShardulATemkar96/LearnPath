@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using System.Text.Json.Serialization;
 using FluentValidation;
 using LearnPath.API.Authentication.Jwt;
 using LearnPath.API.Data;
@@ -8,6 +9,7 @@ using LearnPath.API.Interfaces.Services;
 using LearnPath.API.Middleware;
 using LearnPath.API.Services.Admin;
 using LearnPath.API.Services.Analytics;
+using LearnPath.API.Services.Attempt;
 using LearnPath.API.Services.Community;
 using LearnPath.API.Services.Auth;
 using LearnPath.API.Services.Classroom;
@@ -15,6 +17,9 @@ using LearnPath.API.Services.Dashboard;
 using LearnPath.API.Services.LearningPath;
 using LearnPath.API.Services.Notification;
 using LearnPath.API.Services.Progress;
+using LearnPath.API.Services.QuestionBank;
+using LearnPath.API.Services.Quiz;
+using LearnPath.API.Services.Validation;
 using LearnPath.API.Services.User;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -94,7 +99,11 @@ builder.Services.AddCors(options =>
 // ── AutoMapper ────────────────────────────────────────────────
 builder.Services.AddAutoMapper(cfg => { }, typeof(Program).Assembly);
 // ── FluentValidation ──────────────────────────────────────────
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
 // ── Services ──────────────────────────────────────────────────
@@ -108,7 +117,11 @@ builder.Services.AddScoped<IUserService,         UserService>();
 builder.Services.AddScoped<IAdminService,        AdminService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<ICommunityService, CommunityService>();
-builder.Services.AddScoped<LearnPath.API.Services.Quiz.IQuizService, LearnPath.API.Services.Quiz.QuizService>();
+builder.Services.AddScoped<IValidationService, JsonValidationService>();
+builder.Services.AddScoped<IQuestionBankService, QuestionBankService>();
+builder.Services.AddScoped<IQuizService, QuizService>();
+builder.Services.AddScoped<IAttemptService, AttemptService>();
+
 
 // ── Swagger ───────────────────────────────────────────────────
 builder.Services.AddEndpointsApiExplorer();

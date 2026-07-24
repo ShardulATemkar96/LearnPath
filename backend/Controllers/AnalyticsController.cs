@@ -8,7 +8,7 @@ using System.Security.Claims;
 namespace LearnPath.API.Controllers;
 
 [ApiController]
-[Route("api/v1/analytics")]
+[Route("api/v1")]
 [Authorize]
 public class AnalyticsController : ControllerBase
 {
@@ -17,10 +17,25 @@ public class AnalyticsController : ControllerBase
 
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
-    [HttpGet]
+    [HttpGet("analytics")]
     public async Task<IActionResult> GetMyAnalytics()
     {
         var result = await _service.GetUserAnalyticsAsync(UserId);
         return Ok(ApiResponse<UserAnalyticsResponseDto>.Ok(result));
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpGet("quizzes/{quizId:int}/analytics")]
+    public async Task<IActionResult> GetQuizAnalytics(int quizId)
+    {
+        try
+        {
+            var result = await _service.GetQuizAnalyticsAsync(quizId);
+            return Ok(ApiResponse<QuizAnalyticsResponseDto>.Ok(result));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.Fail(ex.Message));
+        }
     }
 }
