@@ -64,6 +64,11 @@ export const questionBankService = {
     return data.data;
   },
 
+  restore: async (id: number): Promise<QuestionBankSummaryDto> => {
+    const { data } = await apiClient.patch<ApiResponse<QuestionBankSummaryDto>>(`/questionbanks/${id}/restore`);
+    return data.data;
+  },
+
   delete: async (id: number): Promise<void> => {
     await apiClient.delete(`/questionbanks/${id}`);
   },

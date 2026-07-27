@@ -5,6 +5,7 @@ namespace LearnPath.API.Interfaces.Services;
 public interface IProgressService
 {
     Task<ProgressResponseDto> MarkCompleteAsync(MarkCompleteDto dto, string userId);
+    Task MarkModuleCompleteFromQuizAsync(string userId, int moduleId);
     Task<List<PathProgressSummaryDto>> GetUserProgressAsync(string userId);
     Task<PathProgressSummaryDto> GetPathProgressAsync(int pathId, string userId);
 }

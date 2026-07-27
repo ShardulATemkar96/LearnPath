@@ -1,11 +1,13 @@
 import { useEffect, useState, useCallback } from "react";
 import {
   Alert, Box, Button, Chip, CircularProgress, Dialog, DialogContent, DialogTitle,
-  FormControl, IconButton, InputLabel, MenuItem, Select, Stack, Table, TableBody,
-  TableCell, TableContainer, TableHead, TableRow, TextField, Typography, Paper,
+  DialogActions, DialogContentText, FormControl, IconButton, InputLabel, MenuItem,
+  Select, Snackbar, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  TextField, Typography, Paper,
 } from "@mui/material";
 import {
-  AddRounded, ArchiveRounded, BarChartRounded, CloseRounded, EditRounded, QuizRounded,
+  AddRounded, ArchiveRounded, BarChartRounded, CheckCircleRounded, CloseRounded,
+  DeleteRounded, EditRounded, QuizRounded, UndoRounded,
 } from "@mui/icons-material";
 import { quizService } from "../../services/quizService";
 import { questionBankService } from "../../services/questionBankService";
@@ -45,6 +47,12 @@ const AdminQuizManagementPage = () => {
   const [saving, setSaving] = useState(false);
 
   const [banks, setBanks] = useState<QuestionBankSummaryDto[]>([]);
+  const [deleteTarget, setDeleteTarget] = useState<QuizResponseDto | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const [publishTarget, setPublishTarget] = useState<QuizResponseDto | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
 
   const loadQuizzes = useCallback(async () => {
     setLoading(true);
@@ -108,6 +116,46 @@ const AdminQuizManagementPage = () => {
     }
   };
 
+  const handlePublishConfirm = async () => {
+    if (!publishTarget) return;
+    setPublishing(true);
+    setError("");
+    try {
+      await quizService.publish(publishTarget.id);
+      setPublishTarget(null);
+      setSuccessMsg(`"${publishTarget.title}" published successfully.`);
+      loadQuizzes();
+    } catch (e: any) {
+      setError(e?.response?.data?.message || "Publish failed.");
+      setPublishTarget(null);
+    } finally { setPublishing(false); }
+  };
+
+  const handleUnpublish = async (id: number) => {
+    setError("");
+    try {
+      await quizService.unpublish(id);
+      setSuccessMsg("Quiz unpublished.");
+      loadQuizzes();
+    } catch (e: any) {
+      setError(e?.response?.data?.message || "Unpublish failed.");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setError("");
+    try {
+      await quizService.delete(deleteTarget.id);
+      setDeleteTarget(null);
+      loadQuizzes();
+    } catch (e: any) {
+      setError(e?.response?.data?.message || "Delete failed.");
+      setDeleteTarget(null);
+    } finally { setDeleting(false); }
+  };
+
   const selectedBank = banks.find((b) => b.id === form.questionBankId);
 
   return (
@@ -121,6 +169,8 @@ const AdminQuizManagementPage = () => {
       </Stack>
 
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError("")}>{error}</Alert>}
+      <Snackbar open={!!successMsg} autoHideDuration={3000} onClose={() => setSuccessMsg("")}
+        message={successMsg} anchorOrigin={{ vertical: "bottom", horizontal: "center" }} />
 
       {loading ? (
         <Box sx={{ textAlign: "center", py: 8 }}><CircularProgress /></Box>
@@ -167,11 +217,27 @@ const AdminQuizManagementPage = () => {
                           <IconButton size="small" title="Edit" onClick={() => openEdit(q)}>
                             <EditRounded fontSize="small" />
                           </IconButton>
+                          {q.status === QuizStatus.Draft && (
+                            <IconButton size="small" title="Publish" color="success"
+                              onClick={() => setPublishTarget(q)}>
+                              <CheckCircleRounded fontSize="small" />
+                            </IconButton>
+                          )}
+                          {q.status === QuizStatus.Published && (
+                            <IconButton size="small" title="Unpublish"
+                              onClick={() => handleUnpublish(q.id)}>
+                              <UndoRounded fontSize="small" />
+                            </IconButton>
+                          )}
                           <IconButton size="small" title="Archive" color="error" onClick={() => handleArchive(q.id)}>
                             <ArchiveRounded fontSize="small" />
                           </IconButton>
                         </>
                       )}
+                      <IconButton size="small" title="Delete" color="error"
+                        onClick={() => setDeleteTarget(q)}>
+                        <DeleteRounded fontSize="small" />
+                      </IconButton>
                     </Stack>
                   </TableCell>
                 </TableRow>
@@ -254,6 +320,46 @@ const AdminQuizManagementPage = () => {
             </Button>
           </Stack>
         </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteTarget !== null} onClose={() => { if (!deleting) setDeleteTarget(null); }}
+        maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 4 } }}>
+        <DialogTitle>
+          <Typography variant="h6" fontWeight={700}>Delete Quiz</Typography>
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete '{deleteTarget?.title}'? This action cannot be undone and will permanently remove the quiz and all associated data.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setDeleteTarget(null)} disabled={deleting}
+            sx={{ borderRadius: 2, color: "text.secondary" }}>Cancel</Button>
+          <Button variant="contained" color="error" onClick={handleDelete} disabled={deleting}
+            sx={{ borderRadius: 2 }}>
+            {deleting ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={publishTarget !== null} onClose={() => { if (!publishing) setPublishTarget(null); }}
+        maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 4 } }}>
+        <DialogTitle>
+          <Typography variant="h6" fontWeight={700}>Publish Quiz</Typography>
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Once published, this quiz becomes available for Module Quiz Assignment and can later be assigned to students.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setPublishTarget(null)} disabled={publishing}
+            sx={{ borderRadius: 2, color: "text.secondary" }}>Cancel</Button>
+          <Button variant="contained" color="success" onClick={handlePublishConfirm} disabled={publishing}
+            sx={{ borderRadius: 2 }}>
+            {publishing ? "Publishing..." : "Publish"}
+          </Button>
+        </DialogActions>
       </Dialog>
     </Box>
   );

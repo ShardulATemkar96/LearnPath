@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import { pathService } from "../../services/pathService";
 import { progressService } from "../../services/progressService";
 import { Module } from "../../types/path.types";
@@ -8,10 +9,13 @@ import { ArrowBackRounded, CheckCircleRounded, LockRounded, ChevronLeftRounded, 
 import { quizService } from "../../services/quizService";
 import { ModuleQuizResponseDto } from "../../types/quiz.types";
 import { ROUTES } from "../../constants/routes";
+import { selectUserRoles } from "../../redux/selectors/authSelectors";
 
 const LessonPage = () => {
   const { pathId, moduleId } = useParams<{ pathId: string; moduleId: string }>();
   const navigate = useNavigate();
+  const roles = useSelector(selectUserRoles);
+  const canManuallyComplete = roles.includes("Instructor") || roles.includes("Admin");
   const [module, setModule] = useState<Module | null>(null);
   const [moduleQuiz, setModuleQuiz] = useState<ModuleQuizResponseDto | null>(null);
   const [loading, setLoading] = useState(true);
@@ -147,12 +151,18 @@ const LessonPage = () => {
         </Box>
       )}
 
-      {!module.isCompleted && (
+      {!module.isCompleted && canManuallyComplete && (
         <Button variant="contained" size="large" fullWidth sx={{ borderRadius: 3, py: 1.5 }}
           startIcon={<CheckCircleRounded />}
           onClick={handleMarkComplete}>
           Mark as Complete
         </Button>
+      )}
+
+      {!module.isCompleted && !canManuallyComplete && moduleQuiz && (
+        <Alert severity="info" sx={{ borderRadius: 2 }}>
+          Complete and pass the module quiz to unlock completion.
+        </Alert>
       )}
 
       <Stack direction="row" justifyContent="space-between" mt={4}>

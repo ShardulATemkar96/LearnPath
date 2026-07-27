@@ -9,6 +9,9 @@ public interface IQuizService
     Task<QuizResponseDto> CreateAsync(CreateQuizDto dto);
     Task<QuizResponseDto> UpdateAsync(int id, UpdateQuizDto dto);
     Task<QuizResponseDto?> ArchiveAsync(int id);
+    Task<QuizResponseDto?> PublishAsync(int id);
+    Task<QuizResponseDto?> UnpublishAsync(int id);
+    Task<QuizResponseDto?> DeleteAsync(int id);
 
     Task<ModuleQuizResponseDto> LinkToModuleAsync(int moduleId, int quizId, string userId);
     Task UnlinkFromModuleAsync(int moduleId);

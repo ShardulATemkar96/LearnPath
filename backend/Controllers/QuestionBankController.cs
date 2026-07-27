@@ -122,4 +122,22 @@ public class QuestionBankController : ControllerBase
 
         return Ok(ApiResponse<QuestionBankResponseDto>.Ok(result, "Question Bank archived."));
     }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPatch("questionbanks/{id:int}/restore")]
+    public async Task<IActionResult> Restore(int id)
+    {
+        try
+        {
+            var result = await _service.RestoreAsync(id);
+            if (result is null)
+                return NotFound(ApiResponse<object>.Fail("Question Bank not found."));
+
+            return Ok(ApiResponse<QuestionBankResponseDto>.Ok(result, "Question Bank restored successfully."));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+        }
+    }
 }

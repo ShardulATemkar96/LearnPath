@@ -9,10 +9,12 @@ namespace LearnPath.API.Services.Attempt;
 public class AttemptService : IAttemptService
 {
     private readonly ApplicationDbContext _context;
+    private readonly IProgressService _progressService;
 
-    public AttemptService(ApplicationDbContext context)
+    public AttemptService(ApplicationDbContext context, IProgressService progressService)
     {
         _context = context;
+        _progressService = progressService;
     }
 
     public async Task<AttemptStartResponseDto> StartAttemptAsync(int quizId, int moduleId, string userId)
@@ -166,7 +168,17 @@ public class AttemptService : IAttemptService
             : 0;
         attempt.Passed = attempt.Percentage >= quiz.PassingPercentage;
 
+        if (attempt.Passed == true)
+        {
+            var module = await _context.Modules.FindAsync(attempt.ModuleId);
+            if (module is not null && module.Status < ModuleStatus.Completed)
+                module.Status = ModuleStatus.Completed;
+        }
+
         await _context.SaveChangesAsync();
+
+        if (attempt.Passed == true)
+            await _progressService.MarkModuleCompleteFromQuizAsync(userId, attempt.ModuleId);
 
         return new SubmitResponseDto
         {
