@@ -8,6 +8,7 @@
   LESSON:               "/paths/:pathId/modules/:moduleId",
   CLASSROOM:            "/classrooms",
   CLASSROOM_DETAIL:     "/classrooms/:id",
+  ASSIGNMENT_DETAIL:    "/classrooms/:classroomId/assignments/:assignmentId",
   ANALYTICS:            "/analytics",
   COMMUNITY:            "/community",
   COMMUNITY_DETAIL:     "/community/:id",
