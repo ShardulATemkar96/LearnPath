@@ -105,11 +105,22 @@ public class ClassroomController : ControllerBase
     }
 
     [HttpPost("{classroomId:int}/assignments/{assignmentId:int}/submit")]
-    public async Task<IActionResult> Submit(
-        int classroomId, int assignmentId, [FromBody] CreateSubmissionDto dto)
+    [RequestSizeLimit(6 * 1024 * 1024)]
+    public async Task<IActionResult> Upload(
+        int classroomId, int assignmentId, IFormFile file)
     {
-        var result = await _service.SubmitAssignmentAsync(classroomId, assignmentId, dto, UserId);
-        return Ok(ApiResponse<SubmissionResponseDto>.Ok(result, "Submitted successfully."));
+        if (file is null || file.Length == 0)
+            return BadRequest(ApiResponse<object>.Fail("No file provided."));
+
+        var result = await _service.UploadSubmissionAsync(classroomId, assignmentId, file, UserId);
+        return Ok(ApiResponse<SubmissionResponseDto>.Ok(result, "Submission uploaded."));
+    }
+
+    [HttpGet("{classroomId:int}/assignments/{assignmentId:int}/submission")]
+    public async Task<IActionResult> GetMySubmission(int classroomId, int assignmentId)
+    {
+        var result = await _service.GetMySubmissionAsync(classroomId, assignmentId, UserId);
+        return Ok(ApiResponse<SubmissionResponseDto>.Ok(result));
     }
 
     [HttpGet("{classroomId:int}/assignments/{assignmentId:int}/submissions")]
@@ -126,6 +137,28 @@ public class ClassroomController : ControllerBase
         var result = await _service.GradeSubmissionAsync(
             classroomId, assignmentId, submissionId, dto, UserId);
         return Ok(ApiResponse<SubmissionResponseDto>.Ok(result, "Graded."));
+    }
+
+    [HttpPost("{classroomId:int}/assignments/{assignmentId:int}/submissions/{submissionId:int}/publish")]
+    public async Task<IActionResult> PublishEvaluation(int classroomId, int assignmentId, int submissionId)
+    {
+        try
+        {
+            var result = await _service.PublishEvaluationAsync(classroomId, assignmentId, submissionId, UserId);
+            return Ok(ApiResponse<SubmissionResponseDto>.Ok(result, "Evaluation published."));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.Fail(ex.Message));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+        }
     }
 
     [HttpPut("{classroomId:int}/assignments/{assignmentId:int}/submissions/{submissionId:int}/verify")]
