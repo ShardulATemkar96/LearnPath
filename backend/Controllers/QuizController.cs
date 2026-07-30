@@ -91,6 +91,60 @@ public class QuizController : ControllerBase
     }
 
     [Authorize(Roles = "Admin")]
+    [HttpPatch("quizzes/{id:int}/publish")]
+    public async Task<IActionResult> Publish(int id)
+    {
+        try
+        {
+            var result = await _service.PublishAsync(id);
+            if (result is null)
+                return NotFound(ApiResponse<object>.Fail("Quiz not found."));
+
+            return Ok(ApiResponse<QuizResponseDto>.Ok(result, "Quiz published successfully."));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+        }
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPatch("quizzes/{id:int}/unpublish")]
+    public async Task<IActionResult> Unpublish(int id)
+    {
+        try
+        {
+            var result = await _service.UnpublishAsync(id);
+            if (result is null)
+                return NotFound(ApiResponse<object>.Fail("Quiz not found."));
+
+            return Ok(ApiResponse<QuizResponseDto>.Ok(result, "Quiz unpublished."));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+        }
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpDelete("quizzes/{id:int}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        try
+        {
+            var result = await _service.DeleteAsync(id);
+            if (result is null)
+                return NotFound(ApiResponse<object>.Fail("Quiz not found."));
+
+            return Ok(ApiResponse<QuizResponseDto>.Ok(result, "Quiz deleted successfully."));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+        }
+    }
+
+    [Authorize(Roles = "Admin")]
     [HttpPost("modules/{moduleId:int}/quiz")]
     public async Task<IActionResult> LinkQuiz(int moduleId, [FromBody] LinkQuizDto dto)
     {

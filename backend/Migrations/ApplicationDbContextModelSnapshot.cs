@@ -804,6 +804,9 @@ namespace LearnPath.API.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(40);
 
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<int>("QuestionBankId")
                         .HasColumnType("int");
 
@@ -973,21 +976,41 @@ namespace LearnPath.API.Migrations
                     b.Property<int>("AssignmentId")
                         .HasColumnType("int");
 
-                    b.Property<string>("ContentUrl")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
                     b.Property<string>("Feedback")
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
 
+                    b.Property<string>("FileExtension")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<long?>("FileSize")
+                        .HasColumnType("bigint");
+
                     b.Property<int?>("Grade")
                         .HasColumnType("int");
+
+                    b.Property<bool>("IsLate")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("MimeType")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("OriginalFileName")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("StoredFilePath")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<DateTime>("SubmittedAt")
                         .HasColumnType("datetime2");
@@ -1007,6 +1030,69 @@ namespace LearnPath.API.Migrations
                         .IsUnique();
 
                     b.ToTable("Submissions");
+                });
+
+            modelBuilder.Entity("LearnPath.API.Entities.SubmissionAiFeedback", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Disclaimer")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("GeneratedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("GrammarFeedback")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("MissingTopics")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("OverallRecommendation")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("RawResponse")
+                        .IsRequired()
+                        .HasMaxLength(16000)
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RubricCoverage")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<int>("SubmissionId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SuggestedScoreMarks")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SuggestedScorePercentage")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubmissionId")
+                        .IsUnique();
+
+                    b.ToTable("SubmissionAiFeedbacks");
                 });
 
             modelBuilder.Entity("LearnPath.API.Entities.User", b =>
@@ -1626,6 +1712,17 @@ namespace LearnPath.API.Migrations
                     b.Navigation("Assignment");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("LearnPath.API.Entities.SubmissionAiFeedback", b =>
+                {
+                    b.HasOne("LearnPath.API.Entities.Submission", "Submission")
+                        .WithOne()
+                        .HasForeignKey("LearnPath.API.Entities.SubmissionAiFeedback", "SubmissionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Submission");
                 });
 
             modelBuilder.Entity("LearnPath.API.Entities.UserClassroom", b =>

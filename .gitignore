@@ -1,18 +1,32 @@
-# Local Environment Configuration Files
+# ── Environment & Secrets ───────────────────────────────────────
 .env
-*.env.local
-*.env.production
-*.env.development
+.env.local
+.env.production
+.env.development
+.env.*
+!.env.example
+secrets.json
 
-# Sensitive Backend Production Appsettings
+# ── Backend Configuration (secrets) ─────────────────────────────
 backend/appsettings.Production.json
+backend/appsettings.Development.json
 
-# Node & Frontend Dependencies
+# ── Uploaded Files ──────────────────────────────────────────────
+backend/uploads/
+uploads/
+
+# ── AI / Agent Working Directories ──────────────────────────────
+.agent/
+.claude/
+.opencode/
+graphify-out/
+
+# ── Node & Frontend ─────────────────────────────────────────────
 node_modules/
 **/node_modules/
 **/dist/
 
-# Global Target Cache Rule Overrides (Blocks all bin, obj, and vs subfolders)
+# ── Build Artifacts ─────────────────────────────────────────────
 [Bb]in/
 [Oo]bj/
 .vs/
@@ -20,12 +34,9 @@ node_modules/
 **/[Oo]bj/
 **/.vs/
 **/runtimes/
+**/packages/
 
-# User-specific developer settings
-*.user
-*.suo
-
-# Explicit Global Binary & Runtime Cache Blocks
+# ── Binary & Cache Files ────────────────────────────────────────
 *.dll
 *.pdb
 *.exe
@@ -34,3 +45,27 @@ node_modules/
 *.deps.json
 *.runtimeconfig.json
 *.staticwebassets.endpoints.json
+*.trx
+*.log
+**/TestResults/
+**/coverage/
+
+# ── IDE & Editor ────────────────────────────────────────────────
+.idea/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# ── OS Files ────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ── Temp & Generated ────────────────────────────────────────────
+*.tmp
+*.temp
+**/Temp/
+**/tmp/
+testingErrorReport.txt

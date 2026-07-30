@@ -8,8 +8,11 @@ public class SubmissionConfiguration : IEntityTypeConfiguration<Submission>
 {
     public void Configure(EntityTypeBuilder<Submission> builder)
     {
-        builder.HasKey(s => s.Id);
-        builder.Property(s => s.ContentUrl).HasMaxLength(500).IsRequired();
+    builder.HasKey(s => s.Id);
+        builder.Property(s => s.OriginalFileName).HasMaxLength(255);
+        builder.Property(s => s.StoredFilePath).HasMaxLength(500);
+        builder.Property(s => s.FileExtension).HasMaxLength(10);
+        builder.Property(s => s.MimeType).HasMaxLength(100);
         builder.Property(s => s.Feedback).HasMaxLength(2000);
 
         builder.HasIndex(s => new { s.AssignmentId, s.UserId }).IsUnique();

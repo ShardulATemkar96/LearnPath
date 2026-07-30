@@ -10,9 +10,9 @@ export enum SelectionMode {
 }
 
 export enum QuizStatus {
-  Draft = 0,
-  Published = 1,
-  Archived = 2,
+  Draft = "Draft",
+  Published = "Published",
+  Archived = "Archived",
 }
 
 export enum AttemptStatus {
@@ -59,6 +59,7 @@ export interface QuizResponseDto {
   maximumAttempts: number;
   status: QuizStatus;
   createdAt: string;
+  publishedAt: string | null;
   archivedAt: string | null;
 }
 

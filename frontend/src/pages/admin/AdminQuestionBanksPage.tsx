@@ -7,7 +7,7 @@ import {
 import { questionBankService } from "../../services/questionBankService";
 import {
   AddRounded, ArchiveRounded, CloudDownloadRounded, CloseRounded, CloudUploadRounded,
-  ContentCopyRounded, DeleteRounded, SearchRounded,
+  ContentCopyRounded, DeleteRounded, RestoreRounded, SearchRounded,
 } from "@mui/icons-material";
 import {
   DialogActions, DialogContentText,
@@ -100,6 +100,10 @@ const AdminQuestionBanksPage = () => {
   const [deleteTarget, setDeleteTarget] = useState<QuestionBankSummaryDto | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  const [restoreTarget, setRestoreTarget] = useState<QuestionBankSummaryDto | null>(null);
+  const [restoring, setRestoring] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
+
   const handleCopyTemplate = useCallback(() => {
     navigator.clipboard.writeText(JSON_TEMPLATE).then(() => setCopied(true));
   }, []);
@@ -173,6 +177,22 @@ const AdminQuestionBanksPage = () => {
     } catch { setError("Download failed."); }
   };
 
+  const handleRestoreConfirm = async () => {
+    if (!restoreTarget) return;
+    setRestoring(true);
+    setError("");
+    try {
+      await questionBankService.restore(restoreTarget.id);
+      setRestoreTarget(null);
+      setSuccessMsg(`"${restoreTarget.title}" restored successfully.`);
+      load();
+    } catch (e: any) {
+      const serverMsg = e?.response?.data;
+      setError(serverMsg?.message || "Unable to restore Question Bank.");
+      setRestoreTarget(null);
+    } finally { setRestoring(false); }
+  };
+
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
@@ -199,6 +219,8 @@ const AdminQuestionBanksPage = () => {
       </Stack>
 
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError("")}>{error}</Alert>}
+      <Snackbar open={!!successMsg} autoHideDuration={3000} onClose={() => setSuccessMsg("")}
+        message={successMsg} anchorOrigin={{ vertical: "bottom", horizontal: "center" }} />
 
       <TextField size="small" placeholder="Search by title or subject..." value={search}
         onChange={(e) => setSearch(e.target.value)}
@@ -247,7 +269,12 @@ const AdminQuestionBanksPage = () => {
                         onClick={() => { setVersionBankId(bank.id); setVersionOpen(true); }}>
                         <AddRounded fontSize="small" />
                       </IconButton>
-                      {bank.status !== QuestionBankStatus.Archived && (
+                      {bank.status === QuestionBankStatus.Archived ? (
+                        <IconButton size="small" title="Restore" color="success"
+                          onClick={() => setRestoreTarget(bank)}>
+                          <RestoreRounded fontSize="small" />
+                        </IconButton>
+                      ) : (
                         <IconButton size="small" title="Archive" color="error"
                           onClick={() => handleArchive(bank.id)}>
                           <ArchiveRounded fontSize="small" />
@@ -361,6 +388,26 @@ const AdminQuestionBanksPage = () => {
           <Button variant="contained" color="error" onClick={handleDelete} disabled={deleting}
             sx={{ borderRadius: 2 }}>
             {deleting ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={restoreTarget !== null} onClose={() => { if (!restoring) setRestoreTarget(null); }}
+        maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 4 } }}>
+        <DialogTitle>
+          <Typography variant="h6" fontWeight={700}>Restore Question Bank</Typography>
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to restore this Question Bank? It will become available for normal use again.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setRestoreTarget(null)} disabled={restoring}
+            sx={{ borderRadius: 2, color: "text.secondary" }}>Cancel</Button>
+          <Button variant="contained" color="success" onClick={handleRestoreConfirm} disabled={restoring}
+            sx={{ borderRadius: 2 }}>
+            {restoring ? "Restoring..." : "Restore"}
           </Button>
         </DialogActions>
       </Dialog>

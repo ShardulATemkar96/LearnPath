@@ -127,10 +127,66 @@ public class QuizService : IQuizService
         return MapToDto(quiz);
     }
 
+    public async Task<QuizResponseDto?> PublishAsync(int id)
+    {
+        var quiz = await _context.Quizzes
+            .Include(q => q.QuestionBank)
+            .FirstOrDefaultAsync(q => q.Id == id);
+
+        if (quiz is null) return null;
+
+        if (quiz.Status == QuizStatus.Archived)
+            throw new InvalidOperationException("Cannot publish an archived quiz.");
+
+        quiz.Status = QuizStatus.Published;
+        quiz.PublishedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+        return MapToDto(quiz);
+    }
+
+    public async Task<QuizResponseDto?> UnpublishAsync(int id)
+    {
+        var quiz = await _context.Quizzes
+            .Include(q => q.QuestionBank)
+            .FirstOrDefaultAsync(q => q.Id == id);
+
+        if (quiz is null) return null;
+
+        if (quiz.Status != QuizStatus.Published)
+            throw new InvalidOperationException("Only published quizzes can be unpublished.");
+
+        quiz.Status = QuizStatus.Draft;
+        quiz.PublishedAt = null;
+
+        await _context.SaveChangesAsync();
+        return MapToDto(quiz);
+    }
+
+    public async Task<QuizResponseDto?> DeleteAsync(int id)
+    {
+        var quiz = await _context.Quizzes
+            .Include(q => q.ModuleQuizzes)
+            .FirstOrDefaultAsync(q => q.Id == id);
+
+        if (quiz is null) return null;
+
+        if (quiz.ModuleQuizzes.Count > 0)
+            throw new InvalidOperationException(
+                $"Cannot delete quiz '{quiz.Title}' because it is assigned to {quiz.ModuleQuizzes.Count} module(s). Unlink it first.");
+
+        _context.Quizzes.Remove(quiz);
+        await _context.SaveChangesAsync();
+        return MapToDto(quiz);
+    }
+
     public async Task<ModuleQuizResponseDto> LinkToModuleAsync(int moduleId, int quizId, string userId)
     {
-        if (!await _context.Quizzes.AnyAsync(q => q.Id == quizId))
-            throw new KeyNotFoundException("Quiz not found.");
+        var quiz = await _context.Quizzes.FirstOrDefaultAsync(q => q.Id == quizId)
+            ?? throw new KeyNotFoundException("Quiz not found.");
+
+        if (quiz.Status != QuizStatus.Published)
+            throw new InvalidOperationException("Quiz must be published before assignment.");
 
         if (!await _context.Modules.AnyAsync(m => m.Id == moduleId))
             throw new KeyNotFoundException("Module not found.");
@@ -160,14 +216,14 @@ public class QuizService : IQuizService
 
         await _context.SaveChangesAsync();
 
-        var quiz = await _context.Quizzes.FirstAsync(q => q.Id == quizId);
+        var linkedQuiz = await _context.Quizzes.FirstAsync(q => q.Id == quizId);
 
         return new ModuleQuizResponseDto
         {
             Id = existing?.Id ?? 0,
             ModuleId = moduleId,
             QuizId = quizId,
-            QuizTitle = quiz.Title,
+            QuizTitle = linkedQuiz.Title,
             AssignedBy = userId,
             AssignedAt = DateTime.UtcNow,
             Active = true,
@@ -217,6 +273,7 @@ public class QuizService : IQuizService
         MaximumAttempts = q.MaximumAttempts,
         Status = q.Status,
         CreatedAt = q.CreatedAt,
+        PublishedAt = q.PublishedAt,
         ArchivedAt = q.ArchivedAt,
     };
 }

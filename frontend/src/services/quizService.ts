@@ -42,6 +42,20 @@ export const quizService = {
     return data.data;
   },
 
+  publish: async (id: number): Promise<QuizResponseDto> => {
+    const { data } = await apiClient.patch<ApiResponse<QuizResponseDto>>(`/quizzes/${id}/publish`);
+    return data.data;
+  },
+
+  unpublish: async (id: number): Promise<QuizResponseDto> => {
+    const { data } = await apiClient.patch<ApiResponse<QuizResponseDto>>(`/quizzes/${id}/unpublish`);
+    return data.data;
+  },
+
+  delete: async (id: number): Promise<void> => {
+    await apiClient.delete(`/quizzes/${id}`);
+  },
+
   // ── Module-Quiz Linking ──────────────────────────────────
   getModuleQuiz: async (moduleId: number): Promise<ModuleQuizResponseDto | null> => {
     const { data } = await apiClient.get<ApiResponse<ModuleQuizResponseDto | null>>(`/modules/${moduleId}/quiz`);

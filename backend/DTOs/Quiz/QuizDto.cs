@@ -41,6 +41,7 @@ public class QuizResponseDto
     public int MaximumAttempts { get; set; }
     public QuizStatus Status { get; set; }
     public DateTime CreatedAt { get; set; }
+    public DateTime? PublishedAt { get; set; }
     public DateTime? ArchivedAt { get; set; }
 }
 

@@ -13,6 +13,7 @@ public class Quiz
     public int MaximumAttempts { get; set; } = 3;
     public QuizStatus Status { get; set; } = QuizStatus.Draft;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? PublishedAt { get; set; }
     public DateTime? ArchivedAt { get; set; }
 
     public QuestionBank QuestionBank { get; set; } = null!;

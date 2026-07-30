@@ -2,6 +2,7 @@
 using System.Text.Json.Serialization;
 using FluentValidation;
 using LearnPath.API.Authentication.Jwt;
+using LearnPath.API.Configuration;
 using LearnPath.API.Data;
 using LearnPath.API.Data.Seeders;
 using LearnPath.API.Entities;
@@ -19,8 +20,11 @@ using LearnPath.API.Services.Notification;
 using LearnPath.API.Services.Progress;
 using LearnPath.API.Services.QuestionBank;
 using LearnPath.API.Services.Quiz;
+using LearnPath.API.Services.Submission;
 using LearnPath.API.Services.Validation;
 using LearnPath.API.Services.User;
+using LearnPath.API.Interfaces.Services.Ai;
+using LearnPath.API.Services.Ai;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -28,6 +32,70 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ── Load .env file ────────────────────────────────────────────
+var envPath = Path.Combine(Directory.GetCurrentDirectory(), ".env");
+Dictionary<string, string?> envVars = new();
+
+if (File.Exists(envPath))
+{
+    envVars = DotNetEnv.Env.Load(envPath)
+        .GroupBy(kvp => kvp.Key)
+        .ToDictionary(g => g.Key, g => (string?)g.First().Value);
+}
+
+// ── Secure Configuration ─────────────────────────────────────
+// Map environment variables to configuration keys.
+// These override values in appsettings.json and are never committed.
+var envMapping = new Dictionary<string, string?>
+{
+    ["AiOptions:ApiKey"] = GetEnv("LEARNPATH_NVIDIA_API_KEY"),
+    ["AiOptions:Model"] = GetEnv("LEARNPATH_NVIDIA_MODEL"),
+    ["AiOptions:BaseUrl"] = GetEnv("LEARNPATH_NVIDIA_BASE_URL"),
+    ["JwtSettings:Secret"] = GetEnv("LEARNPATH_JWT_SECRET"),
+    ["ConnectionStrings:DefaultConnection"] = GetEnv("LEARNPATH_DB_CONNECTION"),
+};
+
+var validMapping = envMapping
+    .Where(kvp => kvp.Value is not null)
+    .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+builder.Configuration.AddInMemoryCollection(validMapping!);
+
+// Diagnostic: verify configuration loaded correctly (no values exposed)
+var cfgApiKey = builder.Configuration["AiOptions:ApiKey"];
+var cfgModel  = builder.Configuration["AiOptions:Model"];
+var cfgJwt    = builder.Configuration["JwtSettings:Secret"];
+var cfgDb     = builder.Configuration.GetConnectionString("DefaultConnection");
+Console.WriteLine($"[Config] AI API Key: {(cfgApiKey is { Length: > 0 } ? "✓ loaded" : "✗ MISSING")}");
+Console.WriteLine($"[Config] AI Model:   {(cfgModel is { Length: > 0 } ? "✓ loaded" : "✗ MISSING")}");
+Console.WriteLine($"[Config] JWT Secret: {(cfgJwt is { Length: > 0 } ? "✓ loaded" : "✗ MISSING")}");
+Console.WriteLine($"[Config] DB ConStr:  {(cfgDb is { Length: > 0 } ? "✓ loaded" : "✗ MISSING")}");
+
+// Validate required environment variables are set.
+var missingVars = new List<string>();
+
+if (string.IsNullOrWhiteSpace(GetEnv("LEARNPATH_NVIDIA_API_KEY")))
+    missingVars.Add("LEARNPATH_NVIDIA_API_KEY (NVIDIA API key for AI feedback)");
+
+if (string.IsNullOrWhiteSpace(GetEnv("LEARNPATH_JWT_SECRET")))
+    missingVars.Add("LEARNPATH_JWT_SECRET (JWT signing secret)");
+
+if (string.IsNullOrWhiteSpace(GetEnv("LEARNPATH_DB_CONNECTION")))
+    missingVars.Add("LEARNPATH_DB_CONNECTION (SQL Server database connection string)");
+
+if (missingVars.Count > 0)
+{
+    var message = "The following required environment variables are not set:\n"
+        + string.Join("\n", missingVars.Select(m => $"  - {m}"))
+        + "\n\nCreate a .env file in the backend/ directory with these values."
+        + "\nSee .env.example for the template.";
+    throw new InvalidOperationException(message);
+}
+
+// Helper: read from envVars dictionary first, fall back to process env vars
+string? GetEnv(string key) => envVars.GetValueOrDefault(key)
+    ?? Environment.GetEnvironmentVariable(key);
 
 // ── Database ──────────────────────────────────────────────────
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -96,6 +164,10 @@ builder.Services.AddCors(options =>
     });
 });
 /**/
+// ── Upload Configuration ──────────────────────────────────────
+builder.Services.Configure<UploadSettings>(
+    builder.Configuration.GetSection("UploadSettings"));
+
 // ── AutoMapper ────────────────────────────────────────────────
 builder.Services.AddAutoMapper(cfg => { }, typeof(Program).Assembly);
 // ── FluentValidation ──────────────────────────────────────────
@@ -121,7 +193,16 @@ builder.Services.AddScoped<IValidationService, JsonValidationService>();
 builder.Services.AddScoped<IQuestionBankService, QuestionBankService>();
 builder.Services.AddScoped<IQuizService, QuizService>();
 builder.Services.AddScoped<IAttemptService, AttemptService>();
+builder.Services.AddScoped<IFileValidationService, FileValidationService>();
+builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 
+// ── AI Services ────────────────────────────────────────────────
+builder.Services.Configure<AiOptions>(
+    builder.Configuration.GetSection("AiOptions"));
+builder.Services.AddHttpClient<IAiProvider, NvidiaProvider>();
+builder.Services.AddScoped<IAiFeedbackService, AiFeedbackService>();
+builder.Services.AddScoped<PromptBuilder>();
+builder.Services.AddScoped<AiResponseParser>();
 
 // ── Swagger ───────────────────────────────────────────────────
 builder.Services.AddEndpointsApiExplorer();

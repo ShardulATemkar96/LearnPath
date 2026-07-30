@@ -178,6 +178,23 @@ public class QuestionBankService : IQuestionBankService
         };
     }
 
+    public async Task<QuestionBankResponseDto?> RestoreAsync(int id)
+    {
+        var bank = await _context.QuestionBanks
+            .FirstOrDefaultAsync(qb => qb.Id == id);
+
+        if (bank is null) return null;
+
+        if (bank.Status != QuestionBankStatus.Archived)
+            throw new InvalidOperationException("Question Bank is already active.");
+
+        bank.Status = QuestionBankStatus.Active;
+        bank.ArchivedAt = null;
+
+        await _context.SaveChangesAsync();
+        return MapToDto(bank);
+    }
+
     public async Task<QuestionBankResponseDto?> DeleteAsync(int id)
     {
         var bank = await _context.QuestionBanks

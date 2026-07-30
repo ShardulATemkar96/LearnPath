@@ -72,6 +72,28 @@ export const createAssignmentThunk = createAsyncThunk(
   }
 );
 
+export const updateAssignmentThunk = createAsyncThunk(
+  "classrooms/updateAssignment",
+  async (
+    { classroomId, assignmentId, payload }: { classroomId: number; assignmentId: number; payload: CreateAssignmentRequest },
+    { rejectWithValue }
+  ) => {
+    try { return await classroomService.updateAssignment(classroomId, assignmentId, payload); }
+    catch (err: any) { return rejectWithValue(err.response?.data?.message ?? "Failed."); }
+  }
+);
+
+export const deleteAssignmentThunk = createAsyncThunk(
+  "classrooms/deleteAssignment",
+  async (
+    { classroomId, assignmentId }: { classroomId: number; assignmentId: number },
+    { rejectWithValue }
+  ) => {
+    try { await classroomService.deleteAssignment(classroomId, assignmentId); return assignmentId; }
+    catch (err: any) { return rejectWithValue(err.response?.data?.message ?? "Failed."); }
+  }
+);
+
 const classroomSlice = createSlice({
   name: "classrooms",
   initialState,
@@ -101,6 +123,19 @@ const classroomSlice = createSlice({
       .addCase(createAssignmentThunk.fulfilled, (s, a) => {
         if (s.selectedClassroom && a.payload)
           s.selectedClassroom.assignments.unshift(a.payload);
+      });
+
+    builder
+      .addCase(updateAssignmentThunk.fulfilled, (s, a) => {
+        if (!s.selectedClassroom || !a.payload) return;
+        const idx = s.selectedClassroom.assignments.findIndex((x) => x.id === a.payload.id);
+        if (idx !== -1) s.selectedClassroom.assignments[idx] = a.payload;
+      });
+
+    builder
+      .addCase(deleteAssignmentThunk.fulfilled, (s, a) => {
+        if (s.selectedClassroom)
+          s.selectedClassroom.assignments = s.selectedClassroom.assignments.filter((x) => x.id !== a.payload);
       });
   },
 });

@@ -34,7 +34,7 @@ export interface Assignment {
   submissionCount: number;
   hasSubmitted: boolean;
   mySubmissionId?: number;
-  myContentUrl?: string;
+  myOriginalFileName?: string;
   mySubmissionStatus?: string;
   myGrade?: number;
   myFeedback?: string;
@@ -46,11 +46,17 @@ export interface Submission {
   assignmentId: number;
   userId: string;
   userFullName: string;
-  contentUrl: string;
+  originalFileName?: string;
+  fileExtension?: string;
+  fileSize?: number;
+  mimeType?: string;
+  isLate?: boolean;
   status: string;
   feedback?: string;
   grade?: number;
   submittedAt: string;
+  publishedAt?: string;
+  aiFeedback?: AiFeedbackResponse;
 }
 
 export interface CreateClassroomRequest {
@@ -64,3 +70,29 @@ export interface CreateAssignmentRequest {
   description: string;
   dueDate: string;
 }
+
+export interface SuggestedScoreDto {
+  percentage: number;
+  marks: number;
+}
+
+export interface AiFeedbackResponse {
+  summary: string;
+  grammarFeedback: string;
+  rubricCoverage: string;
+  missingTopics: string;
+  suggestedScore: SuggestedScoreDto;
+  overallRecommendation: string;
+  disclaimer: string;
+  generatedAt: string;
+}
+
+export const SubmissionStatus = {
+  NotSubmitted: "NOT_SUBMITTED",
+  Submitted: "SUBMITTED",
+  UnderReview: "UNDER_REVIEW",
+  Reviewed: "REVIEWED",
+  Graded: "GRADED",
+  ReturnedForResubmission: "RETURNED_FOR_RESUBMISSION",
+  SubmittedAgain: "SUBMITTED_AGAIN",
+} as const;

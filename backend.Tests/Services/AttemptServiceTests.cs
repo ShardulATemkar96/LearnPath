@@ -3,6 +3,7 @@ using LearnPath.API.Data;
 using LearnPath.API.DTOs.Attempt;
 using LearnPath.API.Entities;
 using LearnPath.API.Services.Attempt;
+using LearnPath.API.Services.Progress;
 using LearnPath.API.Services.Validation;
 using LearnPath.Tests.Helpers;
 using Microsoft.EntityFrameworkCore;
@@ -31,7 +32,7 @@ public class AttemptServiceTests
         ctx.ModuleQuizzes.Add(EntityFactory.CreateModuleQuiz(moduleId: 1, quizId: 1));
         await ctx.SaveChangesAsync();
 
-        var svc = new AttemptService(ctx);
+        var svc = new AttemptService(ctx, new ProgressService(ctx));
         return (ctx, svc, userId, 1, 1);
     }
 
@@ -94,7 +95,7 @@ public class AttemptServiceTests
         ctx.QuizAttempts.Add(EntityFactory.CreateQuizAttempt(id: 1, userId: userId, quizId: 1,
             moduleId: 1, attemptNumber: 1, status: AttemptStatus.Evaluated, score: 3, percentage: 100, passed: true));
         await ctx.SaveChangesAsync();
-        var svc = new AttemptService(ctx);
+        var svc = new AttemptService(ctx, new ProgressService(ctx));
 
         var act = () => svc.StartAttemptAsync(1, 1, userId);
 
@@ -105,7 +106,7 @@ public class AttemptServiceTests
     public async Task StartAttemptAsync_MissingQuiz_Throws()
     {
         using var ctx = DbContextFactory.Create();
-        var svc = new AttemptService(ctx);
+        var svc = new AttemptService(ctx, new ProgressService(ctx));
 
         var act = () => svc.StartAttemptAsync(999, 1, "user");
 
@@ -119,7 +120,7 @@ public class AttemptServiceTests
         ctx.QuestionBanks.Add(EntityFactory.CreateQuestionBank(id: 1));
         ctx.Quizzes.Add(EntityFactory.CreateQuiz(id: 1, questionBankId: 1, status: QuizStatus.Draft));
         await ctx.SaveChangesAsync();
-        var svc = new AttemptService(ctx);
+        var svc = new AttemptService(ctx, new ProgressService(ctx));
 
         var act = () => svc.StartAttemptAsync(1, 1, "user");
 
@@ -133,7 +134,7 @@ public class AttemptServiceTests
         ctx.QuestionBanks.Add(EntityFactory.CreateQuestionBank(id: 1));
         ctx.Quizzes.Add(EntityFactory.CreateQuiz(id: 1, questionBankId: 1, status: QuizStatus.Published));
         await ctx.SaveChangesAsync();
-        var svc = new AttemptService(ctx);
+        var svc = new AttemptService(ctx, new ProgressService(ctx));
 
         var act = () => svc.StartAttemptAsync(1, 99, "user");
 
@@ -169,7 +170,7 @@ public class AttemptServiceTests
     public async Task GetAttemptAsync_Missing_Throws()
     {
         using var ctx = DbContextFactory.Create();
-        var svc = new AttemptService(ctx);
+        var svc = new AttemptService(ctx, new ProgressService(ctx));
 
         var act = () => svc.GetAttemptAsync(999, "user");
 
@@ -255,6 +256,53 @@ public class AttemptServiceTests
         var attempt = await ctx.QuizAttempts.FindAsync(started.AttemptId);
         attempt!.Status.Should().Be(AttemptStatus.Evaluated);
         attempt.SubmittedAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task SubmitAttemptAsync_Passed_MarksModuleCompleted()
+    {
+        var (ctx, svc, userId, quizId, moduleId) = await SeedHappyPathAsync();
+        var started = await svc.StartAttemptAsync(quizId, moduleId, userId);
+
+        var questions = await ctx.Questions.Include(q => q.Options).ToListAsync();
+        foreach (var q in questions)
+        {
+            var correct = q.Options.First(o => o.IsCorrect);
+            await svc.SaveAnswerAsync(started.AttemptId,
+                new SaveAnswerRequestDto { QuestionId = q.Id, OptionId = correct.Id }, userId);
+        }
+
+        await svc.SubmitAttemptAsync(started.AttemptId, userId);
+
+        var progress = await ctx.Progresses.FirstOrDefaultAsync(p => p.UserId == userId && p.ModuleId == moduleId);
+        progress.Should().NotBeNull();
+        progress!.IsCompleted.Should().BeTrue();
+
+        var module = await ctx.Modules.FindAsync(moduleId);
+        module!.Status.Should().Be(ModuleStatus.Completed);
+    }
+
+    [Fact]
+    public async Task SubmitAttemptAsync_Failed_DoesNotMarkModuleCompleted()
+    {
+        var (ctx, svc, userId, quizId, moduleId) = await SeedHappyPathAsync();
+        var started = await svc.StartAttemptAsync(quizId, moduleId, userId);
+
+        var questions = await ctx.Questions.Include(q => q.Options).ToListAsync();
+        foreach (var q in questions)
+        {
+            var wrong = q.Options.First(o => !o.IsCorrect);
+            await svc.SaveAnswerAsync(started.AttemptId,
+                new SaveAnswerRequestDto { QuestionId = q.Id, OptionId = wrong.Id }, userId);
+        }
+
+        await svc.SubmitAttemptAsync(started.AttemptId, userId);
+
+        var progress = await ctx.Progresses.FirstOrDefaultAsync(p => p.UserId == userId && p.ModuleId == moduleId);
+        progress.Should().BeNull();
+
+        var module = await ctx.Modules.FindAsync(moduleId);
+        module!.Status.Should().NotBe(ModuleStatus.Completed);
     }
 
     [Fact]
@@ -366,7 +414,7 @@ public class AttemptServiceTests
         ctx.Modules.Add(EntityFactory.CreateModule(id: 1));
         ctx.ModuleQuizzes.Add(EntityFactory.CreateModuleQuiz(moduleId: 1, quizId: 1));
         await ctx.SaveChangesAsync();
-        var svc = new AttemptService(ctx);
+        var svc = new AttemptService(ctx, new ProgressService(ctx));
 
         var result = await svc.StartAttemptAsync(1, 1, userId);
 
@@ -389,7 +437,7 @@ public class AttemptServiceTests
         ctx.Modules.Add(EntityFactory.CreateModule(id: 1));
         ctx.ModuleQuizzes.Add(EntityFactory.CreateModuleQuiz(moduleId: 1, quizId: 1));
         await ctx.SaveChangesAsync();
-        var svc = new AttemptService(ctx);
+        var svc = new AttemptService(ctx, new ProgressService(ctx));
 
         var result = await svc.StartAttemptAsync(1, 1, userId);
 

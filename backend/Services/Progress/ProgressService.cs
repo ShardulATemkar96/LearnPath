@@ -79,6 +79,41 @@ public class ProgressService : IProgressService
         };
     }
 
+    public async Task MarkModuleCompleteFromQuizAsync(string userId, int moduleId)
+    {
+        var module = await _context.Modules
+            .Include(m => m.LearningPath)
+            .FirstOrDefaultAsync(m => m.Id == moduleId)
+            ?? throw new KeyNotFoundException("Module not found.");
+
+        var existing = await _context.Progresses
+            .FirstOrDefaultAsync(p => p.UserId == userId && p.ModuleId == moduleId);
+
+        if (existing is not null)
+        {
+            if (existing.IsCompleted) return;
+
+            existing.IsCompleted = true;
+            existing.CompletedAt = DateTime.UtcNow;
+            existing.UpdatedAt   = DateTime.UtcNow;
+        }
+        else
+        {
+            existing = new Entities.Progress
+            {
+                UserId      = userId,
+                ModuleId    = moduleId,
+                IsCompleted = true,
+                CompletedAt = DateTime.UtcNow,
+            };
+            await _context.Progresses.AddAsync(existing);
+        }
+
+        await _context.SaveChangesAsync();
+
+        await TryIssueCertificateAsync(module.LearningPathId, userId);
+    }
+
     public async Task<List<PathProgressSummaryDto>> GetUserProgressAsync(string userId)
     {
         var enrolledPathIds = await _context.Progresses

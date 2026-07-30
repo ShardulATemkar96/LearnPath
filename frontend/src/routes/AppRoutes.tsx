@@ -19,6 +19,7 @@ const LearningPathDetailPage = lazy(() => import("../pages/learningPaths/Learnin
 const LessonPage             = lazy(() => import("../pages/learningPaths/LessonPage"));
 const ClassroomPage          = lazy(() => import("../pages/classroom/ClassroomPage"));
 const ClassroomDetailPage    = lazy(() => import("../pages/classroom/ClassroomDetailPage"));
+const AssignmentDetailPage   = lazy(() => import("../pages/classroom/AssignmentDetailPage"));
 const AnalyticsPage          = lazy(() => import("../pages/analytics/AnalyticsPage"));
 const CommunityPage          = lazy(() => import("../pages/community/CommunityPage"));
 const CommunityPostPage      = lazy(() => import("../pages/community/CommunityPostPage"));
@@ -62,6 +63,7 @@ const AppRoutes = () => (
             <Route path={ROUTES.LESSON} element={<LessonPage />} />
             <Route path={ROUTES.CLASSROOM} element={<ClassroomPage />} />
             <Route path={ROUTES.CLASSROOM_DETAIL} element={<ClassroomDetailPage />} />
+            <Route path={ROUTES.ASSIGNMENT_DETAIL} element={<AssignmentDetailPage />} />
             <Route path={ROUTES.ANALYTICS} element={<AnalyticsPage />} />
             <Route path={ROUTES.COMMUNITY} element={<CommunityPage />} />
             <Route path={ROUTES.COMMUNITY_DETAIL} element={<CommunityPostPage />} />
