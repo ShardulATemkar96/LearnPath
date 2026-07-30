@@ -30,6 +30,69 @@
 - **Administrators** who manage users, classrooms, and platform-wide analytics
 
 **Why it matters:** LearnPath combines the structure of academic course management with the flexibility of modern self-paced platforms — all in one open-source package with a clean, modern UI.
+---
+
+## 🔧 Repository Setup
+
+Follow these steps to get the project running securely on your local machine.
+
+### 1. Clone
+
+```bash
+git clone https://github.com/yourusername/LearnPath.git
+cd LearnPath
+```
+
+### 2. Configure Environment Variables
+
+Sensitive values (API keys, JWT secret, database connection) are loaded from a local `.env` file.
+
+```bash
+# From the backend/ directory
+cd backend
+cp .env.example .env
+```
+
+Then open `backend/.env` and fill in your real values:
+
+```text
+LEARNPATH_NVIDIA_API_KEY=nvapi-your-key
+LEARNPATH_NVIDIA_MODEL=nvidia/nvidia-nemotron-nano-9b-v2
+LEARNPATH_GROQ_API_KEY=gsk-your-key
+LEARNPATH_GROQ_MODEL=groq-model-name
+LEARNPATH_JWT_SECRET=a-32-plus-character-secret
+LEARNPATH_DB_CONNECTION=Server=(localdb)\mssqllocaldb;Database=LearnPathDb;Trusted_Connection=True;TrustServerCertificate=True
+```
+
+> `.env` is ignored by Git and must **never** be committed. Only `.env.example` (which contains empty placeholders) is tracked.
+
+Available variables are documented in [`backend/.env.example`](./backend/.env.example).
+
+### 3. Run Database Migrations
+
+```bash
+cd backend
+dotnet ef database update
+```
+
+### 4. Start Backend
+
+```bash
+cd backend
+dotnet run
+```
+
+API: `http://localhost:5000` | Swagger: `http://localhost:5000/swagger`
+
+### 5. Start Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Frontend: `http://localhost:5173`
 
 ---
 
@@ -54,6 +117,9 @@ cd LearnPath
 ```bash
 # Navigate to backend
 cd backend
+
+# Copy env template and fill in your secrets
+cp .env.example .env
 
 # Restore dependencies
 dotnet restore
@@ -93,10 +159,10 @@ docker run -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=YourStr0ngP@ss" \
   -p 1433:1433 -d mcr.microsoft.com/mssql/server:2022-latest
 ```
 
-Then update `appsettings.json` with the connection string:
+Then set `LEARNPATH_DB_CONNECTION` in `backend/.env`:
 
-```json
-"DefaultConnection": "Server=localhost,1433;Database=LearnPath;User Id=sa;Password=YourStr0ngP@ss;TrustServerCertificate=true"
+```
+LEARNPATH_DB_CONNECTION=Server=localhost,1433;Database=LearnPath;User Id=sa;Password=YourStr0ngP@ss;TrustServerCertificate=true
 ```
 
 ### Docker Compose (Full Stack)
@@ -111,14 +177,22 @@ This starts SQL Server, the .NET API (port 5000), and the React frontend served 
 
 ### Environment Variables
 
-Copy `.env.example` and configure:
+For **Docker deployment**, copy the root `.env.example` and configure:
 
 ```bash
-DB_SA_PASSWORD=YourStrongPassword123!
-JWT_SECRET=32CharactersW1th2theBestyoucan5798638aeed
-FRONTEND_URL=http://localhost
-VITE_API_BASE_URL=http://localhost:5000/api/v1
+cp .env.example .env
 ```
+
+Required Docker variables:
+
+| Variable | Purpose |
+|----------|---------|
+| `DB_SA_PASSWORD` | SQL Server SA password for the Docker container |
+| `JWT_SECRET` | JWT signing secret (32+ characters) |
+| `FRONTEND_URL` | Frontend origin for CORS |
+| `VITE_API_BASE_URL` | API URL used by the frontend build |
+
+For **backend development**, copy `backend/.env.example` → `backend/.env` instead (see [Repository Setup](#-repository-setup)).
 
 ### Default Admin Credentials
 
@@ -191,7 +265,10 @@ After seeding, log in with:
 
 ```
 LearnPath/
-├── backend/                          # .NET 10 Web API
+├── backend/
+│   ├── .env.example                  # Backend env template (tracked)
+│   ├── .env                          # Local secrets (gitignored)
+│   ├── ...                          # .NET 10 Web API
 │   ├── Algorithms/Graph/
 │   │   └── DagValidator.cs           # DAG cycle detection & topological sort
 │   ├── Authentication/Jwt/
@@ -251,7 +328,7 @@ LearnPath/
 ├── backend.Tests/                    # xUnit test project
 ├── .github/workflows/                # CI + CD pipelines
 ├── docker-compose.yml                # Full-stack Docker deployment
-└── .env.example                      # Environment template
+└── .env.example                      # Docker environment template
 ```
 
 ---
