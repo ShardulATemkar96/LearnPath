@@ -4,6 +4,7 @@ using LearnPath.API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LearnPath.API.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260729070331_RemoveContentUrlAddFileFields")]
+    partial class RemoveContentUrlAddFileFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1001,9 +1004,6 @@ namespace LearnPath.API.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
-                    b.Property<DateTime?>("PublishedAt")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -1030,69 +1030,6 @@ namespace LearnPath.API.Migrations
                         .IsUnique();
 
                     b.ToTable("Submissions");
-                });
-
-            modelBuilder.Entity("LearnPath.API.Entities.SubmissionAiFeedback", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Disclaimer")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<DateTime>("GeneratedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("GrammarFeedback")
-                        .IsRequired()
-                        .HasMaxLength(4000)
-                        .HasColumnType("nvarchar(4000)");
-
-                    b.Property<string>("MissingTopics")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
-
-                    b.Property<string>("OverallRecommendation")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
-
-                    b.Property<string>("RawResponse")
-                        .IsRequired()
-                        .HasMaxLength(16000)
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("RubricCoverage")
-                        .IsRequired()
-                        .HasMaxLength(4000)
-                        .HasColumnType("nvarchar(4000)");
-
-                    b.Property<int>("SubmissionId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("SuggestedScoreMarks")
-                        .HasColumnType("int");
-
-                    b.Property<int>("SuggestedScorePercentage")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Summary")
-                        .IsRequired()
-                        .HasMaxLength(4000)
-                        .HasColumnType("nvarchar(4000)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SubmissionId")
-                        .IsUnique();
-
-                    b.ToTable("SubmissionAiFeedbacks");
                 });
 
             modelBuilder.Entity("LearnPath.API.Entities.User", b =>
@@ -1712,17 +1649,6 @@ namespace LearnPath.API.Migrations
                     b.Navigation("Assignment");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("LearnPath.API.Entities.SubmissionAiFeedback", b =>
-                {
-                    b.HasOne("LearnPath.API.Entities.Submission", "Submission")
-                        .WithOne()
-                        .HasForeignKey("LearnPath.API.Entities.SubmissionAiFeedback", "SubmissionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Submission");
                 });
 
             modelBuilder.Entity("LearnPath.API.Entities.UserClassroom", b =>

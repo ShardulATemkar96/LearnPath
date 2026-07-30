@@ -34,6 +34,7 @@ public class ApplicationDbContext : IdentityDbContext<User>
     public DbSet<PostVote> PostVotes => Set<PostVote>();
     public DbSet<CommentVote> CommentVotes => Set<CommentVote>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<SubmissionAiFeedback> SubmissionAiFeedbacks => Set<SubmissionAiFeedback>();
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
