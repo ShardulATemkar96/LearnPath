@@ -1,64 +1,63 @@
-﻿import { useEffect, useState, useCallback } from "react";
+﻿import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Alert, Box, Button, Chip, CircularProgress,
-  Divider, IconButton, Skeleton, Stack,
+  Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle,
+  Divider, IconButton, Skeleton, Snackbar, Stack,
   TextField, Tooltip, Typography,
 } from "@mui/material";
 import {
   ArrowBackRounded, ThumbUpRounded,
   ThumbDownRounded, LockRounded,
+  EditRounded, DeleteRounded, PushPinRounded,
 } from "@mui/icons-material";
 import { AppDispatch } from "../../redux/store";
 import {
-  fetchPostById, clearSelectedPost, updatePostVote,
+  fetchPostById, clearSelectedPost, votePostThunk,
+  createCommentThunk, deletePostThunk,
 } from "../../redux/slices/communitySlice";
 import {
   selectSelectedPost, selectPostDetailLoading,
   selectCommunityError,
 } from "../../redux/selectors/communitySelectors";
-import { communityService } from "../../services/communityService";
-import { Comment } from "../../types/community.types";
 import CommentItem from "../../components/community/CommentItem/CommentItem";
+import CreatePostModal from "../../components/community/CreatePostModal/CreatePostModal";
+import CodeBlock from "../../components/community/CodeBlock/CodeBlock";
 import { dateUtils } from "../../utils/dateUtils";
 import { useAuth } from "../../hooks/useAuth";
-import { ROUTES } from "../../constants/routes";
 
 const CommunityPostPage = () => {
   const { id }     = useParams<{ id: string }>();
   const dispatch   = useDispatch<AppDispatch>();
   const navigate   = useNavigate();
-  const { user }   = useAuth();
+  const { user, isAdmin } = useAuth();
 
   const post    = useSelector(selectSelectedPost);
   const loading = useSelector(selectPostDetailLoading);
   const error   = useSelector(selectCommunityError);
 
-  const [comments, setComments]   = useState<Comment[]>([]);
-  const [newComment, setNewComment] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [newComment, setNewComment]   = useState("");
+  const [submitting, setSubmitting]   = useState(false);
   const [commentError, setCommentError] = useState("");
+  const [editOpen,    setEditOpen]    = useState(false);
+  const [deleteOpen,  setDeleteOpen]  = useState(false);
+  const [deleting,    setDeleting]    = useState(false);
+  const [toast,       setToast]       = useState("");
+
+  const notify = (msg: string) => setToast(msg);
 
   useEffect(() => {
     if (id) dispatch(fetchPostById(Number(id)));
     return () => { dispatch(clearSelectedPost()); };
   }, [id, dispatch]);
 
-  useEffect(() => {
-    if (post?.comments) setComments(post.comments);
-  }, [post]);
-
   const handleVotePost = async (isUpvote: boolean) => {
     if (!post) return;
-    try {
-      const newCount = await communityService.votePost(post.id, isUpvote);
-      const newVote  =
-        post.userVote === (isUpvote ? 1 : -1) ? 0 : (isUpvote ? 1 : -1);
-      dispatch(updatePostVote({
-        postId: post.id, upvoteCount: newCount, userVote: newVote,
-      }));
-    } catch { /* silent */ }
+    const result = await dispatch(votePostThunk({ postId: post.id, isUpvote }));
+    if ((result as any).meta?.requestStatus === "fulfilled") {
+      notify("Vote updated.");
+    }
   };
 
   const handleAddComment = async () => {
@@ -67,39 +66,29 @@ const CommunityPostPage = () => {
     }
     if (!post) return;
     setSubmitting(true); setCommentError("");
-    try {
-      const added = await communityService.addComment(post.id, {
-        content: newComment,
-      });
-      setComments((prev) => [added, ...prev]);
+    const result = await dispatch(createCommentThunk({
+      postId: post.id, payload: { content: newComment },
+    }));
+    setSubmitting(false);
+    if ((result as any).meta?.requestStatus === "fulfilled") {
       setNewComment("");
-    } catch (e: any) {
-      setCommentError(e.response?.data?.message ?? "Failed to post comment.");
-    } finally { setSubmitting(false); }
+      notify("Comment added.");
+    } else {
+      setCommentError((result as any).payload ?? "Failed to post comment.");
+    }
   };
 
-  const handleReplyAdded = useCallback(
-    (reply: Comment, parentId: number) => {
-      setComments((prev) =>
-        prev.map((c) =>
-          c.id === parentId
-            ? { ...c, replies: [...(c.replies ?? []), reply] }
-            : c
-        )
-      );
-    },
-    []
-  );
-
-  const handleCommentDeleted = useCallback((commentId: number) => {
-    setComments((prev) => {
-      const removeDeep = (list: Comment[]): Comment[] =>
-        list
-          .filter((c) => c.id !== commentId)
-          .map((c) => ({ ...c, replies: removeDeep(c.replies ?? []) }));
-      return removeDeep(prev);
-    });
-  }, []);
+  const handleDeletePost = async () => {
+    if (!post) return;
+    setDeleting(true);
+    const result = await dispatch(deletePostThunk(post.id));
+    setDeleting(false);
+    if ((result as any).meta?.requestStatus === "fulfilled") {
+      setDeleteOpen(false);
+      notify("Post deleted.");
+      navigate(-1);
+    }
+  };
 
   if (loading) return (
     <Box>
@@ -116,14 +105,16 @@ const CommunityPostPage = () => {
 
   if (!post) return null;
 
+  const canModerate = post.authorId === user?.userId || isAdmin;
+
   return (
     <Box>
       <Button
         startIcon={<ArrowBackRounded />}
-        onClick={() => navigate(ROUTES.COMMUNITY)}
+        onClick={() => navigate(-1)}
         sx={{ mb: 3, color: "text.secondary" }}
       >
-        Community
+        Back
       </Button>
 
       <Box sx={{
@@ -140,6 +131,16 @@ const CommunityPostPage = () => {
               size="small"
               sx={{ fontWeight: 600, fontSize: "0.72rem" }}
             />
+            {post.isPinned && (
+              <Tooltip title="Pinned">
+                <Stack direction="row" alignItems="center" spacing={0.5}>
+                  <PushPinRounded sx={{ fontSize: 15, color: "primary.main" }} />
+                  <Typography variant="caption" color="text.secondary">
+                    Pinned
+                  </Typography>
+                </Stack>
+              </Tooltip>
+            )}
             {post.isLocked && (
               <Stack direction="row" alignItems="center" spacing={0.5}>
                 <LockRounded sx={{ fontSize: 15, color: "text.disabled" }} />
@@ -148,9 +149,22 @@ const CommunityPostPage = () => {
                 </Typography>
               </Stack>
             )}
-            <Typography variant="caption" color="text.secondary" ml="auto">
-              by {post.authorName} · {dateUtils.format(post.createdAt)}
-            </Typography>
+            <Stack direction="row" alignItems="center" spacing={1} ml="auto">
+              <Typography variant="caption" color="text.secondary">
+                by {post.authorIsDeleted ? "Deleted User" : post.authorName} ·{" "}
+                {post.editedAt
+                  ? <>Edited · {dateUtils.timeAgo(post.editedAt)}</>
+                  : dateUtils.format(post.createdAt)}
+              </Typography>
+              {post.authorIsDeleted && (
+                <Chip
+                  label="Deleted"
+                  size="small"
+                  color="error"
+                  sx={{ height: 18, fontSize: "0.6rem", fontWeight: 700 }}
+                />
+              )}
+            </Stack>
           </Stack>
 
           <Typography variant="h4" fontWeight={700} lineHeight={1.3}>
@@ -167,6 +181,20 @@ const CommunityPostPage = () => {
             />
           )}
 
+          {post.tags && (
+            <Stack direction="row" spacing={1} flexWrap="wrap" gap={0.5}>
+              {post.tags.split(",").map((tag) => tag.trim()).filter(Boolean).map((tag) => (
+                <Chip
+                  key={tag}
+                  label={tag}
+                  size="small"
+                  variant="outlined"
+                  sx={{ fontSize: "0.7rem", fontWeight: 600 }}
+                />
+              ))}
+            </Stack>
+          )}
+
           <Divider />
 
           <Typography
@@ -177,6 +205,13 @@ const CommunityPostPage = () => {
           >
             {post.content}
           </Typography>
+
+          {post.codeSnippet && (
+            <CodeBlock
+              code={post.codeSnippet}
+              language={post.programmingLanguage}
+            />
+          )}
 
           <Divider />
 
@@ -197,8 +232,27 @@ const CommunityPostPage = () => {
               <ThumbDownRounded />
             </IconButton>
             <Typography variant="body2" color="text.secondary" ml={2}>
-              {post.viewCount} views · {comments.length} comments
+              {post.viewCount} views · {post.commentCount} comments
             </Typography>
+
+            {canModerate && (
+              <>
+                <IconButton
+                  onClick={() => setEditOpen(true)}
+                  sx={{ ml: "auto", color: "text.secondary" }}
+                >
+                  <EditRounded />
+                </IconButton>
+                <Tooltip title="Delete">
+                  <IconButton
+                    onClick={() => setDeleteOpen(true)}
+                    sx={{ color: "error.main" }}
+                  >
+                    <DeleteRounded />
+                  </IconButton>
+                </Tooltip>
+              </>
+            )}
           </Stack>
         </Stack>
       </Box>
@@ -245,10 +299,10 @@ const CommunityPostPage = () => {
       )}
 
       <Typography variant="h6" fontWeight={700} mb={2}>
-        Comments ({comments.length})
+        Comments ({post.commentCount})
       </Typography>
 
-      {comments.length === 0 ? (
+      {post.comments.length === 0 ? (
         <Box sx={{ py: 5, textAlign: "center" }}>
           <Typography variant="body2" color="text.secondary">
             No comments yet. Be the first!
@@ -256,17 +310,64 @@ const CommunityPostPage = () => {
         </Box>
       ) : (
         <Stack spacing={2.5}>
-          {comments.map((c) => (
+          {post.comments.map((c) => (
             <CommentItem
               key={c.id}
               comment={c}
               postId={post.id}
-              onReplyAdded={handleReplyAdded}
-              onDeleted={handleCommentDeleted}
+              onNotify={notify}
             />
           ))}
         </Stack>
       )}
+
+      <CreatePostModal
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        post={post}
+        onSaved={() => notify("Post updated.")}
+      />
+
+      <Dialog
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        maxWidth="xs" fullWidth
+        PaperProps={{ sx: { borderRadius: 4 } }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>Delete Post</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            This will permanently delete this post. This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button
+            onClick={() => setDeleteOpen(false)}
+            disabled={deleting}
+            sx={{ borderRadius: 2 }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleDeletePost}
+            disabled={deleting}
+            sx={{ borderRadius: 2 }}
+          >
+            {deleting
+              ? <CircularProgress size={20} />
+              : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={!!toast}
+        autoHideDuration={3000}
+        onClose={() => setToast("")}
+        message={toast}
+      />
     </Box>
   );
 };

@@ -5,59 +5,87 @@ import {
 } from "@mui/material";
 import {
   ThumbUpRounded, ReplyRounded,
-  ThumbDownRounded, DeleteRounded,
+  ThumbDownRounded, DeleteRounded, EditRounded, FlagRounded,
+  ExpandMoreRounded, ExpandLessRounded,
 } from "@mui/icons-material";
+import { useDispatch } from "react-redux";
 import { Comment } from "../../../types/community.types";
-import { communityService } from "../../../services/communityService";
+import {
+  voteCommentThunk, updateCommentThunk,
+  deleteCommentThunk, createCommentThunk,
+} from "../../../redux/slices/communitySlice";
+import { AppDispatch } from "../../../redux/store";
 import { dateUtils } from "../../../utils/dateUtils";
 import { useAuth } from "../../../hooks/useAuth";
+import ReportDialog from "../ReportDialog/ReportDialog";
 
 interface CommentItemProps {
   comment: Comment;
   postId: number;
-  onReplyAdded: (comment: Comment, parentId: number) => void;
-  onDeleted: (commentId: number) => void;
+  onNotify: (msg: string) => void;
   depth?: number;
 }
 
 const CommentItem = ({
-  comment, postId, onReplyAdded, onDeleted, depth = 0,
+  comment, postId, onNotify, depth = 0,
 }: CommentItemProps) => {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
+  const dispatch = useDispatch<AppDispatch>();
+
   const [replying,  setReplying]  = useState(false);
   const [replyText, setReplyText] = useState("");
-  const [votes, setVotes]         = useState(comment.upvoteCount);
-  const [userVote, setUserVote]   = useState(comment.userVote);
+  const [editing,   setEditing]   = useState(false);
+  const [editText,  setEditText]  = useState(comment.content);
+  const [collapsed, setCollapsed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+
+  const canModerate = comment.authorId === user?.userId || isAdmin;
+  const hasReplies  = (comment.replies?.length ?? 0) > 0;
 
   const handleVote = async (isUpvote: boolean) => {
-    try {
-      const newCount = await communityService.voteComment(comment.id, isUpvote);
-      setVotes(newCount);
-      setUserVote(userVote === (isUpvote ? 1 : -1) ? 0 : (isUpvote ? 1 : -1));
-    } catch { /* silent */ }
+    const result = await dispatch(voteCommentThunk({
+      commentId: comment.id, isUpvote,
+    }));
+    if ((result as any).meta?.requestStatus === "fulfilled") {
+      onNotify("Vote updated.");
+    }
   };
 
   const handleReply = async () => {
     if (!replyText.trim()) return;
     setSubmitting(true);
-    try {
-      const newComment = await communityService.addComment(postId, {
-        content: replyText,
-        parentCommentId: comment.id,
-      });
-      onReplyAdded(newComment, comment.id);
+    const result = await dispatch(createCommentThunk({
+      postId,
+      payload: { content: replyText, parentCommentId: comment.id },
+    }));
+    setSubmitting(false);
+    if ((result as any).meta?.requestStatus === "fulfilled") {
       setReplyText("");
       setReplying(false);
-    } finally { setSubmitting(false); }
+      onNotify("Reply added.");
+    }
+  };
+
+  const handleEditSave = async () => {
+    if (!editText.trim()) return;
+    setSubmitting(true);
+    const result = await dispatch(updateCommentThunk({
+      commentId: comment.id, content: editText,
+    }));
+    setSubmitting(false);
+    if ((result as any).meta?.requestStatus === "fulfilled") {
+      setEditing(false);
+      onNotify("Comment updated.");
+    }
   };
 
   const handleDelete = async () => {
     if (!window.confirm("Delete this comment?")) return;
-    try {
-      await communityService.deleteComment(comment.id);
-      onDeleted(comment.id);
-    } catch { /* silent */ }
+    const result = await dispatch(deleteCommentThunk(comment.id));
+    if ((result as any).meta?.requestStatus === "fulfilled") {
+      onNotify("Comment deleted.");
+    }
   };
 
   return (
@@ -90,46 +118,126 @@ const CommentItem = ({
           >
             <Stack direction="row" justifyContent="space-between"
               alignItems="center" mb={0.75}>
-              <Typography variant="body2" fontWeight={700}>
-                {comment.authorName}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {dateUtils.timeAgo(comment.createdAt)}
-              </Typography>
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <Stack direction="row" alignItems="center" spacing={0.5}>
+                  <Typography variant="body2" fontWeight={700}>
+                    {comment.authorIsDeleted ? "Deleted User" : comment.authorName}
+                  </Typography>
+                  {comment.authorIsDeleted && (
+                    <Box
+                      component="span"
+                      sx={{
+                        fontSize: "0.6rem", fontWeight: 700, color: "#fff",
+                        bgcolor: "error.main", px: 0.7, py: 0.2, borderRadius: 1,
+                      }}
+                    >
+                      Deleted
+                    </Box>
+                  )}
+                </Stack>
+                <Typography variant="caption" color="text.secondary">
+                  {comment.editedAt
+                    ? <>Edited · {dateUtils.timeAgo(comment.editedAt)}</>
+                    : dateUtils.timeAgo(comment.createdAt)}
+                </Typography>
+              </Stack>
+              {hasReplies && (
+                <Tooltip title={collapsed ? "Show replies" : "Hide replies"}>
+                  <IconButton
+                    size="small"
+                    onClick={() => setCollapsed((c) => !c)}
+                    sx={{ p: 0.3 }}
+                  >
+                    {collapsed
+                      ? <ExpandMoreRounded sx={{ fontSize: 16 }} />
+                      : <ExpandLessRounded sx={{ fontSize: 16 }} />}
+                  </IconButton>
+                </Tooltip>
+              )}
             </Stack>
 
-            <Typography variant="body2" color="text.primary" lineHeight={1.6}>
-              {comment.content}
-            </Typography>
+            {editing ? (
+              <Stack spacing={1}>
+                <TextField
+                  size="small" fullWidth multiline rows={3}
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  autoFocus
+                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2.5 } }}
+                />
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    size="small" variant="contained"
+                    onClick={handleEditSave} disabled={submitting}
+                    sx={{
+                      borderRadius: 2,
+                      background: "linear-gradient(135deg, #6C63FF, #9D97FF)",
+                    }}
+                  >
+                    {submitting ? "..." : "Save"}
+                  </Button>
+                  <Button
+                    size="small" variant="outlined"
+                    onClick={() => setEditing(false)}
+                    sx={{ borderRadius: 2 }}
+                  >
+                    Cancel
+                  </Button>
+                </Stack>
+              </Stack>
+            ) : (
+              <Typography variant="body2" color="text.primary" lineHeight={1.6}>
+                {comment.content}
+              </Typography>
+            )}
 
             {/* Actions */}
             <Stack direction="row" alignItems="center"
               spacing={0.5} mt={1.25}>
               <IconButton size="small"
                 onClick={() => handleVote(true)}
-                sx={{ color: userVote === 1 ? "primary.main" : "text.secondary", p: 0.4 }}>
+                sx={{ color: comment.userVote === 1 ? "primary.main" : "text.secondary", p: 0.4 }}>
                 <ThumbUpRounded sx={{ fontSize: 15 }} />
               </IconButton>
               <Typography variant="caption" fontWeight={600}
-                color={userVote !== 0 ? "primary.main" : "text.secondary"}>
-                {votes}
+                color={comment.userVote !== 0 ? "primary.main" : "text.secondary"}>
+                {comment.upvoteCount}
               </Typography>
               <IconButton size="small"
                 onClick={() => handleVote(false)}
-                sx={{ color: userVote === -1 ? "error.main" : "text.secondary", p: 0.4 }}>
+                sx={{ color: comment.userVote === -1 ? "error.main" : "text.secondary", p: 0.4 }}>
                 <ThumbDownRounded sx={{ fontSize: 15 }} />
               </IconButton>
 
-              {depth === 0 && (
-                <Button size="small"
-                  startIcon={<ReplyRounded sx={{ fontSize: 14 }} />}
-                  onClick={() => setReplying((r) => !r)}
-                  sx={{ fontSize: "0.72rem", ml: 0.5, borderRadius: 2 }}>
-                  Reply
-                </Button>
+              <Button size="small"
+                startIcon={<ReplyRounded sx={{ fontSize: 14 }} />}
+                onClick={() => setReplying((r) => !r)}
+                sx={{ fontSize: "0.72rem", ml: 0.5, borderRadius: 2 }}>
+                Reply
+              </Button>
+
+              <Tooltip title="Report">
+                <IconButton size="small"
+                  onClick={() => setReportOpen(true)}
+                  sx={{ color: "text.secondary", p: 0.4 }}>
+                  <FlagRounded sx={{ fontSize: 15 }} />
+                </IconButton>
+              </Tooltip>
+
+              {canModerate && (
+                <Tooltip title="Edit">
+                  <IconButton size="small"
+                    onClick={() => {
+                      setEditText(comment.content);
+                      setEditing((e) => !e);
+                    }}
+                    sx={{ color: "text.secondary", p: 0.4 }}>
+                    <EditRounded sx={{ fontSize: 15 }} />
+                  </IconButton>
+                </Tooltip>
               )}
 
-              {user?.userId === comment.authorId && (
+              {canModerate && (
                 <Tooltip title="Delete">
                   <IconButton size="small"
                     onClick={handleDelete}
@@ -166,16 +274,22 @@ const CommentItem = ({
         )}
 
         {/* Nested replies */}
-        {comment.replies?.map((reply) => (
+        {!collapsed && comment.replies?.map((reply) => (
           <CommentItem
             key={reply.id}
             comment={reply}
             postId={postId}
-            onReplyAdded={onReplyAdded}
-            onDeleted={onDeleted}
+            onNotify={onNotify}
             depth={depth + 1}
           />
         ))}
+
+        <ReportDialog
+          open={reportOpen}
+          onClose={() => setReportOpen(false)}
+          target={{ type: "comment", id: comment.id }}
+          onReported={onNotify}
+        />
       </Stack>
     </Box>
   );

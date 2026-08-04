@@ -1,70 +1,56 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Alert, Box, Button, Chip, MenuItem, Select, Skeleton, Snackbar,
   Stack, Typography,
 } from "@mui/material";
-import { AddRounded, GroupsRounded, TagRounded } from "@mui/icons-material";
+import { AddRounded, GroupsRounded } from "@mui/icons-material";
 import { AppDispatch } from "../../redux/store";
-import {
-  fetchPosts,
-} from "../../redux/slices/communitySlice";
+import { fetchPosts } from "../../redux/slices/communitySlice";
 import {
   selectPosts, selectCommunityLoading,
   selectCommunityError, selectTotalPages,
   selectCurrentPage,
 } from "../../redux/selectors/communitySelectors";
-import {
-  COMMUNITY_CATEGORIES, POST_FILTERS, PostFilter, PostSortOrder,
-} from "../../types/community.types";
-import PostCard   from "../../components/community/PostCard/PostCard";
+import { PostFilter, PostSortOrder } from "../../types/community.types";
+import PostCard from "../../components/community/PostCard/PostCard";
 import CreatePostModal from "../../components/community/CreatePostModal/CreatePostModal";
-import SearchBar  from "../../components/common/SearchBar/SearchBar";
+import SearchBar from "../../components/common/SearchBar/SearchBar";
 import PaginationBar from "../../components/common/PaginationBar/PaginationBar";
 import EmptyState from "../../components/common/EmptyState/EmptyState";
 import CommunityNav from "../../components/community/CommunityNav/CommunityNav";
 import { useDebounce } from "../../hooks/useDebounce";
+import { useAuth } from "../../hooks/useAuth";
 
-// ── Main Page ─────────────────────────────────────────────────
-const CommunityPage = () => {
+const CommunityMyPostsPage = () => {
   const dispatch   = useDispatch<AppDispatch>();
+  const { user }   = useAuth();
   const posts      = useSelector(selectPosts);
   const loading    = useSelector(selectCommunityLoading);
   const error      = useSelector(selectCommunityError);
   const totalPages = useSelector(selectTotalPages);
   const page       = useSelector(selectCurrentPage);
 
-  const [category,    setCategory]    = useState("All");
-  const [search,      setSearch]      = useState("");
-  const [createOpen,  setCreateOpen]  = useState(false);
-  const [toast,       setToast]       = useState("");
-  const [sort,        setSort]        = useState<PostSortOrder>("Newest");
-  const [filter,      setFilter]      = useState<PostFilter>("All Posts");
-  const [tag,         setTag]         = useState("");
+  const [category,   setCategory]   = useState("All");
+  const [search,     setSearch]     = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [toast,      setToast]      = useState("");
+  const [sort,       setSort]       = useState<PostSortOrder>("Newest");
+  const [filter] = useState<PostFilter>("My Posts");
 
   const debouncedSearch = useDebounce(search, 400);
 
   useEffect(() => {
     dispatch(fetchPosts({
-      category, search: debouncedSearch, page: 1, sort, filter, tag,
+      category, search: debouncedSearch, page: 1, sort, filter,
     }));
-  }, [category, debouncedSearch, sort, filter, tag, dispatch]);
+  }, [category, debouncedSearch, sort, filter, dispatch]);
 
   const handlePageChange = (p: number) => {
     dispatch(fetchPosts({
-      category, search: debouncedSearch, page: p, sort, filter, tag,
+      category, search: debouncedSearch, page: p, sort, filter,
     }));
   };
-
-  const emptyTitle = posts.length === 0
-    ? tag
-      ? "No posts with this tag."
-      : search
-        ? "No search results."
-        : filter !== "All Posts"
-          ? "No matching posts."
-          : "No posts found."
-    : "No posts yet.";
 
   return (
     <Box>
@@ -74,33 +60,31 @@ const CommunityPage = () => {
       <Stack direction="row" alignItems="center"
         justifyContent="space-between" mb={4} flexWrap="wrap" gap={2}>
         <Box>
-          <Typography variant="h4" fontWeight={700}>All Posts</Typography>
+          <Typography variant="h4" fontWeight={700}>My Posts</Typography>
           <Typography variant="body2" color="text.secondary" mt={0.5}>
-            Every post across all community groups.
+            Posts you've created across all community groups.
           </Typography>
         </Box>
-        <Stack direction="row" spacing={1} flexWrap="wrap">
-          <Button
-            variant="contained" startIcon={<AddRounded />}
-            onClick={() => setCreateOpen(true)}
-            sx={{
-              background: "linear-gradient(135deg, #6C63FF, #9D97FF)",
-              borderRadius: 2,
-            }}
-          >
-            New Post
-          </Button>
-        </Stack>
+        <Button
+          variant="contained" startIcon={<AddRounded />}
+          onClick={() => setCreateOpen(true)}
+          sx={{
+            background: "linear-gradient(135deg, #6C63FF, #9D97FF)",
+            borderRadius: 2,
+          }}
+        >
+          New Post
+        </Button>
       </Stack>
 
       {/* Search + Controls */}
       <Stack direction={{ xs: "column", md: "row" }}
-        spacing={2} mb={2} alignItems="center">
+        spacing={2} mb={3} alignItems="center">
         <Box sx={{ flexGrow: 1, maxWidth: 420 }}>
           <SearchBar
             value={search}
             onChange={setSearch}
-            placeholder="Search posts, tags, authors..."
+            placeholder="Search your posts..."
             fullWidth
           />
         </Box>
@@ -116,46 +100,9 @@ const CommunityPage = () => {
         </Select>
       </Stack>
 
-      {/* Filters */}
-      <Stack direction="row" spacing={1} mb={1} flexWrap="wrap" gap={1}>
-        {POST_FILTERS.map((f) => (
-          <Chip
-            key={f}
-            label={f}
-            clickable
-            onClick={() => setFilter(f)}
-            color={filter === f ? "primary" : "default"}
-            sx={{
-              fontWeight: 600,
-              fontSize: "0.78rem",
-              ...(filter === f && {
-                background: "linear-gradient(135deg, #6C63FF, #9D97FF)",
-                color: "#fff",
-              }),
-            }}
-          />
-        ))}
-      </Stack>
-
-      {tag && (
-        <Stack direction="row" alignItems="center" spacing={1} mb={1}>
-          <TagRounded sx={{ fontSize: 18, color: "primary.main" }} />
-          <Typography variant="body2" color="text.secondary">
-            Filtering by tag:
-          </Typography>
-          <Chip
-            label={tag}
-            size="small"
-            color="primary"
-            onDelete={() => setTag("")}
-            sx={{ fontWeight: 600, fontSize: "0.75rem" }}
-          />
-        </Stack>
-      )}
-
       {/* Categories */}
       <Stack direction="row" spacing={1} mb={3} flexWrap="wrap" gap={1}>
-        {COMMUNITY_CATEGORIES.map((cat) => (
+        {["All", "General", "Questions", "Resources", "Projects", "Announcements"].map((cat) => (
           <Chip
             key={cat}
             label={cat}
@@ -188,18 +135,14 @@ const CommunityPage = () => {
         </Stack>
       ) : posts.length === 0 ? (
         <EmptyState
-          title={emptyTitle}
-          description="Try adjusting your search or filters."
+          title="No posts yet."
+          description={`You haven't created any posts yet, ${user?.firstName ?? ""}. Click "New Post" to get started.`}
           icon={<GroupsRounded sx={{ fontSize: 52 }} />}
         />
       ) : (
         <Stack spacing={2}>
           {posts.map((post) => (
-            <PostCard
-              key={post.id}
-              post={post}
-              onTagClick={(t) => setTag(t)}
-            />
+            <PostCard key={post.id} post={post} />
           ))}
         </Stack>
       )}
@@ -226,4 +169,4 @@ const CommunityPage = () => {
   );
 };
 
-export default CommunityPage;
+export default CommunityMyPostsPage;
