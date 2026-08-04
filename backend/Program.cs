@@ -2,15 +2,18 @@
 using System.Text.Json.Serialization;
 using FluentValidation;
 using LearnPath.API.Authentication.Jwt;
+using LearnPath.API.Common;
 using LearnPath.API.Configuration;
 using LearnPath.API.Data;
 using LearnPath.API.Data.Seeders;
 using LearnPath.API.Entities;
+using LearnPath.API.Interfaces.Repositories;
 using LearnPath.API.Interfaces.Services;
 using LearnPath.API.Middleware;
 using LearnPath.API.Services.Admin;
 using LearnPath.API.Services.Analytics;
 using LearnPath.API.Services.Attempt;
+using LearnPath.API.Services.Audit;
 using LearnPath.API.Services.Community;
 using LearnPath.API.Services.Auth;
 using LearnPath.API.Services.Classroom;
@@ -25,6 +28,7 @@ using LearnPath.API.Services.Validation;
 using LearnPath.API.Services.User;
 using LearnPath.API.Interfaces.Services.Ai;
 using LearnPath.API.Services.Ai;
+using LearnPath.API.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -172,6 +176,29 @@ builder.Services.Configure<UploadSettings>(
 builder.Services.AddAutoMapper(cfg => { }, typeof(Program).Assembly);
 // ── FluentValidation ──────────────────────────────────────────
 builder.Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        // ModelState validation failures are converted to the same ApiResponse
+        // envelope used everywhere else, so the frontend always receives a
+        // human-readable message instead of ASP.NET's raw ValidationProblemDetails.
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var errors = context.ModelState
+                .Where(kv => kv.Value?.Errors.Count > 0)
+                .SelectMany(kv => kv.Value!.Errors.Select(e =>
+                    string.IsNullOrWhiteSpace(e.ErrorMessage)
+                        ? $"{kv.Key}: {e.Exception?.Message}"
+                        : e.ErrorMessage))
+                .ToList();
+
+            var message = errors.Count > 0
+                ? string.Join(" ", errors)
+                : "Validation failed.";
+
+            return new Microsoft.AspNetCore.Mvc.BadRequestObjectResult(
+                ApiResponse<object>.Fail(message, errors));
+        };
+    })
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
@@ -195,6 +222,11 @@ builder.Services.AddScoped<IQuizService, QuizService>();
 builder.Services.AddScoped<IAttemptService, AttemptService>();
 builder.Services.AddScoped<IFileValidationService, FileValidationService>();
 builder.Services.AddScoped<IFileStorageService, FileStorageService>();
+builder.Services.AddScoped<IAuditLogService, AuditLogService>();
+builder.Services.AddHttpContextAccessor();
+
+// ── Repositories ──────────────────────────────────────────────
+builder.Services.AddScoped<ICommunityRepository, CommunityRepository>();
 
 // ── AI Services ────────────────────────────────────────────────
 builder.Services.Configure<AiOptions>(
@@ -214,6 +246,11 @@ builder.Services.AddSwaggerGen(options =>
         Version     = "v1",
         Description = "Graph-based personalized learning platform API",
     });
+
+    var xmlFile = $"{typeof(Program).Assembly.GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+        options.IncludeXmlComments(xmlPath);
 
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {

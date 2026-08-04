@@ -6,7 +6,7 @@ import {
   DashboardRounded, RouteRounded, ClassRounded,
   BarChartRounded, GroupsRounded, WorkspacePremiumRounded,
   PersonRounded, SettingsRounded, AdminPanelSettingsRounded,
-  LogoutRounded,
+  LogoutRounded, HistoryRounded,
 } from "@mui/icons-material";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ROUTES } from "../../../constants/routes";
@@ -19,6 +19,7 @@ interface NavItem {
   icon: React.ReactNode;
   path: string;
   adminOnly?: boolean;
+  contentCreator?: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -28,6 +29,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Analytics",       icon: <BarChartRounded />,            path: ROUTES.ANALYTICS },
   { label: "Community",       icon: <GroupsRounded />,              path: ROUTES.COMMUNITY },
   { label: "Certificates",    icon: <WorkspacePremiumRounded />,    path: ROUTES.CERTIFICATES },
+  { label: "History",         icon: <HistoryRounded />,             path: ROUTES.HISTORY },
   { label: "Profile",         icon: <PersonRounded />,              path: ROUTES.PROFILE },
   { label: "Settings",        icon: <SettingsRounded />,            path: ROUTES.SETTINGS },
   { label: "Admin",           icon: <AdminPanelSettingsRounded />,  path: ROUTES.ADMIN, adminOnly: true },
@@ -36,9 +38,11 @@ const NAV_ITEMS: NavItem[] = [
 const Sidebar = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const { user, isAdmin, logout } = useAuth();
+  const { user, isAdmin, isInstructor, logout } = useAuth();
 
-  const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
+  const visibleItems = NAV_ITEMS.filter(
+    (item) => (item.contentCreator && (isAdmin || isInstructor)) || (!item.contentCreator && !item.adminOnly) || (item.adminOnly && isAdmin)
+  );
 
   const handleLogout = async () => {
     await logout();
@@ -99,7 +103,10 @@ const Sidebar = () => {
       {/* Nav Items */}
       <List sx={{ px: 1.5, pt: 2, flexGrow: 1 }}>
         {visibleItems.map((item) => {
-          const isActive = pathname === item.path;
+          const isActive = item.path === ROUTES.COMMUNITY
+            ? pathname === ROUTES.COMMUNITY
+              || pathname.startsWith(`${ROUTES.COMMUNITY}/`)
+            : pathname === item.path;
           return (
             <Tooltip key={item.path} title="" placement="right">
               <ListItemButton

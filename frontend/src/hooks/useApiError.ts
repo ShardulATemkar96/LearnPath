@@ -1,14 +1,11 @@
 ﻿import { useState, useCallback } from "react";
+import { extractErrorMessage } from "../utils/errorUtils";
 
 export const useApiError = () => {
   const [error, setError] = useState<string | null>(null);
 
-  const handleError = useCallback((err: any) => {
-    const message =
-      err?.response?.data?.message ??
-      err?.message ??
-      "An unexpected error occurred.";
-    setError(message);
+  const handleError = useCallback((err: unknown) => {
+    setError(extractErrorMessage(err));
   }, []);
 
   const clearError = useCallback(() => setError(null), []);
