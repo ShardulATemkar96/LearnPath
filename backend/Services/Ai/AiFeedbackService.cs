@@ -18,6 +18,7 @@ public class AiFeedbackService : IAiFeedbackService
     private readonly AiResponseParser _responseParser;
     private readonly AiOptions _options;
     private readonly ILogger<AiFeedbackService> _logger;
+    private readonly IAuditLogService _auditLog;
 
     public AiFeedbackService(
         ApplicationDbContext context,
@@ -26,7 +27,8 @@ public class AiFeedbackService : IAiFeedbackService
         PromptBuilder promptBuilder,
         AiResponseParser responseParser,
         IOptions<AiOptions> options,
-        ILogger<AiFeedbackService> logger)
+        ILogger<AiFeedbackService> logger,
+        IAuditLogService auditLog)
     {
         _context = context;
         _fileStorage = fileStorage;
@@ -35,6 +37,7 @@ public class AiFeedbackService : IAiFeedbackService
         _responseParser = responseParser;
         _options = options.Value;
         _logger = logger;
+        _auditLog = auditLog;
     }
 
     public async Task<AiFeedbackResponseDto> GenerateAsync(int submissionId, string userId)
@@ -138,6 +141,14 @@ public class AiFeedbackService : IAiFeedbackService
         }
 
         await _context.SaveChangesAsync();
+
+        await _auditLog.LogAsync(
+            AuditAction.AI_FEEDBACK_GENERATED,
+            "Submission",
+            submissionId.ToString(),
+            $"AI feedback {(isRegeneration ? "regenerated" : "generated")} for submission {submissionId}.",
+            additionalData: $"AssignmentId: {submission.AssignmentId}; ClassroomId: {submission.Assignment.ClassroomId}",
+            userId: userId);
 
         _logger.LogInformation(
             "AI request completed for submission {SubmissionId}",

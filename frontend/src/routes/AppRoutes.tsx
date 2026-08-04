@@ -3,6 +3,7 @@ import { Routes, Route } from "react-router-dom";
 import { ROUTES } from "../constants/routes";
 import ProtectedRoute from "./ProtectedRoute";
 import AdminRoute     from "./AdminRoute";
+import InstructorRoute from "./InstructorRoute";
 import GuestRoute     from "./GuestRoute";
 import Loader         from "../components/common/Loader/Loader";
 import MainLayout     from "../layouts/MainLayout";
@@ -23,7 +24,13 @@ const AssignmentDetailPage   = lazy(() => import("../pages/classroom/AssignmentD
 const AnalyticsPage          = lazy(() => import("../pages/analytics/AnalyticsPage"));
 const CommunityPage          = lazy(() => import("../pages/community/CommunityPage"));
 const CommunityPostPage      = lazy(() => import("../pages/community/CommunityPostPage"));
+const CommunityGroupsPage    = lazy(() => import("../pages/community/CommunityGroupsPage"));
+const CommunityGroupDetailPage = lazy(() => import("../pages/community/CommunityGroupDetailPage"));
+const CommunityMyPostsPage   = lazy(() => import("../pages/community/CommunityMyPostsPage"));
+const CommunityModerationPage = lazy(() => import("../pages/community/CommunityModerationPage"));
 const CertificatesPage       = lazy(() => import("../pages/certificates/CertificatesPage"));
+const HistoryPage            = lazy(() => import("../pages/history/HistoryPage"));
+const AdminHistoryPage       = lazy(() => import("../pages/admin/AdminHistoryPage"));
 const ProfilePage            = lazy(() => import("../pages/profile/ProfilePage"));
 const SettingsPage           = lazy(() => import("../pages/settings/SettingsPage"));
 const AdminPage              = lazy(() => import("../pages/admin/AdminPage"));
@@ -31,6 +38,8 @@ const AdminPathsPage         = lazy(() => import("../pages/admin/AdminPathsPage"
 const AdminModuleEditorPage  = lazy(() => import("../pages/admin/AdminModuleEditorPage"));
 const AdminQuizEditorPage    = lazy(() => import("../pages/admin/AdminQuizEditorPage"));
 const AdminUsersPage         = lazy(() => import("../pages/admin/AdminUsersPage"));
+const AdminCertificatesPage  = lazy(() => import("../pages/admin/AdminCertificatesPage"));
+const AdminClassroomsPage    = lazy(() => import("../pages/admin/AdminClassroomsPage"));
 const AdminQuestionBanksPage = lazy(() => import("../pages/admin/AdminQuestionBanksPage"));
 const AdminQuizManagementPage = lazy(() => import("../pages/admin/AdminQuizManagementPage"));
 const AdminQuizAnalyticsPage = lazy(() => import("../pages/admin/AdminQuizAnalyticsPage"));
@@ -65,9 +74,17 @@ const AppRoutes = () => (
             <Route path={ROUTES.CLASSROOM_DETAIL} element={<ClassroomDetailPage />} />
             <Route path={ROUTES.ASSIGNMENT_DETAIL} element={<AssignmentDetailPage />} />
             <Route path={ROUTES.ANALYTICS} element={<AnalyticsPage />} />
-            <Route path={ROUTES.COMMUNITY} element={<CommunityPage />} />
+            <Route path={ROUTES.COMMUNITY} element={<CommunityGroupsPage />} />
             <Route path={ROUTES.COMMUNITY_DETAIL} element={<CommunityPostPage />} />
+            <Route path={ROUTES.COMMUNITY_GROUPS} element={<CommunityGroupsPage />} />
+            <Route path={ROUTES.COMMUNITY_GROUP_DETAIL} element={<CommunityGroupDetailPage />} />
+            <Route path={ROUTES.COMMUNITY_POSTS} element={<CommunityPage />} />
+            <Route path={ROUTES.COMMUNITY_MY_POSTS} element={<CommunityMyPostsPage />} />
+            <Route element={<AdminRoute />}>
+              <Route path={ROUTES.COMMUNITY_MODERATION} element={<CommunityModerationPage />} />
+            </Route>
             <Route path={ROUTES.CERTIFICATES} element={<CertificatesPage />} />
+            <Route path={ROUTES.HISTORY} element={<HistoryPage />} />
             <Route path={ROUTES.PROFILE} element={<ProfilePage />} />
             <Route path={ROUTES.SETTINGS} element={<SettingsPage />} />
             <Route element={<AdminRoute />}>
@@ -77,9 +94,17 @@ const AppRoutes = () => (
                 <Route path={ROUTES.ADMIN_PATH_MODULES} element={<AdminModuleEditorPage />} />
                 <Route path={ROUTES.ADMIN_QUIZ_EDITOR} element={<AdminQuizEditorPage />} />
                 <Route path={ROUTES.ADMIN_USERS} element={<AdminUsersPage />} />
+                <Route path={ROUTES.ADMIN_CERTIFICATES} element={<AdminCertificatesPage />} />
+                <Route path={ROUTES.ADMIN_CLASSROOMS} element={<AdminClassroomsPage />} />
                 <Route path={ROUTES.ADMIN_QUESTION_BANKS} element={<AdminQuestionBanksPage />} />
                 <Route path={ROUTES.ADMIN_QUIZZES} element={<AdminQuizManagementPage />} />
                 <Route path={ROUTES.ADMIN_QUIZ_ANALYTICS} element={<AdminQuizAnalyticsPage />} />
+                <Route path={ROUTES.ADMIN_HISTORY} element={<AdminHistoryPage />} />
+              </Route>
+            </Route>
+            <Route element={<InstructorRoute />}>
+              <Route element={<AdminLayout />}>
+                <Route path={ROUTES.ADMIN_QUIZZES} element={<AdminQuizManagementPage />} />
               </Route>
             </Route>
           </Route>

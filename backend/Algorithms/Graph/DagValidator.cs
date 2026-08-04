@@ -3,9 +3,7 @@
 public static class DagValidator
 {
     public static bool WouldCreateCycle(
-        Dictionary<int, List<int>> adjacency,
-        int from,
-        int to)
+        Dictionary<int, List<int>> adjacency, int from, int to)
     {
         var visited = new HashSet<int>();
         return Dfs(adjacency, to, from, visited);

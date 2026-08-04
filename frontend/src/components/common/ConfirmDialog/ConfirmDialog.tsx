@@ -1,5 +1,5 @@
 ﻿import {
-  Button, Dialog, DialogActions, DialogContent,
+  Button, CircularProgress, Dialog, DialogActions, DialogContent,
   DialogTitle, Typography,
 } from "@mui/material";
 import { WarningAmberRounded } from "@mui/icons-material";
@@ -10,6 +10,7 @@ interface ConfirmDialogProps {
   message: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  confirmLoading?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
   severity?: "error" | "warning";
@@ -19,6 +20,7 @@ const ConfirmDialog = ({
   open, title, message,
   confirmLabel = "Confirm",
   cancelLabel  = "Cancel",
+  confirmLoading = false,
   onConfirm, onCancel,
   severity = "error",
 }: ConfirmDialogProps) => (
@@ -46,13 +48,15 @@ const ConfirmDialog = ({
     </DialogContent>
 
     <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
-      <Button onClick={onCancel} sx={{ borderRadius: 2 }}>
+      <Button onClick={onCancel} disabled={confirmLoading} sx={{ borderRadius: 2 }}>
         {cancelLabel}
       </Button>
       <Button
         variant="contained"
         onClick={onConfirm}
         color={severity}
+        disabled={confirmLoading}
+        startIcon={confirmLoading ? <CircularProgress size={16} /> : undefined}
         sx={{ borderRadius: 2 }}
       >
         {confirmLabel}
