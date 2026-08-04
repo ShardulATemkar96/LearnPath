@@ -17,11 +17,14 @@ public class CommentDto
     public string Content { get; set; } = string.Empty;
     public string AuthorId { get; set; } = string.Empty;
     public string AuthorName { get; set; } = string.Empty;
+    public bool AuthorIsDeleted { get; set; }
     public int PostId { get; set; }
     public int? ParentCommentId { get; set; }
     public int UpvoteCount { get; set; }
     public int UserVote { get; set; }
     public List<CommentDto> Replies { get; set; } = [];
+    public bool Edited { get; set; }
+    public DateTime? EditedAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

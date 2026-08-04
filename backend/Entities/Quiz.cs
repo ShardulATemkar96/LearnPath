@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace LearnPath.API.Entities;
 
 public class Quiz
@@ -12,6 +14,8 @@ public class Quiz
     public int PassingPercentage { get; set; } = 40;
     public int MaximumAttempts { get; set; } = 3;
     public QuizStatus Status { get; set; } = QuizStatus.Draft;
+    [MaxLength(450)]
+    public string? CreatedById { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? PublishedAt { get; set; }
     public DateTime? ArchivedAt { get; set; }

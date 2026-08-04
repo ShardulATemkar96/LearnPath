@@ -33,11 +33,44 @@ public class ApplicationDbContext : IdentityDbContext<User>
     public DbSet<Comment> Comments => Set<Comment>();
     public DbSet<PostVote> PostVotes => Set<PostVote>();
     public DbSet<CommentVote> CommentVotes => Set<CommentVote>();
+    public DbSet<Group> Groups => Set<Group>();
+    public DbSet<GroupMember> GroupMembers => Set<GroupMember>();
+    public DbSet<Report> Reports => Set<Report>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<SubmissionAiFeedback> SubmissionAiFeedbacks => Set<SubmissionAiFeedback>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
         builder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
+    }
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        GuardAuditLogImmutability();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(
+        bool acceptAllChangesOnSuccess,
+        CancellationToken cancellationToken = default)
+    {
+        GuardAuditLogImmutability();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    /// <summary>
+    /// Audit logs are append-only: only Insert and Read are permitted.
+    /// Any attempt to update or delete an <see cref="AuditLog"/> is rejected.
+    /// </summary>
+    private void GuardAuditLogImmutability()
+    {
+        var violation = ChangeTracker
+            .Entries<AuditLog>()
+            .Any(e => e.State is EntityState.Modified or EntityState.Deleted);
+
+        if (violation)
+            throw new InvalidOperationException(
+                "Audit logs are append-only and cannot be modified or deleted.");
     }
 }
