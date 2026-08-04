@@ -16,17 +16,20 @@ public class AuthService : IAuthService
     private readonly JwtTokenGenerator _jwtTokenGenerator;
     private readonly IMapper _mapper;
     private readonly ApplicationDbContext _context;
+    private readonly IAuditLogService _auditLog;
 
     public AuthService(
         UserManager<Entities.User> userManager,
         JwtTokenGenerator jwtTokenGenerator,
         IMapper mapper,
-        ApplicationDbContext context)
+        ApplicationDbContext context,
+        IAuditLogService auditLog)
     {
         _userManager = userManager;
         _jwtTokenGenerator = jwtTokenGenerator;
         _mapper = mapper;
         _context = context;
+        _auditLog = auditLog;
     }
 
     public async Task<AuthResponseDto> RegisterAsync(RegisterRequestDto dto)
@@ -46,20 +49,62 @@ public class AuthService : IAuthService
 
         await _userManager.AddToRoleAsync(user, "Student");
 
+        await _auditLog.LogAsync(
+            AuditAction.USER_CREATED,
+            "User",
+            user.Id,
+            $"User '{user.Email}' registered an account.",
+            userId: user.Id,
+            username: user.Email,
+            role: "Student");
+
         return await BuildAuthResponseAsync(user);
     }
 
     public async Task<AuthResponseDto> LoginAsync(LoginRequestDto dto)
     {
-        var user = await _userManager.FindByEmailAsync(dto.Email)
-            ?? throw new UnauthorizedAccessException("Invalid credentials.");
+        var user = await _userManager.FindByEmailAsync(dto.Email);
+        if (user is null)
+        {
+            await LogLoginFailedAsync(null, dto.Email, "Unknown email address.");
+            throw new UnauthorizedAccessException("Invalid credentials.");
+        }
 
         var isValid = await _userManager.CheckPasswordAsync(user, dto.Password);
         if (!isValid)
+        {
+            await LogLoginFailedAsync(user.Id, dto.Email, "Incorrect password.");
             throw new UnauthorizedAccessException("Invalid credentials.");
+        }
 
-        if (!user.IsActive)
+        if (user.Status == UserStatus.Deleted)
+        {
+            await LogLoginFailedAsync(user.Id, dto.Email, "Account has been deleted.");
+            throw new UnauthorizedAccessException("Account has been deleted.");
+        }
+
+        if (user.Status == UserStatus.Inactive)
+        {
+            await LogLoginFailedAsync(user.Id, dto.Email, "Account is deactivated.");
             throw new UnauthorizedAccessException("Account is deactivated.");
+        }
+
+        if (user.Status == UserStatus.Invalid)
+        {
+            await LogLoginFailedAsync(user.Id, dto.Email, "Account is marked invalid.");
+            throw new UnauthorizedAccessException("Account is marked invalid.");
+        }
+
+        var roles = await _userManager.GetRolesAsync(user);
+
+        await _auditLog.LogAsync(
+            AuditAction.LOGIN,
+            "User",
+            user.Id,
+            $"User '{user.Email}' logged in.",
+            userId: user.Id,
+            username: user.Email,
+            role: roles.FirstOrDefault());
 
         return await BuildAuthResponseAsync(user);
     }
@@ -77,11 +122,15 @@ public class AuthService : IAuthService
         stored.IsRevoked = true;
         await _context.SaveChangesAsync();
 
+        if (stored.User.Status is UserStatus.Deleted or UserStatus.Inactive or UserStatus.Invalid)
+            throw new UnauthorizedAccessException("Account is not active.");
+
         return await BuildAuthResponseAsync(stored.User);
     }
 
     public async Task RevokeTokenAsync(string userId)
     {
+        var user = await _userManager.FindByIdAsync(userId);
         var tokens = await _context.RefreshTokens
             .Where(r => r.UserId == userId && !r.IsRevoked)
             .ToListAsync();
@@ -90,7 +139,30 @@ public class AuthService : IAuthService
             token.IsRevoked = true;
 
         await _context.SaveChangesAsync();
+
+        if (user is not null)
+        {
+            var roles = await _userManager.GetRolesAsync(user);
+            await _auditLog.LogAsync(
+                AuditAction.LOGOUT,
+                "User",
+                user.Id,
+                $"User '{user.Email}' logged out.",
+                userId: user.Id,
+                username: user.Email,
+                role: roles.FirstOrDefault());
+        }
     }
+
+    private Task LogLoginFailedAsync(string? userId, string email, string reason) =>
+        _auditLog.LogAsync(
+            AuditAction.LOGIN_FAILED,
+            "User",
+            userId ?? "unknown",
+            $"Failed login attempt for '{email}'. Reason: {reason}",
+            userId: userId,
+            username: email,
+            role: null);
 
     private async Task<AuthResponseDto> BuildAuthResponseAsync(Entities.User user)
     {
