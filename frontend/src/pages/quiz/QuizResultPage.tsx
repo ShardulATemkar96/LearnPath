@@ -7,16 +7,16 @@ import {
   CancelRounded, CheckCircleRounded, EmojiEventsRounded, HomeRounded, ReplayRounded,
 } from "@mui/icons-material";
 import { quizService } from "../../services/quizService";
-import { AttemptReviewDto } from "../../types/quiz.types";
+import { ReviewResponseDto } from "../../types/quiz.types";
 
 const QuizResultPage = () => {
   const { attemptId } = useParams<{ attemptId: string }>();
   const navigate = useNavigate();
   const aid = Number(attemptId);
   const location = useLocation();
-  const passedResult = location.state?.result as AttemptReviewDto | null;
+  const passedResult = location.state?.result as ReviewResponseDto | null;
 
-  const [result, setResult] = useState<AttemptReviewDto | null>(passedResult);
+  const [result, setResult] = useState<ReviewResponseDto | null>(passedResult);
   const [loading, setLoading] = useState(!passedResult);
   const [error, setError] = useState("");
 
@@ -25,7 +25,7 @@ const QuizResultPage = () => {
     (async () => {
       setLoading(true);
       setError("");
-      try { setResult(await quizService.getAttemptReview(aid)); }
+      try { setResult(await quizService.getReview(aid)); }
       catch { setError("Failed to load results."); }
       finally { setLoading(false); }
     })();
@@ -36,7 +36,7 @@ const QuizResultPage = () => {
     <Box sx={{ textAlign: "center", py: 8 }}><Typography color="error">{error || "Not found"}</Typography></Box>
   );
 
-  const passed = result.score >= result.passingPercentage;
+  const passed = result.passed;
 
   return (
     <Box sx={{ maxWidth: 600, mx: "auto", py: 6, px: 2, textAlign: "center" }}>
@@ -59,7 +59,7 @@ const QuizResultPage = () => {
           <Typography variant="overline" color="text.secondary">Your Score</Typography>
           <Typography variant="h2" fontWeight={800}
             color={passed ? "success.main" : "error.main"}>
-            {result.score}%
+            {result.percentage}%
           </Typography>
           <Typography variant="body2" color="text.secondary" mt={1}>
             Passing percentage: {result.passingPercentage}%
@@ -73,7 +73,7 @@ const QuizResultPage = () => {
           <Stack spacing={1.5}>
             <Stack direction="row" justifyContent="space-between">
               <Typography color="text.secondary">Correct Answers</Typography>
-              <Chip label={`${result.correctCount} / ${result.totalQuestions}`} color="success" size="small" />
+              <Chip label={`${result.score} / ${result.totalQuestions}`} color="success" size="small" />
             </Stack>
             <Divider />
             <Stack direction="row" justifyContent="space-between">

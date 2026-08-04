@@ -10,11 +10,16 @@ public class AttemptService : IAttemptService
 {
     private readonly ApplicationDbContext _context;
     private readonly IProgressService _progressService;
+    private readonly IAuditLogService _auditLog;
 
-    public AttemptService(ApplicationDbContext context, IProgressService progressService)
+    public AttemptService(
+        ApplicationDbContext context,
+        IProgressService progressService,
+        IAuditLogService auditLog)
     {
         _context = context;
         _progressService = progressService;
+        _auditLog = auditLog;
     }
 
     public async Task<AttemptStartResponseDto> StartAttemptAsync(int quizId, int moduleId, string userId)
@@ -66,6 +71,13 @@ public class AttemptService : IAttemptService
 
         _context.QuizAttempts.Add(attempt);
         await _context.SaveChangesAsync();
+
+        await _auditLog.LogAsync(
+            AuditAction.QUIZ_STARTED,
+            "Quiz",
+            quiz.Id.ToString(),
+            $"User started quiz '{quiz.Title}' (attempt #{attemptNumber}).",
+            additionalData: $"ModuleId: {moduleId}");
 
         var module = await _context.Modules.FindAsync(moduleId);
         if (module is not null && module.Status < ModuleStatus.QuizAttempted)
@@ -180,6 +192,20 @@ public class AttemptService : IAttemptService
         if (attempt.Passed == true)
             await _progressService.MarkModuleCompleteFromQuizAsync(userId, attempt.ModuleId);
 
+        await _auditLog.LogAsync(
+            AuditAction.QUIZ_COMPLETED,
+            "Quiz",
+            quiz.Id.ToString(),
+            $"User completed quiz '{quiz.Title}' with {attempt.Percentage:0.##}%.",
+            additionalData: $"AttemptId: {attempt.Id}");
+
+        await _auditLog.LogAsync(
+            attempt.Passed == true ? AuditAction.QUIZ_PASSED : AuditAction.QUIZ_FAILED,
+            "Quiz",
+            quiz.Id.ToString(),
+            $"User {(attempt.Passed == true ? "passed" : "failed")} quiz '{quiz.Title}' with {attempt.Percentage:0.##}%.",
+            additionalData: $"AttemptId: {attempt.Id}");
+
         return new SubmitResponseDto
         {
             AttemptId = attempt.Id,
@@ -246,6 +272,7 @@ public class AttemptService : IAttemptService
             Passed = attempt.Passed ?? false,
             TimeSpentSeconds = attempt.TimeSpentSeconds ?? 0,
             AttemptNumber = attempt.AttemptNumber,
+            PassingPercentage = quiz.PassingPercentage,
             Questions = reviewQuestions,
         };
     }

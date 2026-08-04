@@ -263,7 +263,7 @@ const QuizAttemptPage = () => {
                 {selectedAnswers[current.questionId] !== undefined && (
                   <Button
                     variant="outlined"
-                    color="neutral"
+                    color="inherit"
                     size="small"
                     startIcon={<ClearRounded />}
                     onClick={() => handleClear(current.questionId)}

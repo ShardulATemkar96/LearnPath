@@ -5,14 +5,14 @@ import {
 } from "@mui/material";
 import { CheckCircleRounded, CancelRounded, ArrowBackRounded } from "@mui/icons-material";
 import { quizService } from "../../services/quizService";
-import { AttemptReviewDto } from "../../types/quiz.types";
+import { ReviewResponseDto } from "../../types/quiz.types";
 
 const QuizReviewPage = () => {
   const { attemptId } = useParams<{ attemptId: string }>();
   const navigate = useNavigate();
   const aid = Number(attemptId);
 
-  const [review, setReview] = useState<AttemptReviewDto | null>(null);
+  const [review, setReview] = useState<ReviewResponseDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -21,7 +21,7 @@ const QuizReviewPage = () => {
     (async () => {
       setLoading(true);
       setError("");
-      try { setReview(await quizService.getAttemptReview(aid)); }
+      try { setReview(await quizService.getReview(aid)); }
       catch { setError("Failed to load review."); }
       finally { setLoading(false); }
     })();
@@ -37,8 +37,8 @@ const QuizReviewPage = () => {
       <Stack direction="row" alignItems="center" spacing={1} mb={3}>
         <Button onClick={() => navigate(`/quiz/result/${aid}`)}><ArrowBackRounded /></Button>
         <Typography variant="h5" fontWeight={700}>Answer Review</Typography>
-        <Chip label={`Score: ${review.score}%`}
-          color={review.score >= review.passingPercentage ? "success" : "error"} size="small" />
+        <Chip label={`Score: ${review.percentage}%`}
+          color={review.passed ? "success" : "error"} size="small" />
       </Stack>
 
       <Stack spacing={2}>
@@ -72,6 +72,11 @@ const QuizReviewPage = () => {
                     {!correct && (
                       <Typography variant="caption" color="error" sx={{ mt: 1, display: "block" }}>
                         Correct answer: {q.options.find((o) => o.optionId === q.correctOptionId)?.optionText}
+                      </Typography>
+                    )}
+                    {q.explanation && (
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        Explanation: {q.explanation}
                       </Typography>
                     )}
                   </Box>

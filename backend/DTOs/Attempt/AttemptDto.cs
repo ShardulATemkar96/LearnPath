@@ -59,6 +59,7 @@ public class ReviewResponseDto
     public bool Passed { get; set; }
     public int TimeSpentSeconds { get; set; }
     public int AttemptNumber { get; set; }
+    public int PassingPercentage { get; set; }
     public List<ReviewQuestionDto> Questions { get; set; } = [];
 }
 
