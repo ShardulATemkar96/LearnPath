@@ -30,16 +30,30 @@ public class AuthController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> Login([FromBody] LoginRequestDto dto)
     {
-        var result = await _authService.LoginAsync(dto);
-        return Ok(ApiResponse<AuthResponseDto>.Ok(result, "Login successful."));
+        try
+        {
+            var result = await _authService.LoginAsync(dto);
+            return Ok(ApiResponse<AuthResponseDto>.Ok(result, "Login successful."));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(ApiResponse<object>.Fail(ex.Message));
+        }
     }
 
     [HttpPost("refresh")]
     [AllowAnonymous]
     public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequestDto dto)
     {
-        var result = await _authService.RefreshTokenAsync(dto);
-        return Ok(ApiResponse<AuthResponseDto>.Ok(result, "Token refreshed."));
+        try
+        {
+            var result = await _authService.RefreshTokenAsync(dto);
+            return Ok(ApiResponse<AuthResponseDto>.Ok(result, "Token refreshed."));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(ApiResponse<object>.Fail(ex.Message));
+        }
     }
 
     [HttpPost("revoke")]
