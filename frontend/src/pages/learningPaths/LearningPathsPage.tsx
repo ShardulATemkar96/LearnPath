@@ -19,9 +19,11 @@ import { useAuth } from "../../hooks/useAuth";
 
 const LearningPathsPage = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { isAdmin } = useAuth();
+  const { isAdmin, isInstructor } = useAuth();
   const [tab, setTab] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
+
+  const canManage = isAdmin || isInstructor;
 
   const publicPaths = useSelector(selectPublicPaths);
   const myPaths     = useSelector(selectMyPaths);
@@ -30,8 +32,8 @@ const LearningPathsPage = () => {
 
   useEffect(() => {
     dispatch(fetchPublicPaths());
-    if (isAdmin) dispatch(fetchMyPaths());
-  }, [dispatch, isAdmin]);
+    if (canManage) dispatch(fetchMyPaths());
+  }, [dispatch, canManage]);
 
   const displayedPaths = tab === 0 ? publicPaths : myPaths;
 
@@ -45,7 +47,7 @@ const LearningPathsPage = () => {
             Explore curated graph-based learning journeys.
           </Typography>
         </Box>
-        {isAdmin && (
+        {canManage && (
           <Button variant="contained" startIcon={<AddRounded />}
             onClick={() => setModalOpen(true)}
             sx={{ background: "linear-gradient(135deg, #6C63FF, #9D97FF)", borderRadius: 2 }}>
@@ -56,7 +58,7 @@ const LearningPathsPage = () => {
 
       {/* Tabs */}
       <Tabs
-        value={isAdmin ? tab : 0}
+        value={canManage ? tab : 0}
         onChange={(_, v) => setTab(v)}
         sx={{
           mb: 3,
@@ -69,7 +71,7 @@ const LearningPathsPage = () => {
         }}
       >
         <Tab label={`Public Paths (${publicPaths.length})`} />
-        {isAdmin && <Tab label={`My Paths (${myPaths.length})`} />}
+        {canManage && <Tab label={`My Paths (${myPaths.length})`} />}
       </Tabs>
 
       {error && (
