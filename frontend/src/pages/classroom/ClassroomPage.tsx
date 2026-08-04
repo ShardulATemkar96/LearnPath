@@ -128,7 +128,7 @@ const JoinClassroomModal = ({
 
 const ClassroomPage = () => {
   const dispatch   = useDispatch<AppDispatch>();
-  const { isAdmin } = useAuth();
+  const { isAdmin, isInstructor } = useAuth();
   const classrooms = useSelector(selectClassrooms);
   const loading    = useSelector(selectClassroomLoading);
   const error      = useSelector(selectClassroomError);
@@ -156,7 +156,7 @@ const ClassroomPage = () => {
             sx={{ borderRadius: 2 }}>
             Join
           </Button>
-          {isAdmin && (
+          {(isAdmin || isInstructor) && (
             <Button variant="contained" startIcon={<AddRounded />}
               onClick={() => setCreateOpen(true)}
               sx={{ background: "linear-gradient(135deg, #6C63FF, #9D97FF)", borderRadius: 2 }}>

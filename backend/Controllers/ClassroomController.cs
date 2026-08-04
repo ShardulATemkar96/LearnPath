@@ -81,6 +81,13 @@ public class ClassroomController : ControllerBase
         return Ok(ApiResponse<List<ClassroomMemberDto>>.Ok(result));
     }
 
+    [HttpPost("{id:int}/members/{memberUserId}/invalid")]
+    public async Task<IActionResult> MarkInvalid(int id, string memberUserId, [FromBody] MarkInvalidDto dto)
+    {
+        var result = await _service.MarkInvalidAsync(id, memberUserId, dto, UserId);
+        return Ok(ApiResponse<ClassroomMemberDto>.Ok(result, "Member marked invalid."));
+    }
+
     [HttpPost("{classroomId:int}/assignments")]
     public async Task<IActionResult> CreateAssignment(
         int classroomId, [FromBody] CreateAssignmentDto dto)

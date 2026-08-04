@@ -41,6 +41,10 @@ export const classroomService = {
     await apiClient.delete(`/classrooms/${classroomId}/members/${memberUserId}`);
   },
 
+  markInvalid: async (classroomId: number, memberUserId: string, reason: string): Promise<void> => {
+    await apiClient.post(`/classrooms/${classroomId}/members/${memberUserId}/invalid`, { reason });
+  },
+
   createAssignment: async (
     classroomId: number, payload: CreateAssignmentRequest
   ): Promise<Assignment> => {
