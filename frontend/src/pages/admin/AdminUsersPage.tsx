@@ -1,62 +1,60 @@
 import { useEffect, useState, useCallback } from "react";
 import {
-  Alert, Avatar, Box, Button, Chip, IconButton, MenuItem, Paper, Select,
-  Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  TextField, Typography, CircularProgress,
+  Alert, Avatar, Box, Button, Card, CardActionArea, CardContent, Chip,
+  Grid, IconButton, Stack, TextField, Typography, CircularProgress, Tooltip,
 } from "@mui/material";
-import { DeleteRounded, SearchRounded } from "@mui/icons-material";
+import { DeleteRounded, SearchRounded, ShieldRounded } from "@mui/icons-material";
 import { adminService } from "../../services/adminService";
-import { AdminUser } from "../../types/admin.types";
+import { AdminUser, UserStatus } from "../../types/admin.types";
+import { useApiError } from "../../hooks/useApiError";
+import UserDetailsModal from "../../components/admin/UserDetailsModal/UserDetailsModal";
+import ConfirmDialog from "../../components/common/ConfirmDialog/ConfirmDialog";
 
-const ROLES = ["Student", "Instructor", "Admin"];
+const STATUS_COLORS: Record<UserStatus, "success" | "default" | "error" | "warning"> = {
+  Active:   "success",
+  Inactive: "default",
+  Deleted:  "error",
+  Invalid:  "warning",
+};
 
 const AdminUsersPage = () => {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [search, setSearch] = useState("");
-  const [savingId, setSavingId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const { error, handleError, clearError } = useApiError();
 
   const load = useCallback(async (q?: string) => {
     setLoading(true);
+    clearError();
     try {
       const data = await adminService.getUsers(q || undefined);
       setUsers(data);
-    } catch { setError("Failed to load users."); }
+    } catch (err) { handleError(err); }
     finally { setLoading(false); }
-  }, []);
+  }, [clearError, handleError]);
 
   useEffect(() => { load(); }, [load]);
 
-  const handleRoleChange = async (userId: string, role: string) => {
-    setSavingId(userId);
-    try {
-      await adminService.updateRole(userId, role);
-      await load(search);
-    } catch { setError("Failed to update role."); }
-    finally { setSavingId(null); }
-  };
-
-  const handleToggleStatus = async (user: AdminUser) => {
-    setSavingId(user.userId);
-    try {
-      await adminService.toggleStatus(user.userId, !user.isActive);
-      await load(search);
-    } catch { setError("Failed to toggle status."); }
-    finally { setSavingId(null); }
-  };
-
-  const handleDelete = async (userId: string, name: string) => {
-    if (!window.confirm(`Delete user "${name}"? This cannot be undone.`)) return;
-    try {
-      await adminService.deleteUser(userId);
-      await load(search);
-    } catch { setError("Failed to delete user."); }
-  };
-
   const handleSearch = () => { load(search); };
 
-  if (loading) return <Box sx={{ p: 4, textAlign: "center" }}><CircularProgress /></Box>;
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    clearError();
+    try {
+      await adminService.deleteUser(deleteTarget.userId);
+      setDeleteTarget(null);
+      await load(search);
+    } catch (err) { handleError(err); }
+    finally { setDeleting(false); }
+  };
+
+  if (loading) {
+    return <Box sx={{ p: 4, textAlign: "center" }}><CircularProgress /></Box>;
+  }
 
   return (
     <Box sx={{ p: 3 }}>
@@ -69,61 +67,99 @@ const AdminUsersPage = () => {
           onChange={(e) => setSearch(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSearch()}
           sx={{ minWidth: 300 }} />
-        <Button variant="outlined" startIcon={<SearchRounded />} onClick={handleSearch}>Search</Button>
+        <Button variant="outlined" startIcon={<SearchRounded />} onClick={handleSearch}>
+          Search
+        </Button>
       </Stack>
 
-      <TableContainer component={Paper} sx={{ borderRadius: 4 }}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell sx={{ fontWeight: 700 }}>User</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Email</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Role</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Paths Created</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Modules Done</TableCell>
-              <TableCell sx={{ fontWeight: 700 }} align="right">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {users.map((u) => (
-              <TableRow key={u.userId} hover>
-                <TableCell>
+      <Grid container spacing={2}>
+        {users.map((u) => (
+          <Grid item key={u.userId} xs={12} sm={6} md={4}>
+            <Card sx={{ borderRadius: 3, height: "100%", position: "relative",
+              boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+              <CardActionArea onClick={() => setSelectedId(u.userId)}>
+                <CardContent>
                   <Stack direction="row" alignItems="center" spacing={1.5}>
-                    <Avatar sx={{ width: 32, height: 32, fontSize: "0.8rem", fontWeight: 700 }}>
-                      {u.fullName.split(" ").map(n => n[0]).join("")}
+                    <Avatar
+                      src={u.avatarUrl || undefined}
+                      sx={{ width: 44, height: 44, fontWeight: 700 }}
+                    >
+                      {u.fullName.split(" ").map((n) => n[0]).join("")}
                     </Avatar>
-                    <Typography fontWeight={600}>{u.fullName}</Typography>
+                    <Box flex={1} minWidth={0}>
+                      <Stack direction="row" alignItems="center" spacing={0.5}>
+                        <Typography fontWeight={700} noWrap>{u.fullName}</Typography>
+                        {u.isSuperAdmin && (
+                          <Tooltip title="Super Admin">
+                            <ShieldRounded sx={{ color: "warning.main", fontSize: 16 }} />
+                          </Tooltip>
+                        )}
+                      </Stack>
+                      <Typography variant="caption" color="text.secondary" noWrap>
+                        {u.email}
+                      </Typography>
+                    </Box>
                   </Stack>
-                </TableCell>
-                <TableCell>{u.email}</TableCell>
-                <TableCell>
-                  <Select size="small" value={u.roles[0] || "Student"}
-                    disabled={savingId === u.userId}
-                    onChange={(e) => handleRoleChange(u.userId, e.target.value)}
-                    sx={{ minWidth: 110, fontSize: "0.85rem" }}>
-                    {ROLES.map(r => <MenuItem key={r} value={r}>{r}</MenuItem>)}
-                  </Select>
-                </TableCell>
-                <TableCell>
-                  <Chip label={u.isActive ? "Active" : "Inactive"}
-                    color={u.isActive ? "success" : "default"} size="small"
-                    onClick={() => handleToggleStatus(u)}
-                    sx={{ cursor: "pointer" }} />
-                </TableCell>
-                <TableCell>{u.totalPathsCreated}</TableCell>
-                <TableCell>{u.totalModulesCompleted}</TableCell>
-                <TableCell align="right">
-                  <IconButton onClick={() => handleDelete(u.userId, u.fullName)}
-                    size="small" color="error" title="Delete User">
-                    <DeleteRounded />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+
+                  <Stack direction="row" spacing={0.5} mt={1.5}>
+                    <Chip label={u.roles[0] || "Student"} size="small"
+                      variant="outlined" sx={{ fontWeight: 600 }} />
+                    <Chip label={u.status} size="small" color={STATUS_COLORS[u.status]}
+                      variant={u.status === "Deleted" ? "filled" : "outlined"}
+                      sx={{ fontWeight: 600 }} />
+                  </Stack>
+
+                  <Stack direction="row" spacing={2} mt={1.5}>
+                    <Box>
+                      <Typography variant="h6" fontWeight={700} color="primary.main">
+                        {u.totalPathsCreated}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Paths Created
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="h6" fontWeight={700} color="primary.main">
+                        {u.totalModulesCompleted}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Modules Done
+                      </Typography>
+                    </Box>
+                  </Stack>
+                </CardContent>
+              </CardActionArea>
+
+              {!u.isSuperAdmin && u.status !== "Deleted" && (
+                <IconButton
+                  size="small" color="error" title="Delete User"
+                  onClick={() => setDeleteTarget(u)}
+                  sx={{ position: "absolute", top: 8, right: 8 }}
+                >
+                  <DeleteRounded fontSize="small" />
+                </IconButton>
+              )}
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+
+      <UserDetailsModal
+        open={!!selectedId}
+        userId={selectedId}
+        onClose={() => setSelectedId(null)}
+        onChanged={() => load(search)}
+      />
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Delete User"
+        message={`Soft delete "${deleteTarget?.fullName}"? Their account will be deactivated and their identity anonymized. This cannot be undone.`}
+        confirmLabel="Delete User"
+        confirmLoading={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </Box>
   );
 };

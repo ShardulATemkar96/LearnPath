@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Alert, Box, Button, Chip, IconButton, Paper, Stack, Table, TableBody,
+  Alert, Box, Button, Chip, IconButton, Paper, Snackbar, Stack, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, Typography, CircularProgress,
   Dialog, DialogContent, DialogTitle, TextField, FormControlLabel, Switch,
 } from "@mui/material";
@@ -15,13 +15,15 @@ import { AdminPath } from "../../types/admin.types";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "../../redux/store";
 import { fetchMyPaths } from "../../redux/slices/pathSlice";
+import { useApiError } from "../../hooks/useApiError";
 
 const AdminPathsPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const [paths, setPaths] = useState<AdminPath[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const { error, handleError, clearError } = useApiError();
+  const [successMsg, setSuccessMsg] = useState("");
   const [editModal, setEditModal] = useState(false);
   const [editingPath, setEditingPath] = useState<AdminPath | null>(null);
   const [form, setForm] = useState({ title: "", description: "", thumbnailUrl: "", isPublic: false, isPublished: false });
@@ -32,9 +34,10 @@ const AdminPathsPage = () => {
     try {
       const data = await adminService.getAllPaths();
       setPaths(data);
-    } catch { setError("Failed to load paths."); }
+      clearError();
+    } catch (err) { handleError(err); }
     finally { setLoading(false); }
-  }, []);
+  }, [clearError, handleError]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -52,7 +55,9 @@ const AdminPathsPage = () => {
       dispatch(fetchMyPaths());
       await load();
       setEditModal(false);
-    } catch { setError("Failed to update path."); }
+      setSuccessMsg("Learning path updated successfully.");
+      clearError();
+    } catch (err) { handleError(err); }
     finally { setSaving(false); }
   };
 
@@ -62,7 +67,9 @@ const AdminPathsPage = () => {
       await pathService.delete(id);
       dispatch(fetchMyPaths());
       await load();
-    } catch { setError("Failed to delete path."); }
+      setSuccessMsg("Learning path deleted successfully.");
+      clearError();
+    } catch (err) { handleError(err); }
   };
 
   if (loading) return <Box sx={{ p: 4, textAlign: "center" }}><CircularProgress /></Box>;
@@ -79,6 +86,8 @@ const AdminPathsPage = () => {
       </Stack>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      <Snackbar open={!!successMsg} autoHideDuration={3000} onClose={() => setSuccessMsg("")}
+        message={successMsg} anchorOrigin={{ vertical: "bottom", horizontal: "center" }} />
 
       {paths.length === 0 ? (
         <Paper sx={{ p: 4, textAlign: "center", borderRadius: 4 }}>
