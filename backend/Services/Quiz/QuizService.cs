@@ -9,16 +9,30 @@ namespace LearnPath.API.Services.Quiz;
 public class QuizService : IQuizService
 {
     private readonly ApplicationDbContext _context;
+    private readonly IAuditLogService _auditLog;
 
-    public QuizService(ApplicationDbContext context)
+    public QuizService(
+        ApplicationDbContext context,
+        IAuditLogService auditLog)
     {
         _context = context;
+        _auditLog = auditLog;
     }
 
-    public async Task<List<QuizResponseDto>> GetAllAsync()
+    public async Task<List<QuizResponseDto>> GetAllAsync(string userId)
     {
+        if (await IsAdminAsync(userId))
+        {
+            return await _context.Quizzes
+                .Include(q => q.QuestionBank)
+                .OrderByDescending(q => q.CreatedAt)
+                .Select(q => MapToDto(q))
+                .ToListAsync();
+        }
+
         return await _context.Quizzes
             .Include(q => q.QuestionBank)
+            .Where(q => q.CreatedById == userId)
             .OrderByDescending(q => q.CreatedAt)
             .Select(q => MapToDto(q))
             .ToListAsync();
@@ -34,7 +48,7 @@ public class QuizService : IQuizService
         return MapToDto(quiz);
     }
 
-    public async Task<QuizResponseDto> CreateAsync(CreateQuizDto dto)
+    public async Task<QuizResponseDto> CreateAsync(CreateQuizDto dto, string userId)
     {
         var bank = await _context.QuestionBanks
             .FirstOrDefaultAsync(qb => qb.Id == dto.QuestionBankId)
@@ -70,20 +84,22 @@ public class QuizService : IQuizService
             PassingPercentage = dto.PassingPercentage,
             MaximumAttempts = dto.MaximumAttempts,
             Status = QuizStatus.Draft,
+            CreatedById = userId,
             CreatedAt = DateTime.UtcNow,
         };
 
         _context.Quizzes.Add(quiz);
         await _context.SaveChangesAsync();
 
+        await LogQuizAsync(AuditAction.QUIZ_CREATED, quiz, userId,
+            $"Quiz '{quiz.Title}' was created.");
+
         return await GetByIdAsync(quiz.Id);
     }
 
-    public async Task<QuizResponseDto> UpdateAsync(int id, UpdateQuizDto dto)
+    public async Task<QuizResponseDto> UpdateAsync(int id, UpdateQuizDto dto, string userId)
     {
-        var quiz = await _context.Quizzes
-            .Include(q => q.QuestionBank)
-            .FirstOrDefaultAsync(q => q.Id == id)
+        var quiz = await GetOwnedQuizAsync(id, userId)
             ?? throw new KeyNotFoundException("Quiz not found.");
 
         if (await _context.Quizzes.AnyAsync(q => q.Title == dto.Title && q.Id != id))
@@ -99,6 +115,8 @@ public class QuizService : IQuizService
         if (dto.QuestionCount > bank.QuestionCount)
             throw new ArgumentException($"Question Bank only has {bank.QuestionCount} questions.");
 
+        var oldValue = $"Title: {quiz.Title}; QuestionBankId: {quiz.QuestionBankId}; QuestionCount: {quiz.QuestionCount}";
+
         quiz.Title = dto.Title;
         quiz.QuestionBankId = dto.QuestionBankId;
         quiz.QuestionCount = dto.QuestionCount;
@@ -109,30 +127,34 @@ public class QuizService : IQuizService
         quiz.MaximumAttempts = dto.MaximumAttempts;
 
         await _context.SaveChangesAsync();
+
+        await LogQuizAsync(AuditAction.QUIZ_UPDATED, quiz, userId,
+            $"Quiz '{quiz.Title}' was updated.",
+            oldValue: oldValue,
+            newValue: $"Title: {quiz.Title}; QuestionBankId: {quiz.QuestionBankId}; QuestionCount: {quiz.QuestionCount}");
+
         return MapToDto(quiz);
     }
 
-    public async Task<QuizResponseDto?> ArchiveAsync(int id)
+    public async Task<QuizResponseDto?> ArchiveAsync(int id, string userId)
     {
-        var quiz = await _context.Quizzes
-            .Include(q => q.QuestionBank)
-            .FirstOrDefaultAsync(q => q.Id == id);
-
+        var quiz = await GetOwnedQuizAsync(id, userId);
         if (quiz is null) return null;
 
         quiz.Status = QuizStatus.Archived;
         quiz.ArchivedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+
+        await LogQuizAsync(AuditAction.QUIZ_ARCHIVED, quiz, userId,
+            $"Quiz '{quiz.Title}' was archived.");
+
         return MapToDto(quiz);
     }
 
-    public async Task<QuizResponseDto?> PublishAsync(int id)
+    public async Task<QuizResponseDto?> PublishAsync(int id, string userId)
     {
-        var quiz = await _context.Quizzes
-            .Include(q => q.QuestionBank)
-            .FirstOrDefaultAsync(q => q.Id == id);
-
+        var quiz = await GetOwnedQuizAsync(id, userId);
         if (quiz is null) return null;
 
         if (quiz.Status == QuizStatus.Archived)
@@ -142,15 +164,16 @@ public class QuizService : IQuizService
         quiz.PublishedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+
+        await LogQuizAsync(AuditAction.QUIZ_PUBLISHED, quiz, userId,
+            $"Quiz '{quiz.Title}' was published.");
+
         return MapToDto(quiz);
     }
 
-    public async Task<QuizResponseDto?> UnpublishAsync(int id)
+    public async Task<QuizResponseDto?> UnpublishAsync(int id, string userId)
     {
-        var quiz = await _context.Quizzes
-            .Include(q => q.QuestionBank)
-            .FirstOrDefaultAsync(q => q.Id == id);
-
+        var quiz = await GetOwnedQuizAsync(id, userId);
         if (quiz is null) return null;
 
         if (quiz.Status != QuizStatus.Published)
@@ -160,15 +183,16 @@ public class QuizService : IQuizService
         quiz.PublishedAt = null;
 
         await _context.SaveChangesAsync();
+
+        await LogQuizAsync(AuditAction.QUIZ_UNPUBLISHED, quiz, userId,
+            $"Quiz '{quiz.Title}' was unpublished.");
+
         return MapToDto(quiz);
     }
 
-    public async Task<QuizResponseDto?> DeleteAsync(int id)
+    public async Task<QuizResponseDto?> DeleteAsync(int id, string userId)
     {
-        var quiz = await _context.Quizzes
-            .Include(q => q.ModuleQuizzes)
-            .FirstOrDefaultAsync(q => q.Id == id);
-
+        var quiz = await GetOwnedQuizAsync(id, userId, includeModuleQuizzes: true);
         if (quiz is null) return null;
 
         if (quiz.ModuleQuizzes.Count > 0)
@@ -177,19 +201,28 @@ public class QuizService : IQuizService
 
         _context.Quizzes.Remove(quiz);
         await _context.SaveChangesAsync();
+
+        await LogQuizAsync(AuditAction.QUIZ_DELETED, quiz, userId,
+            $"Quiz '{quiz.Title}' was deleted.");
+
         return MapToDto(quiz);
     }
 
     public async Task<ModuleQuizResponseDto> LinkToModuleAsync(int moduleId, int quizId, string userId)
     {
-        var quiz = await _context.Quizzes.FirstOrDefaultAsync(q => q.Id == quizId)
+        var module = await _context.Modules
+            .Include(m => m.LearningPath)
+            .FirstOrDefaultAsync(m => m.Id == moduleId)
+            ?? throw new KeyNotFoundException("Module not found.");
+
+        if (!await IsAdminAsync(userId) && module.LearningPath.CreatedById != userId)
+            throw new UnauthorizedAccessException("You do not own this learning path.");
+
+        var quiz = await GetOwnedQuizAsync(quizId, userId)
             ?? throw new KeyNotFoundException("Quiz not found.");
 
         if (quiz.Status != QuizStatus.Published)
             throw new InvalidOperationException("Quiz must be published before assignment.");
-
-        if (!await _context.Modules.AnyAsync(m => m.Id == moduleId))
-            throw new KeyNotFoundException("Module not found.");
 
         var existing = await _context.ModuleQuizzes
             .FirstOrDefaultAsync(mq => mq.ModuleId == moduleId);
@@ -218,6 +251,14 @@ public class QuizService : IQuizService
 
         var linkedQuiz = await _context.Quizzes.FirstAsync(q => q.Id == quizId);
 
+        await _auditLog.LogAsync(
+            AuditAction.QUIZ_LINKED_TO_MODULE,
+            "Quiz",
+            quizId.ToString(),
+            $"Quiz '{linkedQuiz.Title}' was assigned to module '{module.Title}'.",
+            additionalData: $"ModuleId: {moduleId}",
+            userId: userId);
+
         return new ModuleQuizResponseDto
         {
             Id = existing?.Id ?? 0,
@@ -238,7 +279,27 @@ public class QuizService : IQuizService
 
         _context.ModuleQuizzes.Remove(link);
         await _context.SaveChangesAsync();
+
+        await _auditLog.LogAsync(
+            AuditAction.QUIZ_UNLINKED_FROM_MODULE,
+            "Quiz",
+            link.QuizId.ToString(),
+            "Quiz was unlinked from a module.",
+            additionalData: $"ModuleId: {moduleId}");
     }
+
+    private Task LogQuizAsync(
+        AuditAction action, Entities.Quiz quiz, string userId, string description,
+        string? oldValue = null, string? newValue = null) =>
+        _auditLog.LogAsync(
+            action,
+            "Quiz",
+            quiz.Id.ToString(),
+            description,
+            oldValue: oldValue,
+            newValue: newValue,
+            additionalData: $"QuestionBankId: {quiz.QuestionBankId}",
+            userId: userId);
 
     public async Task<ModuleQuizResponseDto?> GetModuleQuizAsync(int moduleId)
     {
@@ -258,6 +319,32 @@ public class QuizService : IQuizService
             .FirstOrDefaultAsync();
     }
 
+    private async Task<bool> IsAdminAsync(string userId)
+    {
+        return await _context.UserRoles
+            .Where(ur => ur.UserId == userId)
+            .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => r.Name)
+            .AnyAsync(name => name == "Admin");
+    }
+
+    private async Task<Entities.Quiz?> GetOwnedQuizAsync(int id, string userId, bool includeModuleQuizzes = false)
+    {
+        var query = _context.Quizzes
+            .Include(q => q.QuestionBank)
+            .AsQueryable();
+
+        if (includeModuleQuizzes)
+            query = query.Include(q => q.ModuleQuizzes);
+
+        var quiz = await query.FirstOrDefaultAsync(q => q.Id == id);
+        if (quiz is null) return null;
+
+        if (!await IsAdminAsync(userId) && quiz.CreatedById != userId)
+            throw new UnauthorizedAccessException("You do not own this quiz.");
+
+        return quiz;
+    }
+
     private static QuizResponseDto MapToDto(Entities.Quiz q) => new()
     {
         Id = q.Id,
@@ -272,6 +359,7 @@ public class QuizService : IQuizService
         PassingPercentage = q.PassingPercentage,
         MaximumAttempts = q.MaximumAttempts,
         Status = q.Status,
+        CreatedById = q.CreatedById,
         CreatedAt = q.CreatedAt,
         PublishedAt = q.PublishedAt,
         ArchivedAt = q.ArchivedAt,

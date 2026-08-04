@@ -59,6 +59,71 @@ namespace LearnPath.API.Migrations
                     b.ToTable("Assignments");
                 });
 
+            modelBuilder.Entity("LearnPath.API.Entities.AuditLog", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("ActionType")
+                        .HasColumnType("int");
+
+                    b.Property<string>("AdditionalData")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("EntityId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("NewValue")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("OldValue")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("Role")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Username")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActionType");
+
+                    b.HasIndex("Timestamp");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("EntityType", "EntityId");
+
+                    b.ToTable("AuditLogs", (string)null);
+                });
+
             modelBuilder.Entity("LearnPath.API.Entities.Certificate", b =>
                 {
                     b.Property<int>("Id")
@@ -159,11 +224,22 @@ namespace LearnPath.API.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool>("Edited")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("EditedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<int?>("ParentCommentId")
                         .HasColumnType("int");
 
                     b.Property<int>("PostId")
                         .HasColumnType("int");
+
+                    b.Property<int>("Score")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -172,9 +248,13 @@ namespace LearnPath.API.Migrations
 
                     b.HasIndex("AuthorId");
 
+                    b.HasIndex("CreatedAt");
+
                     b.HasIndex("ParentCommentId");
 
                     b.HasIndex("PostId");
+
+                    b.HasIndex("Score");
 
                     b.ToTable("Comments");
                 });
@@ -208,6 +288,69 @@ namespace LearnPath.API.Migrations
                         .IsUnique();
 
                     b.ToTable("CommentVotes");
+                });
+
+            modelBuilder.Entity("LearnPath.API.Entities.Group", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("IsPublic")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("OwnerId");
+
+                    b.ToTable("Groups");
+                });
+
+            modelBuilder.Entity("LearnPath.API.Entities.GroupMember", b =>
+                {
+                    b.Property<int>("GroupId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("JoinedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("GroupId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("GroupMembers");
                 });
 
             modelBuilder.Entity("LearnPath.API.Entities.LearningPath", b =>
@@ -573,6 +716,9 @@ namespace LearnPath.API.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("CodeSnippet")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Content")
                         .IsRequired()
                         .HasMaxLength(10000)
@@ -580,6 +726,15 @@ namespace LearnPath.API.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<bool>("Edited")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("EditedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("GroupId")
+                        .HasColumnType("int");
 
                     b.Property<bool>("IsLocked")
                         .HasColumnType("bit");
@@ -589,6 +744,17 @@ namespace LearnPath.API.Migrations
 
                     b.Property<int?>("LearningPathId")
                         .HasColumnType("int");
+
+                    b.Property<string>("ProgrammingLanguage")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Score")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<string>("Tags")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -609,7 +775,13 @@ namespace LearnPath.API.Migrations
 
                     b.HasIndex("CreatedAt");
 
+                    b.HasIndex("GroupId");
+
                     b.HasIndex("LearningPathId");
+
+                    b.HasIndex("Score");
+
+                    b.HasIndex("IsPinned", "CreatedAt");
 
                     b.ToTable("Posts");
                 });
@@ -791,6 +963,10 @@ namespace LearnPath.API.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("CreatedById")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<int?>("DifficultyFilter")
                         .HasColumnType("int");
 
@@ -931,6 +1107,54 @@ namespace LearnPath.API.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("RefreshTokens");
+                });
+
+            modelBuilder.Entity("LearnPath.API.Entities.Report", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("ReportedByUserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("Pending");
+
+                    b.Property<int>("TargetId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TargetType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("ReportedByUserId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("TargetType", "TargetId");
+
+                    b.ToTable("Reports");
                 });
 
             modelBuilder.Entity("LearnPath.API.Entities.StudentAnswer", b =>
@@ -1130,7 +1354,10 @@ namespace LearnPath.API.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<bool>("IsActive")
+                    b.Property<string>("InvalidReason")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsSuperAdmin")
                         .HasColumnType("bit");
 
                     b.Property<string>("LastName")
@@ -1163,6 +1390,9 @@ namespace LearnPath.API.Migrations
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
 
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("bit");
@@ -1437,6 +1667,36 @@ namespace LearnPath.API.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("LearnPath.API.Entities.Group", b =>
+                {
+                    b.HasOne("LearnPath.API.Entities.User", "Owner")
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Owner");
+                });
+
+            modelBuilder.Entity("LearnPath.API.Entities.GroupMember", b =>
+                {
+                    b.HasOne("LearnPath.API.Entities.Group", "Group")
+                        .WithMany("Members")
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("LearnPath.API.Entities.User", "User")
+                        .WithMany("GroupMemberships")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Group");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("LearnPath.API.Entities.LearningPath", b =>
                 {
                     b.HasOne("LearnPath.API.Entities.User", "CreatedBy")
@@ -1560,12 +1820,19 @@ namespace LearnPath.API.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("LearnPath.API.Entities.Group", "Group")
+                        .WithMany("Posts")
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("LearnPath.API.Entities.LearningPath", "LearningPath")
                         .WithMany()
                         .HasForeignKey("LearningPathId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Author");
+
+                    b.Navigation("Group");
 
                     b.Navigation("LearningPath");
                 });
@@ -1666,6 +1933,17 @@ namespace LearnPath.API.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("LearnPath.API.Entities.Report", b =>
+                {
+                    b.HasOne("LearnPath.API.Entities.User", "ReportedBy")
+                        .WithMany()
+                        .HasForeignKey("ReportedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ReportedBy");
                 });
 
             modelBuilder.Entity("LearnPath.API.Entities.StudentAnswer", b =>
@@ -1814,6 +2092,13 @@ namespace LearnPath.API.Migrations
                     b.Navigation("Votes");
                 });
 
+            modelBuilder.Entity("LearnPath.API.Entities.Group", b =>
+                {
+                    b.Navigation("Members");
+
+                    b.Navigation("Posts");
+                });
+
             modelBuilder.Entity("LearnPath.API.Entities.LearningPath", b =>
                 {
                     b.Navigation("Classrooms");
@@ -1870,6 +2155,8 @@ namespace LearnPath.API.Migrations
             modelBuilder.Entity("LearnPath.API.Entities.User", b =>
                 {
                     b.Navigation("CreatedPaths");
+
+                    b.Navigation("GroupMemberships");
 
                     b.Navigation("Progresses");
 

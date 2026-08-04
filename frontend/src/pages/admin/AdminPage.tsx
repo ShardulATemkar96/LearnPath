@@ -6,7 +6,7 @@ import {
 } from "@mui/material";
 import {
   RouteRounded, PeopleRounded, ClassRounded, WorkspacePremiumRounded,
-  QuizRounded, BarChartRounded, CloudUploadRounded,
+  QuizRounded, BarChartRounded, CloudUploadRounded, HistoryRounded,
 } from "@mui/icons-material";
 import { adminService } from "../../services/adminService";
 import { AdminStats } from "../../types/admin.types";
@@ -14,9 +14,12 @@ import { AdminStats } from "../../types/admin.types";
 const NAV_CARDS = [
   { label: "Manage Paths", desc: "Edit, delete, or manage modules", path: "/admin/paths", icon: <RouteRounded sx={{ fontSize: 40 }} /> },
   { label: "Manage Users", desc: "Change roles, activate, delete users", path: "/admin/users", icon: <PeopleRounded sx={{ fontSize: 40 }} /> },
+  { label: "Manage Certificates", desc: "View and revoke issued certificates", path: "/admin/certificates", icon: <WorkspacePremiumRounded sx={{ fontSize: 40 }} /> },
+  { label: "Manage Classrooms", desc: "View, edit, reassign, or delete classrooms", path: "/admin/classrooms", icon: <ClassRounded sx={{ fontSize: 40 }} /> },
   { label: "Question Banks", desc: "Upload, version, and archive question banks", path: "/admin/question-banks", icon: <CloudUploadRounded sx={{ fontSize: 40 }} /> },
   { label: "Manage Quizzes", desc: "Create, publish, and archive quizzes", path: "/admin/quizzes", icon: <QuizRounded sx={{ fontSize: 40 }} /> },
   { label: "Quiz Analytics", desc: "View quiz performance and stats", path: "/admin/quiz-analytics", icon: <BarChartRounded sx={{ fontSize: 40 }} /> },
+  { label: "History", desc: "Super Admin audit trail across all users", path: "/admin/history", icon: <HistoryRounded sx={{ fontSize: 40 }} /> },
 ];
 
 const AdminPage = () => {

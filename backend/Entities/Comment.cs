@@ -7,6 +7,9 @@ public class Comment
     public string AuthorId { get; set; } = string.Empty;
     public int PostId { get; set; }
     public int? ParentCommentId { get; set; }
+    public int Score { get; set; } = 0;
+    public bool Edited { get; set; } = false;
+    public DateTime? EditedAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

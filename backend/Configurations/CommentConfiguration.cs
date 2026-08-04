@@ -10,6 +10,13 @@ public class CommentConfiguration : IEntityTypeConfiguration<Comment>
     {
         builder.HasKey(c => c.Id);
         builder.Property(c => c.Content).HasMaxLength(5000).IsRequired();
+        builder.Property(c => c.Score).HasDefaultValue(0);
+
+        builder.HasIndex(c => c.PostId);
+        builder.HasIndex(c => c.AuthorId);
+        builder.HasIndex(c => c.CreatedAt);
+        builder.HasIndex(c => c.ParentCommentId);
+        builder.HasIndex(c => c.Score);
 
         builder.HasOne(c => c.Author)
                .WithMany()

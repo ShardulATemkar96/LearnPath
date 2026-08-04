@@ -21,15 +21,14 @@ public class QuizController : ControllerBase
 
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Instructor")]
     [HttpGet("quizzes")]
     public async Task<IActionResult> GetAll()
     {
-        var result = await _service.GetAllAsync();
+        var result = await _service.GetAllAsync(UserId);
         return Ok(ApiResponse<List<QuizResponseDto>>.Ok(result));
     }
 
-    [Authorize(Roles = "Admin")]
     [HttpGet("quizzes/{id:int}")]
     public async Task<IActionResult> GetById(int id)
     {
@@ -44,13 +43,13 @@ public class QuizController : ControllerBase
         }
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Instructor")]
     [HttpPost("quizzes")]
     public async Task<IActionResult> Create([FromBody] CreateQuizDto dto)
     {
         try
         {
-            var result = await _service.CreateAsync(dto);
+            var result = await _service.CreateAsync(dto, UserId);
             return CreatedAtAction(nameof(GetById), new { id = result.Id },
                 ApiResponse<QuizResponseDto>.Ok(result, "Quiz created."));
         }
@@ -60,13 +59,13 @@ public class QuizController : ControllerBase
         }
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Instructor")]
     [HttpPut("quizzes/{id:int}")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateQuizDto dto)
     {
         try
         {
-            var result = await _service.UpdateAsync(id, dto);
+            var result = await _service.UpdateAsync(id, dto, UserId);
             return Ok(ApiResponse<QuizResponseDto>.Ok(result, "Quiz updated."));
         }
         catch (KeyNotFoundException ex)
@@ -79,24 +78,24 @@ public class QuizController : ControllerBase
         }
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Instructor")]
     [HttpPatch("quizzes/{id:int}/archive")]
     public async Task<IActionResult> Archive(int id)
     {
-        var result = await _service.ArchiveAsync(id);
+        var result = await _service.ArchiveAsync(id, UserId);
         if (result is null)
             return NotFound(ApiResponse<object>.Fail("Quiz not found."));
 
         return Ok(ApiResponse<QuizResponseDto>.Ok(result, "Quiz archived."));
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Instructor")]
     [HttpPatch("quizzes/{id:int}/publish")]
     public async Task<IActionResult> Publish(int id)
     {
         try
         {
-            var result = await _service.PublishAsync(id);
+            var result = await _service.PublishAsync(id, UserId);
             if (result is null)
                 return NotFound(ApiResponse<object>.Fail("Quiz not found."));
 
@@ -108,13 +107,13 @@ public class QuizController : ControllerBase
         }
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Instructor")]
     [HttpPatch("quizzes/{id:int}/unpublish")]
     public async Task<IActionResult> Unpublish(int id)
     {
         try
         {
-            var result = await _service.UnpublishAsync(id);
+            var result = await _service.UnpublishAsync(id, UserId);
             if (result is null)
                 return NotFound(ApiResponse<object>.Fail("Quiz not found."));
 
@@ -132,7 +131,7 @@ public class QuizController : ControllerBase
     {
         try
         {
-            var result = await _service.DeleteAsync(id);
+            var result = await _service.DeleteAsync(id, UserId);
             if (result is null)
                 return NotFound(ApiResponse<object>.Fail("Quiz not found."));
 
@@ -144,7 +143,7 @@ public class QuizController : ControllerBase
         }
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Instructor")]
     [HttpPost("modules/{moduleId:int}/quiz")]
     public async Task<IActionResult> LinkQuiz(int moduleId, [FromBody] LinkQuizDto dto)
     {
@@ -159,7 +158,7 @@ public class QuizController : ControllerBase
         }
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Instructor")]
     [HttpDelete("modules/{moduleId:int}/quiz")]
     public async Task<IActionResult> UnlinkQuiz(int moduleId)
     {

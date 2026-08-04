@@ -130,6 +130,7 @@ export interface ReviewResponseDto {
   passed: boolean;
   timeSpentSeconds: number;
   attemptNumber: number;
+  passingPercentage: number;
   questions: ReviewQuestionDto[];
 }
 

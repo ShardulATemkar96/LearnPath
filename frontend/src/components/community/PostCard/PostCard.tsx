@@ -1,19 +1,20 @@
-﻿import {
+﻿import { useState } from "react";
+import {
   Box, Card, CardActionArea, CardContent,
-  Chip, IconButton, Stack, Tooltip, Typography,
+  Chip, IconButton, Snackbar, Stack, Tooltip, Typography,
 } from "@mui/material";
 import {
   ThumbUpRounded, ThumbDownRounded,
   CommentRounded, VisibilityRounded,
-  PushPinRounded, LockRounded,
+  PushPinRounded, LockRounded, FlagRounded, GroupsRounded,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { PostSummary } from "../../../types/community.types";
 import { AppDispatch } from "../../../redux/store";
-import { updatePostVote } from "../../../redux/slices/communitySlice";
-import { communityService } from "../../../services/communityService";
+import { votePostThunk } from "../../../redux/slices/communitySlice";
 import { dateUtils } from "../../../utils/dateUtils";
+import ReportDialog from "../ReportDialog/ReportDialog";
 
 const CATEGORY_COLORS: Record<string, string> = {
   General:       "#6C63FF",
@@ -25,27 +26,26 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 interface PostCardProps {
   post: PostSummary;
+  canPin?: boolean;
+  onPinToggle?: (post: PostSummary) => void;
+  onTagClick?: (tag: string) => void;
 }
 
-const PostCard = ({ post }: PostCardProps) => {
+const PostCard = ({ post, canPin, onPinToggle, onTagClick }: PostCardProps) => {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
+  const [toast, setToast] = useState("");
+  const [reportOpen, setReportOpen] = useState(false);
 
   const handleVote = async (
     e: React.MouseEvent,
     isUpvote: boolean
   ) => {
     e.stopPropagation();
-    try {
-      const newCount = await communityService.votePost(post.id, isUpvote);
-      const newVote =
-        post.userVote === (isUpvote ? 1 : -1) ? 0 : (isUpvote ? 1 : -1);
-      dispatch(updatePostVote({
-        postId: post.id,
-        upvoteCount: newCount,
-        userVote: newVote,
-      }));
-    } catch { /* silent */ }
+    const result = await dispatch(votePostThunk({ postId: post.id, isUpvote }));
+    if ((result as any).meta?.requestStatus === "fulfilled") {
+      setToast("Vote updated.");
+    }
   };
 
   return (
@@ -83,6 +83,26 @@ const PostCard = ({ post }: PostCardProps) => {
                     color: CATEGORY_COLORS[post.category] ?? "#6C63FF",
                   }}
                 />
+                {post.groupName && (
+                  <Chip
+                    label={post.groupName}
+                    size="small"
+                    variant="outlined"
+                    icon={<GroupsRounded sx={{ fontSize: 13 }} />}
+                    onClick={(e) => {
+                      if (!post.groupId) return;
+                      e.stopPropagation();
+                      navigate(`/community/groups/${post.groupId}`);
+                    }}
+                    sx={{
+                      fontWeight: 600,
+                      fontSize: "0.7rem",
+                      borderColor: "rgba(108,99,255,0.4)",
+                      color: "primary.main",
+                      cursor: "pointer",
+                    }}
+                  />
+                )}
                 {post.isPinned && (
                   <Tooltip title="Pinned">
                     <PushPinRounded
@@ -98,9 +118,31 @@ const PostCard = ({ post }: PostCardProps) => {
                   </Tooltip>
                 )}
               </Stack>
-              <Typography variant="caption" color="text.secondary">
-                {dateUtils.timeAgo(post.createdAt)}
-              </Typography>
+              <Stack direction="row" alignItems="center" spacing={0.5}>
+                {canPin && onPinToggle && (
+                  <Tooltip title={post.isPinned ? "Unpin" : "Pin"}>
+                    <IconButton
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onPinToggle(post);
+                      }}
+                      sx={{
+                        color: post.isPinned
+                          ? "primary.main" : "text.secondary",
+                        p: 0.5,
+                      }}
+                    >
+                      <PushPinRounded sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Tooltip>
+                )}
+                <Typography variant="caption" color="text.secondary">
+                  {post.editedAt
+                    ? <>Edited · {dateUtils.timeAgo(post.editedAt)}</>
+                    : dateUtils.timeAgo(post.createdAt)}
+                </Typography>
+              </Stack>
             </Stack>
 
             {/* Title */}
@@ -128,12 +170,46 @@ const PostCard = ({ post }: PostCardProps) => {
               {post.contentPreview}
             </Typography>
 
+            {/* Tags */}
+            {post.tags && (
+              <Stack direction="row" spacing={0.5} flexWrap="wrap" gap={0.5}>
+                {post.tags.split(",").map((tag) => tag.trim())
+                  .filter(Boolean).map((tag) => (
+                    <Chip
+                      key={tag}
+                      label={tag}
+                      size="small"
+                      variant="outlined"
+                      onClick={(e) => {
+                        if (!onTagClick) return;
+                        e.stopPropagation();
+                        onTagClick(tag);
+                      }}
+                      sx={{
+                        fontSize: "0.7rem", fontWeight: 600,
+                        cursor: onTagClick ? "pointer" : "default",
+                      }}
+                    />
+                  ))}
+              </Stack>
+            )}
+
             {/* Footer */}
             <Stack direction="row" alignItems="center"
               justifyContent="space-between" pt={0.5}>
-              <Typography variant="caption" color="text.secondary" fontWeight={500}>
-                {post.authorName}
-              </Typography>
+              <Stack direction="row" alignItems="center" spacing={0.5}>
+                <Typography variant="caption" color="text.secondary" fontWeight={500}>
+                  {post.authorIsDeleted ? "Deleted User" : post.authorName}
+                </Typography>
+                {post.authorIsDeleted && (
+                  <Chip
+                    label="Deleted"
+                    size="small"
+                    color="error"
+                    sx={{ height: 18, fontSize: "0.6rem", fontWeight: 700 }}
+                  />
+                )}
+              </Stack>
 
               <Stack direction="row" alignItems="center" spacing={0.5}>
                 {/* Upvote */}
@@ -187,11 +263,39 @@ const PostCard = ({ post }: PostCardProps) => {
                     {post.viewCount}
                   </Typography>
                 </Stack>
+
+                {/* Report */}
+                <Tooltip title="Report">
+                  <IconButton
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setReportOpen(true);
+                    }}
+                    sx={{ p: 0.5, ml: 1 }}
+                  >
+                    <FlagRounded sx={{ fontSize: 15, color: "text.secondary" }} />
+                  </IconButton>
+                </Tooltip>
               </Stack>
             </Stack>
           </Stack>
         </CardContent>
       </CardActionArea>
+
+      <ReportDialog
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        target={{ type: "post", id: post.id }}
+        onReported={(msg) => setToast(msg)}
+      />
+
+      <Snackbar
+        open={!!toast}
+        autoHideDuration={2500}
+        onClose={() => setToast("")}
+        message={toast}
+      />
     </Card>
   );
 };

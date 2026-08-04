@@ -9,7 +9,7 @@ import {
 import {
   ArrowBackRounded, CloseRounded,
   ContentCopyRounded, AddRounded, PersonRemoveRounded,
-  CheckCircleRounded, VisibilityRounded,
+  CheckCircleRounded, VisibilityRounded, ReportRounded,
   DownloadRounded, UndoRounded, PictureAsPdfRounded,
   DescriptionRounded, ArticleRounded, InsertDriveFileRounded,
 } from "@mui/icons-material";
@@ -26,7 +26,7 @@ import {
 import { ROUTES } from "../../constants/routes";
 import AssignmentCard from "../../components/classroom/AssignmentCard/AssignmentCard";
 import AiFeedbackSection from "../../components/classroom/AiFeedbackSection/AiFeedbackSection";
-import { Assignment, Submission, SubmissionStatus, CreateAssignmentRequest } from "../../types/classroom.types";
+import { Assignment, Submission, SubmissionStatus, CreateAssignmentRequest, ClassroomMember } from "../../types/classroom.types";
 import { classroomService } from "../../services/classroomService";
 
 const SUBMISSION_STATUS_COLORS: Record<string, "default" | "info" | "success" | "warning" | "primary" | "secondary"> = {
@@ -579,6 +579,10 @@ const ClassroomDetailPage = () => {
   const [submissionsPanel, setSubmissionsPanel] = useState(false);
   const [activeAssignment, setActiveAssignment] = useState<Assignment | null>(null);
   const [copied, setCopied]       = useState(false);
+  const [invalidTarget, setInvalidTarget] = useState<ClassroomMember | null>(null);
+  const [invalidReason, setInvalidReason] = useState("");
+  const [invalidLoading, setInvalidLoading] = useState(false);
+  const [invalidError, setInvalidError] = useState("");
 
   const refresh = useCallback(() => {
     if (id) dispatch(fetchClassroomById(Number(id)));
@@ -612,6 +616,27 @@ const ClassroomDetailPage = () => {
   const handleDeleteAssignment = async (assignment: Assignment) => {
     if (!window.confirm(`Delete "${assignment.title}"? This action cannot be undone.`)) return;
     await dispatch(deleteAssignmentThunk({ classroomId: classroom.id, assignmentId: assignment.id }));
+  };
+
+  const markInvalidOpen = (member: ClassroomMember) => {
+    setInvalidTarget(member);
+    setInvalidReason("");
+    setInvalidError("");
+  };
+
+  const handleMarkInvalid = async () => {
+    if (!invalidTarget || !invalidReason.trim()) return;
+    setInvalidLoading(true);
+    setInvalidError("");
+    try {
+      await classroomService.markInvalid(classroom.id, invalidTarget.userId, invalidReason.trim());
+      setInvalidTarget(null);
+      dispatch(fetchClassroomById(classroom.id));
+    } catch (err) {
+      setInvalidError("Failed to mark member invalid. Please try again.");
+    } finally {
+      setInvalidLoading(false);
+    }
   };
 
   if (loading) return (
@@ -711,22 +736,42 @@ const ClassroomDetailPage = () => {
         <Stack spacing={2}>
           {classroom.members.map((m) => (
             <Box key={m.userId} sx={{ p: 2, border: "1px solid #ddd", borderRadius: 2 }}>
-              <Stack direction="row" alignItems="center" justifyContent="space-between">
-                <Box>
-                  <Typography>{m.fullName}</Typography>
-                  <Typography variant="caption">{m.email} — {m.role}</Typography>
+              <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+                <Box minWidth={0}>
+                  <Stack direction="row" alignItems="center" spacing={1}>
+                    <Typography noWrap>{m.fullName}</Typography>
+                    {m.status === "Invalid" && (
+                      <Chip label="Invalid" size="small" color="warning" variant="filled"
+                        title={m.invalidReason ?? undefined} sx={{ fontWeight: 600 }} />
+                    )}
+                  </Stack>
+                  <Typography variant="caption" noWrap>{m.email} — {m.role}</Typography>
+                  {m.status === "Invalid" && m.invalidReason && (
+                    <Typography variant="caption" color="warning.main" sx={{ display: "block" }}>
+                      Reason: {m.invalidReason}
+                    </Typography>
+                  )}
                 </Box>
                 {m.role !== "Instructor" && (
-                  <IconButton size="small" color="error"
-                    onClick={async () => {
-                      if (window.confirm(`Remove ${m.fullName} from this classroom?`)) {
-                        await classroomService.removeMember(classroom.id, m.userId);
-                        dispatch(fetchClassroomById(classroom.id));
-                      }
-                    }}
-                    title="Remove member">
-                    <PersonRemoveRounded />
-                  </IconButton>
+                  <Stack direction="row" spacing={1}>
+                    {m.status !== "Invalid" && (
+                      <IconButton size="small" color="warning"
+                        onClick={() => markInvalidOpen(m)}
+                        title="Mark invalid">
+                        <ReportRounded fontSize="small" />
+                      </IconButton>
+                    )}
+                    <IconButton size="small" color="error"
+                      onClick={async () => {
+                        if (window.confirm(`Remove ${m.fullName} from this classroom?`)) {
+                          await classroomService.removeMember(classroom.id, m.userId);
+                          dispatch(fetchClassroomById(classroom.id));
+                        }
+                      }}
+                      title="Remove member">
+                      <PersonRemoveRounded />
+                    </IconButton>
+                  </Stack>
                 )}
               </Stack>
             </Box>
@@ -753,6 +798,43 @@ const ClassroomDetailPage = () => {
         classroomId={classroom.id}
         assignment={activeAssignment}
       />
+
+      <Dialog open={!!invalidTarget} onClose={() => setInvalidTarget(null)} maxWidth="xs" fullWidth
+        PaperProps={{ sx: { borderRadius: 4 } }}>
+        <DialogTitle sx={{ pb: 1 }}>
+          <Stack direction="row" alignItems="center" justifyContent="space-between">
+            <Typography variant="h6" fontWeight={700}>Mark Invalid</Typography>
+            <IconButton onClick={() => setInvalidTarget(null)} size="small"><CloseRounded /></IconButton>
+          </Stack>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" mb={1.5}>
+            Mark <strong>{invalidTarget?.fullName}</strong> as invalid? They will be
+            temporarily blocked from the platform until restored. A reason is required.
+          </Typography>
+          {invalidError && (
+            <Alert severity="error" sx={{ mb: 1.5, borderRadius: 2 }}>{invalidError}</Alert>
+          )}
+          <TextField
+            label="Reason"
+            multiline
+            minRows={2}
+            fullWidth
+            value={invalidReason}
+            onChange={(e) => setInvalidReason(e.target.value)}
+            placeholder="e.g. Repeatedly submitted plagiarized work."
+          />
+        </DialogContent>
+        <Stack direction="row" spacing={1} justifyContent="flex-end" px={3} pb={2}>
+          <Button size="small" onClick={() => setInvalidTarget(null)}>Cancel</Button>
+          <Button size="small" variant="contained" color="warning"
+            startIcon={<ReportRounded />}
+            disabled={invalidLoading || !invalidReason.trim()}
+            onClick={handleMarkInvalid}>
+            {invalidLoading ? "Marking..." : "Mark Invalid"}
+          </Button>
+        </Stack>
+      </Dialog>
     </Box>
   );
 };

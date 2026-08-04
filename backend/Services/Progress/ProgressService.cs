@@ -9,10 +9,14 @@ namespace LearnPath.API.Services.Progress;
 public class ProgressService : IProgressService
 {
     private readonly ApplicationDbContext _context;
+    private readonly IAuditLogService _auditLog;
 
-    public ProgressService(ApplicationDbContext context)
+    public ProgressService(
+        ApplicationDbContext context,
+        IAuditLogService auditLog)
     {
         _context = context;
+        _auditLog = auditLog;
     }
 
     public async Task<ProgressResponseDto> MarkCompleteAsync(
@@ -64,6 +68,8 @@ public class ProgressService : IProgressService
 
         await _context.SaveChangesAsync();
 
+        await LogModuleCompletedAsync(module, userId);
+
         await TryIssueCertificateAsync(module.LearningPathId, userId);
 
         return new ProgressResponseDto
@@ -111,8 +117,19 @@ public class ProgressService : IProgressService
 
         await _context.SaveChangesAsync();
 
+        await LogModuleCompletedAsync(module, userId);
+
         await TryIssueCertificateAsync(module.LearningPathId, userId);
     }
+
+    private Task LogModuleCompletedAsync(Entities.Module module, string userId) =>
+        _auditLog.LogAsync(
+            AuditAction.MODULE_COMPLETED,
+            "Module",
+            module.Id.ToString(),
+            $"Module '{module.Title}' completed.",
+            additionalData: $"LearningPathId: {module.LearningPathId}",
+            userId: userId);
 
     public async Task<List<PathProgressSummaryDto>> GetUserProgressAsync(string userId)
     {
@@ -202,14 +219,24 @@ public class ProgressService : IProgressService
 
         if (alreadyIssued) return;
 
-        await _context.Certificates.AddAsync(new Entities.Certificate
+        var certificate = new Entities.Certificate
         {
             UserId         = userId,
             LearningPathId = pathId,
             CertificateUrl = $"/certificates/{userId}/{pathId}",
             IssuedAt       = DateTime.UtcNow,
-        });
+        };
+
+        await _context.Certificates.AddAsync(certificate);
 
         await _context.SaveChangesAsync();
+
+        await _auditLog.LogAsync(
+            AuditAction.CERTIFICATE_GENERATED,
+            "Certificate",
+            certificate.Id.ToString(),
+            $"Certificate generated for learning path '{path.Title}'.",
+            additionalData: $"LearningPathId: {pathId}",
+            userId: userId);
     }
 }

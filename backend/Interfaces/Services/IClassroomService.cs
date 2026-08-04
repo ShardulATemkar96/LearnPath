@@ -14,6 +14,7 @@ public interface IClassroomService
     Task LeaveAsync(int id, string userId);
     Task RemoveMemberAsync(int classroomId, string memberUserId, string userId);
     Task<List<ClassroomMemberDto>> GetMembersAsync(int id, string userId);
+    Task<ClassroomMemberDto> MarkInvalidAsync(int classroomId, string memberUserId, MarkInvalidDto dto, string userId);
 
     Task<AssignmentResponseDto> CreateAssignmentAsync(int classroomId, CreateAssignmentDto dto, string userId);
     Task<AssignmentResponseDto> UpdateAssignmentAsync(int classroomId, int assignmentId, UpdateAssignmentDto dto, string userId);

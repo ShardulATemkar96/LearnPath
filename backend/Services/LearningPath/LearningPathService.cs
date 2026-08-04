@@ -4,16 +4,22 @@ using LearnPath.API.DTOs.LearningPath;
 using LearnPath.API.Entities;
 using LearnPath.API.Interfaces.Services;
 using Microsoft.EntityFrameworkCore;
-
 namespace LearnPath.API.Services.LearningPath;
 
 public class LearningPathService : ILearningPathService
 {
     private readonly ApplicationDbContext _context;
+    private readonly IAuditLogService _auditLog;
+    private readonly ILogger<LearningPathService> _logger;
 
-    public LearningPathService(ApplicationDbContext context)
+    public LearningPathService(
+        ApplicationDbContext context,
+        IAuditLogService auditLog,
+        ILogger<LearningPathService> logger)
     {
         _context = context;
+        _auditLog = auditLog;
+        _logger = logger;
     }
 
     // ── Paths ─────────────────────────────────────────────────
@@ -146,12 +152,22 @@ public class LearningPathService : ILearningPathService
 
 
         await _context.Entry(path).Reference(p => p.CreatedBy).LoadAsync();
+
+        await _auditLog.LogAsync(
+            AuditAction.LEARNING_PATH_CREATED,
+            "LearningPath",
+            path.Id.ToString(),
+            $"Learning path '{path.Title}' created.",
+            newValue: $"Title: {path.Title}");
+
         return MapToResponse(path);
     }
 
     public async Task<LearningPathResponseDto> UpdateAsync(int id, UpdateLearningPathDto dto, string userId)
     {
         var path = await GetOwnedPathAsync(id, userId);
+
+        var wasPublished = path.IsPublished;
 
         path.Title = dto.Title;
         path.Description = dto.Description;
@@ -161,14 +177,133 @@ public class LearningPathService : ILearningPathService
         path.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+
+        await _auditLog.LogAsync(
+            AuditAction.LEARNING_PATH_UPDATED,
+            "LearningPath",
+            path.Id.ToString(),
+            $"Learning path '{path.Title}' updated.");
+
+        if (dto.IsPublished && !wasPublished)
+            await _auditLog.LogAsync(
+                AuditAction.LEARNING_PATH_PUBLISHED,
+                "LearningPath",
+                path.Id.ToString(),
+                $"Learning path '{path.Title}' was published.");
+
+        if (!dto.IsPublished && wasPublished)
+            await _auditLog.LogAsync(
+                AuditAction.LEARNING_PATH_UNPUBLISHED,
+                "LearningPath",
+                path.Id.ToString(),
+                $"Learning path '{path.Title}' was unpublished.");
+
         return MapToResponse(path);
     }
 
     public async Task DeleteAsync(int id, string userId)
     {
-        var path = await GetOwnedPathAsync(id, userId);
-        _context.LearningPaths.Remove(path);
-        await _context.SaveChangesAsync();
+        // SQL Server has EnableRetryOnFailure() enabled, so a user-initiated
+        // transaction must be executed through the context's execution strategy.
+        // This makes the whole delete a single retriable unit per EF Core docs.
+        var strategy = _context.Database.CreateExecutionStrategy();
+
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+
+            var path = await GetOwnedPathAsync(id, userId);
+
+            var classroomCount = await _context.Classrooms.CountAsync(c => c.LearningPathId == id);
+            if (classroomCount > 0)
+                throw new ArgumentException(
+                    $"Cannot delete learning path \"{path.Title}\" because it has {classroomCount} classroom(s). Delete or reassign the classroom(s) first.");
+
+            var certificateCount = await _context.Certificates.CountAsync(c => c.LearningPathId == id);
+            if (certificateCount > 0)
+                throw new ArgumentException(
+                    $"Cannot delete learning path \"{path.Title}\" because {certificateCount} certificate(s) have been issued for it.");
+
+            var moduleIds = await _context.Modules
+                .Where(m => m.LearningPathId == id)
+                .Select(m => m.Id)
+                .ToListAsync();
+
+            // Delete every dependent row explicitly, in foreign-key-safe order,
+            // rather than relying on database ON DELETE CASCADE. This keeps the
+            // deletion correct regardless of how the live schema is configured.
+
+            // 1. Student answers owned by the path's quiz attempts.
+            var attemptIds = await _context.QuizAttempts
+                .Where(a => moduleIds.Contains(a.ModuleId))
+                .Select(a => a.Id)
+                .ToListAsync();
+
+            if (attemptIds.Count > 0)
+                _context.StudentAnswers.RemoveRange(await _context.StudentAnswers
+                    .Where(sa => attemptIds.Contains(sa.QuizAttemptId))
+                    .ToListAsync());
+
+            // 2. Quiz attempts (FK ModuleId is Restrict — never cascade).
+            _context.QuizAttempts.RemoveRange(await _context.QuizAttempts
+                .Where(a => moduleIds.Contains(a.ModuleId))
+                .ToListAsync());
+
+            // 3. Module dependencies, both directions (FKs to Module).
+            _context.ModuleDependencies.RemoveRange(await _context.ModuleDependencies
+                .Where(d => moduleIds.Contains(d.ModuleId) || moduleIds.Contains(d.DependsOnModuleId))
+                .ToListAsync());
+
+            // 4. Module → quiz assignments.
+            _context.ModuleQuizzes.RemoveRange(await _context.ModuleQuizzes
+                .Where(mq => moduleIds.Contains(mq.ModuleId))
+                .ToListAsync());
+
+            // 5. Progress rows for the path's modules.
+            _context.Progresses.RemoveRange(await _context.Progresses
+                .Where(p => moduleIds.Contains(p.ModuleId))
+                .ToListAsync());
+
+            // 6. Module child content.
+            _context.ModuleObjectives.RemoveRange(await _context.ModuleObjectives
+                .Where(o => moduleIds.Contains(o.ModuleId))
+                .ToListAsync());
+
+            _context.ModuleResources.RemoveRange(await _context.ModuleResources
+                .Where(r => moduleIds.Contains(r.ModuleId))
+                .ToListAsync());
+
+            _context.ModuleTags.RemoveRange(await _context.ModuleTags
+                .Where(t => moduleIds.Contains(t.ModuleId))
+                .ToListAsync());
+
+            // 7. The modules themselves, then the path.
+            _context.Modules.RemoveRange(await _context.Modules
+                .Where(m => moduleIds.Contains(m.Id))
+                .ToListAsync());
+
+            await _context.SaveChangesAsync();
+
+            _context.LearningPaths.Remove(path);
+            await _context.SaveChangesAsync();
+
+            await transaction.CommitAsync();
+        });
+
+        try
+        {
+            await _auditLog.LogAsync(
+                AuditAction.LEARNING_PATH_DELETED,
+                "LearningPath",
+                id.ToString(),
+                "Learning path deleted.");
+        }
+        catch (Exception logEx)
+        {
+            // Audit logging is best-effort: a failure here must not turn a
+            // successful deletion into an error response.
+            _logger.LogError(logEx, "Failed to record LEARNING_PATH_DELETED audit entry.");
+        }
     }
 
     // ── Modules ───────────────────────────────────────────────
@@ -269,6 +404,13 @@ public class LearningPathService : ILearningPathService
         await _context.Modules.AddAsync(module);
         await _context.SaveChangesAsync();
 
+        await _auditLog.LogAsync(
+            AuditAction.MODULE_CREATED,
+            "Module",
+            module.Id.ToString(),
+            $"Module '{module.Title}' created in learning path {pathId}.",
+            additionalData: $"PathId: {pathId}");
+
         return MapToModuleResponse(module);
     }
 
@@ -320,6 +462,13 @@ public class LearningPathService : ILearningPathService
         module.Tags = dto.Tags.Select(t => new ModuleTag { TagName = t }).ToList();
         await _context.SaveChangesAsync();
 
+        await _auditLog.LogAsync(
+            AuditAction.MODULE_UPDATED,
+            "Module",
+            module.Id.ToString(),
+            $"Module '{module.Title}' updated in learning path {pathId}.",
+            additionalData: $"PathId: {pathId}");
+
         return MapToModuleResponse(module);
     }
 
@@ -327,6 +476,8 @@ public class LearningPathService : ILearningPathService
     {
         await GetOwnedPathAsync(pathId, userId);
         var module = await GetModuleAsync(moduleId, pathId);
+
+        var title = module.Title;
 
         var dependents = await _context.ModuleDependencies
             .Where(d => d.DependsOnModuleId == moduleId)
@@ -339,6 +490,13 @@ public class LearningPathService : ILearningPathService
 
         _context.Modules.Remove(module);
         await _context.SaveChangesAsync();
+
+        await _auditLog.LogAsync(
+            AuditAction.MODULE_DELETED,
+            "Module",
+            moduleId.ToString(),
+            $"Module '{title}' deleted from learning path {pathId}.",
+            additionalData: $"PathId: {pathId}");
     }
 
     public async Task<ModuleResponseDto> PublishModuleAsync(int pathId, int moduleId, string userId)
@@ -367,6 +525,13 @@ public class LearningPathService : ILearningPathService
         module.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
+        await _auditLog.LogAsync(
+            AuditAction.MODULE_PUBLISHED,
+            "Module",
+            module.Id.ToString(),
+            $"Module '{module.Title}' published in learning path {pathId}.",
+            additionalData: $"PathId: {pathId}");
+
         return MapToModuleResponse(module);
     }
 
@@ -383,6 +548,13 @@ public class LearningPathService : ILearningPathService
         module.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
+        await _auditLog.LogAsync(
+            AuditAction.MODULE_UNPUBLISHED,
+            "Module",
+            module.Id.ToString(),
+            $"Module '{module.Title}' unpublished in learning path {pathId}.",
+            additionalData: $"PathId: {pathId}");
+
         return MapToModuleResponse(module);
     }
 
@@ -394,6 +566,14 @@ public class LearningPathService : ILearningPathService
         module.ArchivedAt = DateTime.UtcNow;
         module.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
+
+        await _auditLog.LogAsync(
+            AuditAction.MODULE_ARCHIVED,
+            "Module",
+            module.Id.ToString(),
+            $"Module '{module.Title}' archived in learning path {pathId}.",
+            additionalData: $"PathId: {pathId}");
+
         return MapToModuleResponse(module);
     }
 
@@ -405,6 +585,14 @@ public class LearningPathService : ILearningPathService
         module.ArchivedAt = null;
         module.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
+
+        await _auditLog.LogAsync(
+            AuditAction.MODULE_UNARCHIVED,
+            "Module",
+            module.Id.ToString(),
+            $"Module '{module.Title}' unarchived in learning path {pathId}.",
+            additionalData: $"PathId: {pathId}");
+
         return MapToModuleResponse(module);
     }
 
@@ -456,6 +644,13 @@ public class LearningPathService : ILearningPathService
         modules[swapIdx].UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+
+        await _auditLog.LogAsync(
+            AuditAction.MODULE_REORDERED,
+            "Module",
+            moduleId.ToString(),
+            $"Module '{modules[idx].Title}' reordered in learning path {pathId}.",
+            additionalData: $"PathId: {pathId}; MoveUp: {moveUp}");
     }
 
     // ── Dependencies ──────────────────────────────────────────
@@ -490,6 +685,13 @@ public class LearningPathService : ILearningPathService
         });
 
         await _context.SaveChangesAsync();
+
+        await _auditLog.LogAsync(
+            AuditAction.DEPENDENCY_ADDED,
+            "ModuleDependency",
+            $"{dto.ModuleId}:{dto.DependsOnModuleId}",
+            $"Dependency added: module {dto.ModuleId} now depends on module {dto.DependsOnModuleId}.",
+            additionalData: $"PathId: {pathId}");
     }
 
     public async Task RemoveDependencyAsync(
@@ -504,6 +706,13 @@ public class LearningPathService : ILearningPathService
 
         _context.ModuleDependencies.Remove(dep);
         await _context.SaveChangesAsync();
+
+        await _auditLog.LogAsync(
+            AuditAction.DEPENDENCY_REMOVED,
+            "ModuleDependency",
+            $"{moduleId}:{dependsOnModuleId}",
+            $"Dependency removed: module {moduleId} no longer depends on module {dependsOnModuleId}.",
+            additionalData: $"PathId: {pathId}");
     }
 
     // ── Private Helpers ───────────────────────────────────────                                                                                                                                                                                                               frozeSam

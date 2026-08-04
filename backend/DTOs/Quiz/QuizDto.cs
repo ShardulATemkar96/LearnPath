@@ -40,6 +40,7 @@ public class QuizResponseDto
     public int PassingPercentage { get; set; }
     public int MaximumAttempts { get; set; }
     public QuizStatus Status { get; set; }
+    public string? CreatedById { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? PublishedAt { get; set; }
     public DateTime? ArchivedAt { get; set; }

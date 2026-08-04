@@ -16,6 +16,7 @@ import {
 } from "../../types/quiz.types";
 import { QuestionBankSummaryDto, QuestionBankStatus as QBStatus } from "../../types/questionBank.types";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../hooks/useAuth";
 
 const STATUS_LABEL: Record<QuizStatus, string> = {
   [QuizStatus.Draft]: "Draft",
@@ -37,6 +38,7 @@ const emptyForm = (): CreateQuizDto => ({
 
 const AdminQuizManagementPage = () => {
   const navigate = useNavigate();
+  const { isAdmin } = useAuth();
   const [quizzes, setQuizzes] = useState<QuizResponseDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -209,9 +211,11 @@ const AdminQuizManagementPage = () => {
                   </TableCell>
                   <TableCell align="right">
                     <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                      <IconButton size="small" title="Analytics" onClick={() => navigate(`/admin/quiz-analytics?quizId=${q.id}`)}>
-                        <BarChartRounded fontSize="small" />
-                      </IconButton>
+                      {isAdmin && (
+                        <IconButton size="small" title="Analytics" onClick={() => navigate(`/admin/quiz-analytics?quizId=${q.id}`)}>
+                          <BarChartRounded fontSize="small" />
+                        </IconButton>
+                      )}
                       {q.status !== QuizStatus.Archived && (
                         <>
                           <IconButton size="small" title="Edit" onClick={() => openEdit(q)}>
@@ -234,10 +238,12 @@ const AdminQuizManagementPage = () => {
                           </IconButton>
                         </>
                       )}
-                      <IconButton size="small" title="Delete" color="error"
-                        onClick={() => setDeleteTarget(q)}>
-                        <DeleteRounded fontSize="small" />
-                      </IconButton>
+                      {isAdmin && (
+                        <IconButton size="small" title="Delete" color="error"
+                          onClick={() => setDeleteTarget(q)}>
+                          <DeleteRounded fontSize="small" />
+                        </IconButton>
+                      )}
                     </Stack>
                   </TableCell>
                 </TableRow>
