@@ -12,11 +12,16 @@ public class QuestionBankService : IQuestionBankService
 {
     private readonly ApplicationDbContext _context;
     private readonly IValidationService _validator;
+    private readonly IAuditLogService _auditLog;
 
-    public QuestionBankService(ApplicationDbContext context, IValidationService validator)
+    public QuestionBankService(
+        ApplicationDbContext context,
+        IValidationService validator,
+        IAuditLogService auditLog)
     {
         _context = context;
         _validator = validator;
+        _auditLog = auditLog;
     }
 
     public async Task<QuestionBankUploadResult> UploadAsync(string userId, string fileName, Stream fileStream)
@@ -70,6 +75,11 @@ public class QuestionBankService : IQuestionBankService
 
         _context.QuestionBanks.Add(bank);
         await _context.SaveChangesAsync();
+
+        await LogBankAsync(
+            AuditAction.QUESTION_BANK_UPLOADED, bank,
+            $"Question bank '{bank.Title}' was uploaded (v{version}).",
+            userId);
 
         return new QuestionBankUploadResult
         {
@@ -170,6 +180,11 @@ public class QuestionBankService : IQuestionBankService
         _context.QuestionBanks.Add(newVersion);
         await _context.SaveChangesAsync();
 
+        await LogBankAsync(
+            AuditAction.QUESTION_BANK_VERSION_UPLOADED, newVersion,
+            $"New version (v{newVersion.Version}) of question bank '{newVersion.Title}' was uploaded.",
+            userId);
+
         return new QuestionBankUploadResult
         {
             Success = true,
@@ -192,6 +207,11 @@ public class QuestionBankService : IQuestionBankService
         bank.ArchivedAt = null;
 
         await _context.SaveChangesAsync();
+
+        await LogBankAsync(
+            AuditAction.QUESTION_BANK_RESTORED, bank,
+            $"Question bank '{bank.Title}' was restored.");
+
         return MapToDto(bank);
     }
 
@@ -209,6 +229,11 @@ public class QuestionBankService : IQuestionBankService
 
         _context.QuestionBanks.Remove(bank);
         await _context.SaveChangesAsync();
+
+        await LogBankAsync(
+            AuditAction.QUESTION_BANK_DELETED, bank,
+            $"Question bank '{bank.Title}' was deleted.");
+
         return MapToDto(bank);
     }
 
@@ -223,8 +248,24 @@ public class QuestionBankService : IQuestionBankService
         bank.ArchivedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+
+        await LogBankAsync(
+            AuditAction.QUESTION_BANK_ARCHIVED, bank,
+            $"Question bank '{bank.Title}' was archived.");
+
         return MapToDto(bank);
     }
+
+    private Task LogBankAsync(
+        AuditAction action, Entities.QuestionBank bank, string description,
+        string? userId = null) =>
+        _auditLog.LogAsync(
+            action,
+            "QuestionBank",
+            bank.Id.ToString(),
+            description,
+            additionalData: $"Version: {bank.Version}; QuestionCount: {bank.QuestionCount}",
+            userId: userId);
 
     private static void ParseQuestions(QuestionBankUploadModel model, Entities.QuestionBank bank)
     {

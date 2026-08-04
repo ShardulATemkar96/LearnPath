@@ -42,7 +42,7 @@ public class QuestionBankController : ControllerBase
         return Ok(ApiResponse<QuestionBankUploadResult>.Ok(result, result.Message!));
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Instructor")]
     [HttpGet("questionbanks")]
     public async Task<IActionResult> Search([FromQuery] string? title, [FromQuery] string? subject, [FromQuery] string? tag)
     {
@@ -50,7 +50,7 @@ public class QuestionBankController : ControllerBase
         return Ok(ApiResponse<List<QuestionBankResponseDto>>.Ok(results));
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Instructor")]
     [HttpGet("questionbanks/{id:int}")]
     public async Task<IActionResult> GetById(int id)
     {
