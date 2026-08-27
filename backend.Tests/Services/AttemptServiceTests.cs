@@ -28,11 +28,12 @@ public class AttemptServiceTests
         ctx.QuestionBanks.Add(EntityFactory.CreateQuestionBank(id: 1, questionCount: 3));
         ctx.Quizzes.Add(EntityFactory.CreateQuiz(id: 1, title: "Happy Quiz", questionBankId: 1,
             questionCount: 3, status: QuizStatus.Published));
+        ctx.LearningPaths.Add(EntityFactory.CreateLearningPath(id: 1, createdById: userId));
         ctx.Modules.Add(EntityFactory.CreateModule(id: 1));
         ctx.ModuleQuizzes.Add(EntityFactory.CreateModuleQuiz(moduleId: 1, quizId: 1));
         await ctx.SaveChangesAsync();
 
-        var svc = new AttemptService(ctx, new ProgressService(ctx));
+        var svc = new AttemptService(ctx, new ProgressService(ctx, new FakeAuditLogService()), new FakeAuditLogService());
         return (ctx, svc, userId, 1, 1);
     }
 
@@ -95,7 +96,7 @@ public class AttemptServiceTests
         ctx.QuizAttempts.Add(EntityFactory.CreateQuizAttempt(id: 1, userId: userId, quizId: 1,
             moduleId: 1, attemptNumber: 1, status: AttemptStatus.Evaluated, score: 3, percentage: 100, passed: true));
         await ctx.SaveChangesAsync();
-        var svc = new AttemptService(ctx, new ProgressService(ctx));
+        var svc = new AttemptService(ctx, new ProgressService(ctx, new FakeAuditLogService()), new FakeAuditLogService());
 
         var act = () => svc.StartAttemptAsync(1, 1, userId);
 
@@ -106,7 +107,7 @@ public class AttemptServiceTests
     public async Task StartAttemptAsync_MissingQuiz_Throws()
     {
         using var ctx = DbContextFactory.Create();
-        var svc = new AttemptService(ctx, new ProgressService(ctx));
+        var svc = new AttemptService(ctx, new ProgressService(ctx, new FakeAuditLogService()), new FakeAuditLogService());
 
         var act = () => svc.StartAttemptAsync(999, 1, "user");
 
@@ -120,7 +121,7 @@ public class AttemptServiceTests
         ctx.QuestionBanks.Add(EntityFactory.CreateQuestionBank(id: 1));
         ctx.Quizzes.Add(EntityFactory.CreateQuiz(id: 1, questionBankId: 1, status: QuizStatus.Draft));
         await ctx.SaveChangesAsync();
-        var svc = new AttemptService(ctx, new ProgressService(ctx));
+        var svc = new AttemptService(ctx, new ProgressService(ctx, new FakeAuditLogService()), new FakeAuditLogService());
 
         var act = () => svc.StartAttemptAsync(1, 1, "user");
 
@@ -134,7 +135,7 @@ public class AttemptServiceTests
         ctx.QuestionBanks.Add(EntityFactory.CreateQuestionBank(id: 1));
         ctx.Quizzes.Add(EntityFactory.CreateQuiz(id: 1, questionBankId: 1, status: QuizStatus.Published));
         await ctx.SaveChangesAsync();
-        var svc = new AttemptService(ctx, new ProgressService(ctx));
+        var svc = new AttemptService(ctx, new ProgressService(ctx, new FakeAuditLogService()), new FakeAuditLogService());
 
         var act = () => svc.StartAttemptAsync(1, 99, "user");
 
@@ -170,7 +171,7 @@ public class AttemptServiceTests
     public async Task GetAttemptAsync_Missing_Throws()
     {
         using var ctx = DbContextFactory.Create();
-        var svc = new AttemptService(ctx, new ProgressService(ctx));
+        var svc = new AttemptService(ctx, new ProgressService(ctx, new FakeAuditLogService()), new FakeAuditLogService());
 
         var act = () => svc.GetAttemptAsync(999, "user");
 
@@ -414,7 +415,7 @@ public class AttemptServiceTests
         ctx.Modules.Add(EntityFactory.CreateModule(id: 1));
         ctx.ModuleQuizzes.Add(EntityFactory.CreateModuleQuiz(moduleId: 1, quizId: 1));
         await ctx.SaveChangesAsync();
-        var svc = new AttemptService(ctx, new ProgressService(ctx));
+        var svc = new AttemptService(ctx, new ProgressService(ctx, new FakeAuditLogService()), new FakeAuditLogService());
 
         var result = await svc.StartAttemptAsync(1, 1, userId);
 
@@ -437,7 +438,7 @@ public class AttemptServiceTests
         ctx.Modules.Add(EntityFactory.CreateModule(id: 1));
         ctx.ModuleQuizzes.Add(EntityFactory.CreateModuleQuiz(moduleId: 1, quizId: 1));
         await ctx.SaveChangesAsync();
-        var svc = new AttemptService(ctx, new ProgressService(ctx));
+        var svc = new AttemptService(ctx, new ProgressService(ctx, new FakeAuditLogService()), new FakeAuditLogService());
 
         var result = await svc.StartAttemptAsync(1, 1, userId);
 

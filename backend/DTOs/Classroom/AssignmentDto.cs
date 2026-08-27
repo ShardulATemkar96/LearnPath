@@ -31,6 +31,8 @@ public class AssignmentResponseDto
     public int? MyGrade { get; set; }
     public string? MyFeedback { get; set; }
     public DateTime CreatedAt { get; set; }
+    public bool IsUnlocked { get; set; } = true;
+    public bool IsCompleted { get; set; } = false;
 }
 
 public class SubmissionResponseDto

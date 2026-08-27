@@ -5,7 +5,7 @@ import {
 } from "@mui/material";
 import { AddRounded, GroupsRounded } from "@mui/icons-material";
 import { AppDispatch } from "../../redux/store";
-import { fetchGroups } from "../../redux/slices/communitySlice";
+import { fetchGroups, clearGroupsError } from "../../redux/slices/communitySlice";
 import {
   selectGroups, selectGroupsLoading, selectGroupsError,
   selectGroupsTotalPages, selectGroupsCurrentPage,
@@ -34,10 +34,15 @@ const CommunityGroupsPage = () => {
   const debouncedSearch = useDebounce(search, 400);
 
   useEffect(() => {
-    dispatch(fetchGroups({ search: debouncedSearch, page: 1 }));
+    dispatch(clearGroupsError());
+    const promise = dispatch(fetchGroups({ search: debouncedSearch, page: 1 }));
+    return () => {
+      (promise as any).abort?.();
+    };
   }, [debouncedSearch, dispatch]);
 
   const handlePageChange = (p: number) => {
+    dispatch(clearGroupsError());
     dispatch(fetchGroups({ search: debouncedSearch, page: p }));
   };
 
@@ -119,7 +124,10 @@ const CommunityGroupsPage = () => {
       <CreateGroupModal
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        onSaved={() => dispatch(fetchGroups({ search: debouncedSearch, page: 1 }))}
+        onSaved={() => {
+          dispatch(clearGroupsError());
+          dispatch(fetchGroups({ search: debouncedSearch, page: 1 }));
+        }}
       />
     </Box>
   );

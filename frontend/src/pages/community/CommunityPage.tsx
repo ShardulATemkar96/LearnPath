@@ -7,7 +7,7 @@ import {
 import { AddRounded, GroupsRounded, TagRounded } from "@mui/icons-material";
 import { AppDispatch } from "../../redux/store";
 import {
-  fetchPosts,
+  fetchPosts, clearCommunityError,
 } from "../../redux/slices/communitySlice";
 import {
   selectPosts, selectCommunityLoading,
@@ -45,12 +45,17 @@ const CommunityPage = () => {
   const debouncedSearch = useDebounce(search, 400);
 
   useEffect(() => {
-    dispatch(fetchPosts({
+    dispatch(clearCommunityError());
+    const promise = dispatch(fetchPosts({
       category, search: debouncedSearch, page: 1, sort, filter, tag,
     }));
+    return () => {
+      (promise as any).abort?.();
+    };
   }, [category, debouncedSearch, sort, filter, tag, dispatch]);
 
   const handlePageChange = (p: number) => {
+    dispatch(clearCommunityError());
     dispatch(fetchPosts({
       category, search: debouncedSearch, page: p, sort, filter, tag,
     }));

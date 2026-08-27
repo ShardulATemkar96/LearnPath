@@ -234,7 +234,7 @@ const SubmissionsPanel = ({
           </Box>
         ) : (
           <Box sx={{ display: "flex", gap: 2, height: "100%", minHeight: 480 }}>
-            <Box sx={{ width: 300, flexShrink: 0, overflowY: "auto", borderRight: "1px solid #eee", pr: 1 }}>
+            <Box sx={{ width: 300, flexShrink: 0, overflowY: "auto", borderRight: "1px solid", borderColor: "divider", pr: 1 }}>
               <Stack spacing={0.5}>
                 {submissions.map((s) => (
                     <Box
@@ -279,7 +279,7 @@ const SubmissionsPanel = ({
                 </Box>
               ) : (
                 <Stack spacing={2}>
-                  <Box sx={{ p: 2, bgcolor: "#f8f9fa", borderRadius: 2 }}>
+                  <Box sx={{ p: 2, bgcolor: "background.default", border: "1px solid", borderColor: "divider", borderRadius: 2 }}>
                     <Stack spacing={1}>
                       <Stack direction="row" justifyContent="space-between" alignItems="center">
                         <Typography variant="subtitle1" fontWeight={700}>{selected.userFullName}</Typography>
@@ -308,7 +308,7 @@ const SubmissionsPanel = ({
                   </Box>
 
                   <Box sx={{
-                    border: "1px solid #ddd", borderRadius: 2, overflow: "hidden",
+                    border: "1px solid", borderColor: "divider", borderRadius: 2, overflow: "hidden",
                     minHeight: previewLoading ? 120 : previewType === "pdf" ? 400 : previewType === "txt" ? 300 : 80,
                   }}>
                     {previewLoading ? (
@@ -477,7 +477,7 @@ const CreateAssignmentModal = ({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth
       PaperProps={{ sx: { borderRadius: 4 } }}>
       <DialogTitle sx={{ pb: 1 }}>
         <Stack direction="row" alignItems="center" justifyContent="space-between">
@@ -489,9 +489,11 @@ const CreateAssignmentModal = ({
         <Stack spacing={2.5} pt={1}>
           <TextField label="Title" fullWidth value={form.title}
             onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />
-          <TextField label="Description" fullWidth multiline rows={2}
+          <TextField label="Description" fullWidth multiline minRows={8} maxRows={16}
             value={form.description}
-            onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
+            onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+            placeholder={"Enter assignment details...\n\nUse line breaks for paragraphs.\n- Use '- ' for bullets\n1. Use '1. ' for numbered steps\n# Heading for sections"}
+            helperText="Formatting: headings, bullets (- ), numbered lists (1.) and paragraphs are preserved in student view." />
           <TextField label="Due Date" type="datetime-local" fullWidth
             value={form.dueDate}
             onChange={(e) => setForm((p) => ({ ...p, dueDate: e.target.value }))}
@@ -533,7 +535,7 @@ const EditAssignmentModal = ({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth
       PaperProps={{ sx: { borderRadius: 4 } }}>
       <DialogTitle sx={{ pb: 1 }}>
         <Stack direction="row" alignItems="center" justifyContent="space-between">
@@ -545,9 +547,11 @@ const EditAssignmentModal = ({
         <Stack spacing={2.5} pt={1}>
           <TextField label="Title" fullWidth value={form.title}
             onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />
-          <TextField label="Description" fullWidth multiline rows={2}
+          <TextField label="Description" fullWidth multiline minRows={8} maxRows={16}
             value={form.description}
-            onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
+            onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+            placeholder={"Enter assignment details...\n\nUse line breaks for paragraphs.\n- Use '- ' for bullets\n1. Use '1. ' for numbered steps\n# Heading for sections"}
+            helperText="Formatting: headings, bullets (- ), numbered lists (1.) and paragraphs are preserved in student view." />
           <TextField label="Due Date" type="datetime-local" fullWidth
             value={form.dueDate}
             onChange={(e) => setForm((p) => ({ ...p, dueDate: e.target.value }))}
@@ -735,7 +739,7 @@ const ClassroomDetailPage = () => {
       {tab === 1 && isInstructor && (
         <Stack spacing={2}>
           {classroom.members.map((m) => (
-            <Box key={m.userId} sx={{ p: 2, border: "1px solid #ddd", borderRadius: 2 }}>
+            <Box key={m.userId} sx={{ p: 2, border: "1px solid", borderColor: "divider", borderRadius: 2, bgcolor: "background.paper" }}>
               <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
                 <Box minWidth={0}>
                   <Stack direction="row" alignItems="center" spacing={1}>

@@ -17,7 +17,7 @@ public class QuestionBankServiceTests
     public async Task UploadAsync_ValidJson_CreatesQuestionBankWithQuestions()
     {
         using var ctx = DbContextFactory.Create();
-        var svc = new QuestionBankService(ctx, new JsonValidationService());
+        var svc = new QuestionBankService(ctx, new JsonValidationService(), new FakeAuditLogService());
         var json = """
             {
               "title": "Java OOP",
@@ -47,7 +47,7 @@ public class QuestionBankServiceTests
     public async Task UploadAsync_InvalidJson_ReturnsFailure()
     {
         using var ctx = DbContextFactory.Create();
-        var svc = new QuestionBankService(ctx, new JsonValidationService());
+        var svc = new QuestionBankService(ctx, new JsonValidationService(), new FakeAuditLogService());
         using var stream = new MemoryStream("invalid"u8.ToArray());
 
         var result = await svc.UploadAsync("user1", "test.txt", stream);
@@ -60,7 +60,7 @@ public class QuestionBankServiceTests
     public async Task UploadAsync_DuplicateTitleSubject_IncrementsVersion()
     {
         using var ctx = DbContextFactory.Create();
-        var svc = new QuestionBankService(ctx, new JsonValidationService());
+        var svc = new QuestionBankService(ctx, new JsonValidationService(), new FakeAuditLogService());
         var json = """
             { "title": "Java OOP", "subject": "Java", "questions": [
               { "question": "Q1?", "options": ["A","B","C","D"], "correct_answer": "A", "difficulty": "Easy", "explanation": "E1" }
@@ -94,7 +94,7 @@ public class QuestionBankServiceTests
             CreatedBy = "u", CreatedAt = DateTime.UtcNow,
         });
         await ctx.SaveChangesAsync();
-        var svc = new QuestionBankService(ctx, new JsonValidationService());
+        var svc = new QuestionBankService(ctx, new JsonValidationService(), new FakeAuditLogService());
 
         var results = await svc.SearchAsync(title: "Java", subject: null, tag: null);
 
@@ -118,7 +118,7 @@ public class QuestionBankServiceTests
             CreatedBy = "u", CreatedAt = DateTime.UtcNow,
         });
         await ctx.SaveChangesAsync();
-        var svc = new QuestionBankService(ctx, new JsonValidationService());
+        var svc = new QuestionBankService(ctx, new JsonValidationService(), new FakeAuditLogService());
 
         var results = await svc.SearchAsync(title: null, subject: "Java", tag: null);
 
@@ -129,7 +129,7 @@ public class QuestionBankServiceTests
     public async Task SearchAsync_NoMatch_ReturnsEmpty()
     {
         using var ctx = DbContextFactory.Create();
-        var svc = new QuestionBankService(ctx, new JsonValidationService());
+        var svc = new QuestionBankService(ctx, new JsonValidationService(), new FakeAuditLogService());
 
         var results = await svc.SearchAsync(title: "NonExistent", subject: null, tag: null);
 
@@ -144,7 +144,7 @@ public class QuestionBankServiceTests
         using var ctx = DbContextFactory.Create();
         ctx.QuestionBanks.Add(EntityFactory.CreateQuestionBank(id: 99, title: "Found Me"));
         await ctx.SaveChangesAsync();
-        var svc = new QuestionBankService(ctx, new JsonValidationService());
+        var svc = new QuestionBankService(ctx, new JsonValidationService(), new FakeAuditLogService());
 
         var result = await svc.GetByIdAsync(99);
 
@@ -156,7 +156,7 @@ public class QuestionBankServiceTests
     public async Task GetByIdAsync_Missing_ReturnsNull()
     {
         using var ctx = DbContextFactory.Create();
-        var svc = new QuestionBankService(ctx, new JsonValidationService());
+        var svc = new QuestionBankService(ctx, new JsonValidationService(), new FakeAuditLogService());
 
         var result = await svc.GetByIdAsync(999);
 
@@ -171,7 +171,7 @@ public class QuestionBankServiceTests
         using var ctx = DbContextFactory.Create();
         ctx.QuestionBanks.Add(EntityFactory.CreateQuestionBank(id: 1));
         await ctx.SaveChangesAsync();
-        var svc = new QuestionBankService(ctx, new JsonValidationService());
+        var svc = new QuestionBankService(ctx, new JsonValidationService(), new FakeAuditLogService());
 
         var json = await svc.GetStoredJsonAsync(1);
 
@@ -182,7 +182,7 @@ public class QuestionBankServiceTests
     public async Task GetStoredJsonAsync_Missing_ReturnsNull()
     {
         using var ctx = DbContextFactory.Create();
-        var svc = new QuestionBankService(ctx, new JsonValidationService());
+        var svc = new QuestionBankService(ctx, new JsonValidationService(), new FakeAuditLogService());
 
         var json = await svc.GetStoredJsonAsync(999);
 
@@ -197,7 +197,7 @@ public class QuestionBankServiceTests
         using var ctx = DbContextFactory.Create();
         ctx.QuestionBanks.Add(EntityFactory.CreateQuestionBank(id: 1, title: "Java", version: 1));
         await ctx.SaveChangesAsync();
-        var svc = new QuestionBankService(ctx, new JsonValidationService());
+        var svc = new QuestionBankService(ctx, new JsonValidationService(), new FakeAuditLogService());
         var json = """
             { "title": "Java", "subject": "Java", "questions": [
               { "question": "Q1?", "options": ["A","B","C","D"], "correct_answer": "A", "difficulty": "Easy", "explanation": "E1" }
@@ -214,7 +214,7 @@ public class QuestionBankServiceTests
     public async Task UploadVersionAsync_MissingBank_ReturnsFailure()
     {
         using var ctx = DbContextFactory.Create();
-        var svc = new QuestionBankService(ctx, new JsonValidationService());
+        var svc = new QuestionBankService(ctx, new JsonValidationService(), new FakeAuditLogService());
 
         var result = await svc.UploadVersionAsync(999, "user1", "v2.json", new MemoryStream());
 
@@ -230,7 +230,7 @@ public class QuestionBankServiceTests
         using var ctx = DbContextFactory.Create();
         ctx.QuestionBanks.Add(EntityFactory.CreateQuestionBank(id: 1));
         await ctx.SaveChangesAsync();
-        var svc = new QuestionBankService(ctx, new JsonValidationService());
+        var svc = new QuestionBankService(ctx, new JsonValidationService(), new FakeAuditLogService());
 
         var result = await svc.ArchiveAsync(1);
 
@@ -243,7 +243,7 @@ public class QuestionBankServiceTests
     public async Task ArchiveAsync_MissingBank_ReturnsNull()
     {
         using var ctx = DbContextFactory.Create();
-        var svc = new QuestionBankService(ctx, new JsonValidationService());
+        var svc = new QuestionBankService(ctx, new JsonValidationService(), new FakeAuditLogService());
 
         var result = await svc.ArchiveAsync(999);
 

@@ -10,7 +10,7 @@ public class RateLimitingMiddleware
     private static readonly ConcurrentDictionary<string, (int Count, DateTime WindowStart)>
         _requests = new();
 
-    private const int MAX_REQUESTS = 100;
+    private const int MAX_REQUESTS = 50;
     private static readonly TimeSpan WINDOW = TimeSpan.FromMinutes(1);
 
     public RateLimitingMiddleware(
@@ -43,6 +43,7 @@ public class RateLimitingMiddleware
             });
 
         context.Response.Headers["X-RateLimit-Limit"] = MAX_REQUESTS.ToString();
+    
         context.Response.Headers["X-RateLimit-Remaining"] =
             Math.Max(0, MAX_REQUESTS - entry.Count).ToString();
 

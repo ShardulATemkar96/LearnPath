@@ -1,10 +1,11 @@
-﻿import { useNavigate } from "react-router-dom";
+﻿import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  Box, Button, Chip, IconButton, Stack, Typography,
+  Box, Button, Chip, IconButton, Stack, Typography, Snackbar,
 } from "@mui/material";
 import {
   CalendarTodayRounded, CheckCircleRounded,
-  GradingRounded, EditRounded, DeleteRounded,
+  GradingRounded, EditRounded, DeleteRounded, LockRounded,
 } from "@mui/icons-material";
 import { Assignment, SubmissionStatus } from "../../../types/classroom.types";
 import { ROUTES } from "../../../constants/routes";
@@ -22,11 +23,16 @@ const AssignmentCard = ({
   assignment, classroomId, isInstructor, onViewSubmissions, onEdit, onDelete,
 }: AssignmentCardProps) => {
   const navigate = useNavigate();
+  const [showLockedToast, setShowLockedToast] = useState(false);
+
+  const isUnlocked = assignment.isUnlocked ?? true;
+  const isLockedForStudent = !isInstructor && !isUnlocked;
 
   const isOverdue = new Date(assignment.dueDate) < new Date();
   const status = assignment.mySubmissionStatus;
 
   const getBorderColor = () => {
+    if (isLockedForStudent) return "divider";
     if (!status) return "divider";
     if (status === SubmissionStatus.Graded) return "success.main";
     if (status === SubmissionStatus.ReturnedForResubmission) return "warning.main";
@@ -52,6 +58,10 @@ const AssignmentCard = ({
   };
 
   const handleCardClick = () => {
+    if (isLockedForStudent) {
+      setShowLockedToast(true);
+      return;
+    }
     if (!isInstructor) {
       navigate(ROUTES.ASSIGNMENT_DETAIL
         .replace(":classroomId", String(classroomId))
@@ -60,39 +70,56 @@ const AssignmentCard = ({
   };
 
   return (
+    <>
     <Box sx={{
       p: 3, borderRadius: 3,
       border: "2px solid",
       borderColor: getBorderColor(),
-      bgcolor: "background.paper",
-      cursor: isInstructor ? "default" : "pointer",
+      bgcolor: isLockedForStudent ? "rgba(0,0,0,0.02)" : "background.paper",
+      opacity: isLockedForStudent ? 0.65 : 1,
+      cursor: isLockedForStudent ? "not-allowed" : isInstructor ? "default" : "pointer",
       transition: "border-color 0.2s, box-shadow 0.2s",
       "&:hover": {
         boxShadow: "0 4px 16px rgba(0,0,0,0.07)",
-        ...(isInstructor ? {} : { borderColor: "primary.light" }),
+        ...(isLockedForStudent || isInstructor ? {} : { borderColor: "primary.light" }),
       },
     }}
     onClick={handleCardClick}>
       <Stack spacing={1.5}>
         <Stack direction="row" alignItems="flex-start" justifyContent="space-between">
-          <Typography variant="body1" fontWeight={700} sx={{ flexGrow: 1, pr: 1 }}>
-            {assignment.title}
-          </Typography>
+          <Stack direction="row" alignItems="center" spacing={1} sx={{ flexGrow: 1, pr: 1 }}>
+            {isLockedForStudent && <LockRounded sx={{ fontSize: 18, color: "text.disabled" }} />}
+            <Typography variant="body1" fontWeight={700} sx={{ flexGrow: 1 }}>
+              {assignment.title}
+            </Typography>
+          </Stack>
           <Stack direction="row" spacing={1} alignItems="center">
-            {getStatusChip()}
-            {status === SubmissionStatus.Graded && assignment.myGrade !== undefined && (
-              <Chip label={`${assignment.myGrade}/10`} size="small"
-                color={assignment.myGrade >= 5 ? "success" : "error"} variant="filled" sx={{ fontWeight: 700 }} />
-            )}
-            {status === SubmissionStatus.ReturnedForResubmission && assignment.myGrade !== undefined && (
-              <Chip label={`${assignment.myGrade}/10`} size="small" color="error" variant="filled" sx={{ fontWeight: 700 }} />
+            {isLockedForStudent ? (
+              <Chip icon={<LockRounded sx={{ fontSize: 14 }} />} label="Locked" size="small" sx={{ fontWeight: 600 }} />
+            ) : (
+              <>
+                {getStatusChip()}
+                {status === SubmissionStatus.Graded && assignment.myGrade !== undefined && (
+                  <Chip label={`${assignment.myGrade}/10`} size="small"
+                    color={assignment.myGrade >= 5 ? "success" : "error"} variant="filled" sx={{ fontWeight: 700 }} />
+                )}
+                {status === SubmissionStatus.ReturnedForResubmission && assignment.myGrade !== undefined && (
+                  <Chip label={`${assignment.myGrade}/10`} size="small" color="error" variant="filled" sx={{ fontWeight: 700 }} />
+                )}
+              </>
             )}
           </Stack>
         </Stack>
 
-        <Typography variant="body2" color="text.secondary">
-          {assignment.description}
-        </Typography>
+        {isLockedForStudent ? (
+          <Typography variant="body2" color="text.disabled" sx={{ fontStyle: "italic" }}>
+            Complete the previous assignment to unlock this assignment.
+          </Typography>
+        ) : (
+          <Typography variant="body2" color="text.secondary" sx={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+            {assignment.description || "No description"}
+          </Typography>
+        )}
 
         {status === SubmissionStatus.Graded && assignment.myGrade !== undefined && (
           <Box sx={{ p: 1.5, bgcolor: "#f5f5f5", borderRadius: 2 }}>
@@ -137,6 +164,14 @@ const AssignmentCard = ({
         </Stack>
       </Stack>
     </Box>
+    <Snackbar
+      open={showLockedToast}
+      autoHideDuration={3000}
+      onClose={() => setShowLockedToast(false)}
+      message="Complete the previous assignment to unlock this assignment."
+      anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+    />
+    </>
   );
 };
 

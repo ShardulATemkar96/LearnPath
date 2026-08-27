@@ -47,6 +47,11 @@ const makeStore = (overrides: StoreOverrides = {}) =>
         reportsPage:            1,
         reportsLoading:         false,
         reportsError:           null,
+        postsRequestId:         null,
+        groupsRequestId:        null,
+        groupDetailRequestId:   null,
+        groupPostsRequestId:    null,
+        postDetailRequestId:    null,
       },
     },
   });

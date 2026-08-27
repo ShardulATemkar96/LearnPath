@@ -67,10 +67,24 @@ public class LearningPathService : ILearningPathService
             .Select(m => m.Id)
             .ToHashSet();
 
+        var sortedForUnlock = path.Modules.OrderBy(m => m.Order).ToList();
         var modules = path.Modules.Select(m =>
         {
             var dependencyIds = m.Dependencies.Select(d => d.DependsOnModuleId).ToList();
-            var isUnlocked = dependencyIds.All(dId => completedModuleIds.Contains(dId));
+            var dagUnlocked = dependencyIds.All(dId => completedModuleIds.Contains(dId));
+            // Sequential unlocking: if no explicit dependencies, require previous module in Order to be completed
+            // This enforces Module 1 -> Quiz 1 passed -> Module 2 unlocks, etc.
+            var sequentialUnlocked = true;
+            if (!dependencyIds.Any())
+            {
+                var idx = sortedForUnlock.FindIndex(x => x.Id == m.Id);
+                if (idx > 0)
+                {
+                    var prevModuleId = sortedForUnlock[idx - 1].Id;
+                    sequentialUnlocked = completedModuleIds.Contains(prevModuleId);
+                }
+            }
+            var isUnlocked = dagUnlocked && sequentialUnlocked;
             return new ModuleResponseDto
             {
                 Id = m.Id,
@@ -327,11 +341,23 @@ public class LearningPathService : ILearningPathService
             .ToHashSet();
 
         var dependencyIds = module.Dependencies.Select(d => d.DependsOnModuleId).ToList();
-        var isUnlocked = dependencyIds.All(dId => completedModuleIds.Contains(dId));
+        var dagUnlocked = dependencyIds.All(dId => completedModuleIds.Contains(dId));
+        var sequentialUnlocked = true;
+        if (!dependencyIds.Any())
+        {
+            var sortedForUnlock = path.Modules.OrderBy(m => m.Order).ToList();
+            var idx = sortedForUnlock.FindIndex(x => x.Id == moduleId);
+            if (idx > 0)
+            {
+                var prevModuleId = sortedForUnlock[idx - 1].Id;
+                sequentialUnlocked = completedModuleIds.Contains(prevModuleId);
+            }
+        }
+        var isUnlocked = dagUnlocked && sequentialUnlocked;
         var isCompleted = completedModuleIds.Contains(module.Id);
 
         if (!isUnlocked)
-            throw new UnauthorizedAccessException("Complete all prerequisite modules first.");
+            throw new UnauthorizedAccessException("Please complete the previous module to unlock this module.");
 
         // Reload with full includes for the response
         var fullModule = await _context.Modules

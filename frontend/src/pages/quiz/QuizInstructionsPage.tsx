@@ -140,8 +140,8 @@ const QuizInstructionsPage = () => {
           {starting ? "Starting..." : "Start Quiz"}
         </Button>
         <Box mt={2}>
-          <Button variant="text" onClick={() => navigate(ROUTES.LEARNING_PATH_DETAIL.replace(":id", "1"))}>
-            Back to Learning Path
+          <Button variant="text" onClick={() => navigate(ROUTES.LEARNING_PATHS)}>
+            Back to Learning Paths
           </Button>
         </Box>
       </Box>

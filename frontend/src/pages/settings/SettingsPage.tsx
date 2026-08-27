@@ -1,12 +1,14 @@
 ﻿import { useState } from "react";
 import {
-  Alert, Box, Card, CardContent, Divider,
-  FormControlLabel, Stack, Switch, Typography,
+  Alert, Box, Button, Card, CardContent, Collapse, Divider,
+  FormControlLabel, Stack, Switch, TextField, Typography,
 } from "@mui/material";
 import {
-  NotificationsRounded, DarkModeRounded,
-  LanguageRounded, SecurityRounded,
+  DarkModeRounded, SecurityRounded, LockRounded,
+  ExpandMoreRounded,
 } from "@mui/icons-material";
+import { useThemeMode } from "../../context/ThemeModeContext";
+import { userService } from "../../services/userService";
 
 interface SettingRowProps {
   icon: React.ReactNode;
@@ -47,81 +49,55 @@ const SettingRow = ({
 );
 
 const SettingsPage = () => {
-  const [settings, setSettings] = useState({
-    emailNotifications:  true,
-    pushNotifications:   false,
-    darkMode:            false,
-    twoFactor:           false,
-    weeklyDigest:        true,
-    publicProfile:       true,
-  });
+  const { isDark, toggle: toggleTheme } = useThemeMode();
 
   const [saved, setSaved] = useState(false);
 
-  const toggle = (key: keyof typeof settings) => {
-    setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
+  const [pwExpanded, setPwExpanded] = useState(false);
+  const [pwForm, setPwForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [pwError, setPwError] = useState("");
+  const [pwSuccess, setPwSuccess] = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
+
+  const handleNightModeToggle = () => {
+    toggleTheme();
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
+  const handlePasswordChange = async () => {
+    setPwError(""); setPwSuccess("");
+    if (pwForm.newPassword !== pwForm.confirmPassword) {
+      setPwError("Passwords do not match."); return;
+    }
+    if (pwForm.newPassword.length < 8) {
+      setPwError("Minimum 8 characters."); return;
+    }
+    if (!pwForm.currentPassword) {
+      setPwError("Current password is required."); return;
+    }
+    setPwSaving(true);
+    try {
+      await userService.changePassword(pwForm.currentPassword, pwForm.newPassword);
+      setPwSuccess("Password changed successfully.");
+      setPwForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    } catch (e: any) {
+      setPwError(e.response?.data?.message ?? "Password change failed.");
+    } finally { setPwSaving(false); }
+  };
+
   const SECTIONS = [
-    {
-      title: "Notifications",
-      icon: <NotificationsRounded />,
-      color: "#6C63FF",
-      rows: [
-        {
-          key: "emailNotifications" as const,
-          title: "Email Notifications",
-          description: "Receive updates on progress, assignments, and activity.",
-        },
-        {
-          key: "pushNotifications" as const,
-          title: "Push Notifications",
-          description: "Get real-time alerts directly in your browser.",
-        },
-        {
-          key: "weeklyDigest" as const,
-          title: "Weekly Digest",
-          description: "A summary of your weekly learning activity.",
-        },
-      ],
-    },
     {
       title: "Appearance",
       icon: <DarkModeRounded />,
-      color: "#1A1D2E",
-      rows: [
-        {
-          key: "darkMode" as const,
-          title: "Dark Mode",
-          description: "Switch to a darker color scheme. (Coming soon)",
-        },
-      ],
-    },
-    {
-      title: "Privacy",
-      icon: <LanguageRounded />,
-      color: "#3B82F6",
-      rows: [
-        {
-          key: "publicProfile" as const,
-          title: "Public Profile",
-          description: "Allow others to view your profile and learning activity.",
-        },
-      ],
+      color: isDark ? "#9D97FF" : "#1A1D2E",
+      rows: [] as any[],
     },
     {
       title: "Security",
       icon: <SecurityRounded />,
       color: "#22C55E",
-      rows: [
-        {
-          key: "twoFactor" as const,
-          title: "Two-Factor Authentication",
-          description: "Add an extra layer of security to your account. (Coming soon)",
-        },
-      ],
+      rows: [] as any[],
     },
   ];
 
@@ -161,21 +137,81 @@ const SettingsPage = () => {
 
               <Divider sx={{ mb: 1 }} />
 
-              {section.rows.map((row, idx) => (
-                <Box key={row.key}>
-                  <SettingRow
-                    icon={section.icon}
-                    title={row.title}
-                    description={row.description}
-                    checked={settings[row.key]}
-                    onChange={() => toggle(row.key)}
-                    color={section.color}
-                  />
-                  {idx < section.rows.length - 1 && (
-                    <Divider sx={{ opacity: 0.5 }} />
-                  )}
+              {/* Appearance — functional Night Mode */}
+              {section.title === "Appearance" && (
+                <SettingRow
+                  icon={<DarkModeRounded />}
+                  title="Night Mode"
+                  description={isDark ? "Dark theme enabled." : "Switch to a darker color scheme."}
+                  checked={isDark}
+                  onChange={handleNightModeToggle}
+                  color={section.color}
+                />
+              )}
+
+              {/* Security — Change Password expandable */}
+              {section.title === "Security" && (
+                <Box>
+                  <Stack
+                    direction="row"
+                    alignItems="center"
+                    spacing={2}
+                    py={2}
+                    onClick={() => setPwExpanded((v) => !v)}
+                    sx={{
+                      cursor: "pointer",
+                      borderRadius: 2,
+                      "&:hover": { bgcolor: "action.hover" },
+                      px: 0.5, mx: -0.5,
+                    }}
+                  >
+                    <Box sx={{
+                      width: 42, height: 42, borderRadius: 2, flexShrink: 0,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      bgcolor: `${section.color}18`, "& svg": { color: section.color, fontSize: 20 },
+                    }}>
+                      <LockRounded />
+                    </Box>
+                    <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                      <Typography variant="body2" fontWeight={600}>Change Password</Typography>
+                      <Typography variant="caption" color="text.secondary">Update your account password.</Typography>
+                    </Box>
+                    <ExpandMoreRounded
+                      sx={{
+                        color: "text.secondary",
+                        transform: pwExpanded ? "rotate(180deg)" : "rotate(0deg)",
+                        transition: "transform 0.2s",
+                      }}
+                    />
+                  </Stack>
+
+                  <Collapse in={pwExpanded} timeout="auto" unmountOnExit>
+                    <Box sx={{ pt: 1, pb: 1 }}>
+                      <Divider sx={{ mb: 2 }} />
+                      {pwError && <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>{pwError}</Alert>}
+                      {pwSuccess && <Alert severity="success" sx={{ mb: 2, borderRadius: 2 }}>{pwSuccess}</Alert>}
+                      <Stack spacing={2}>
+                        <TextField label="Current Password" type="password" fullWidth size="small"
+                          value={pwForm.currentPassword}
+                          onChange={(e) => setPwForm((p) => ({ ...p, currentPassword: e.target.value }))} />
+                        <TextField label="New Password" type="password" fullWidth size="small"
+                          value={pwForm.newPassword}
+                          onChange={(e) => setPwForm((p) => ({ ...p, newPassword: e.target.value }))} />
+                        <TextField label="Confirm New Password" type="password" fullWidth size="small"
+                          value={pwForm.confirmPassword}
+                          onChange={(e) => setPwForm((p) => ({ ...p, confirmPassword: e.target.value }))} />
+                        <Button variant="contained" onClick={handlePasswordChange} disabled={pwSaving}
+                          sx={{
+                            alignSelf: "flex-start", borderRadius: 2,
+                            background: "linear-gradient(135deg, #6C63FF, #9D97FF)",
+                          }}>
+                          {pwSaving ? "Saving..." : "Change Password"}
+                        </Button>
+                      </Stack>
+                    </Box>
+                  </Collapse>
                 </Box>
-              ))}
+              )}
             </CardContent>
           </Card>
         ))}

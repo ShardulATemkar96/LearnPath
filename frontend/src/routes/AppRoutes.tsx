@@ -74,15 +74,16 @@ const AppRoutes = () => (
             <Route path={ROUTES.CLASSROOM_DETAIL} element={<ClassroomDetailPage />} />
             <Route path={ROUTES.ASSIGNMENT_DETAIL} element={<AssignmentDetailPage />} />
             <Route path={ROUTES.ANALYTICS} element={<AnalyticsPage />} />
-            <Route path={ROUTES.COMMUNITY} element={<CommunityGroupsPage />} />
-            <Route path={ROUTES.COMMUNITY_DETAIL} element={<CommunityPostPage />} />
-            <Route path={ROUTES.COMMUNITY_GROUPS} element={<CommunityGroupsPage />} />
-            <Route path={ROUTES.COMMUNITY_GROUP_DETAIL} element={<CommunityGroupDetailPage />} />
+            {/* Static community routes first — ensures /community/posts etc. outrank /community/:id */}
             <Route path={ROUTES.COMMUNITY_POSTS} element={<CommunityPage />} />
             <Route path={ROUTES.COMMUNITY_MY_POSTS} element={<CommunityMyPostsPage />} />
+            <Route path={ROUTES.COMMUNITY_GROUPS} element={<CommunityGroupsPage />} />
+            <Route path={ROUTES.COMMUNITY_GROUP_DETAIL} element={<CommunityGroupDetailPage />} />
             <Route element={<AdminRoute />}>
               <Route path={ROUTES.COMMUNITY_MODERATION} element={<CommunityModerationPage />} />
             </Route>
+            <Route path={ROUTES.COMMUNITY} element={<CommunityGroupsPage />} />
+            <Route path={ROUTES.COMMUNITY_DETAIL} element={<CommunityPostPage />} />
             <Route path={ROUTES.CERTIFICATES} element={<CertificatesPage />} />
             <Route path={ROUTES.HISTORY} element={<HistoryPage />} />
             <Route path={ROUTES.PROFILE} element={<ProfilePage />} />

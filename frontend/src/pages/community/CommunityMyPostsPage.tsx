@@ -6,7 +6,7 @@ import {
 } from "@mui/material";
 import { AddRounded, GroupsRounded } from "@mui/icons-material";
 import { AppDispatch } from "../../redux/store";
-import { fetchPosts } from "../../redux/slices/communitySlice";
+import { fetchPosts, clearCommunityError } from "../../redux/slices/communitySlice";
 import {
   selectPosts, selectCommunityLoading,
   selectCommunityError, selectTotalPages,
@@ -41,12 +41,18 @@ const CommunityMyPostsPage = () => {
   const debouncedSearch = useDebounce(search, 400);
 
   useEffect(() => {
-    dispatch(fetchPosts({
+    dispatch(clearCommunityError());
+    const promise = dispatch(fetchPosts({
       category, search: debouncedSearch, page: 1, sort, filter,
     }));
+    return () => {
+      // Abort stale request when deps change or component unmounts
+      (promise as any).abort?.();
+    };
   }, [category, debouncedSearch, sort, filter, dispatch]);
 
   const handlePageChange = (p: number) => {
+    dispatch(clearCommunityError());
     dispatch(fetchPosts({
       category, search: debouncedSearch, page: p, sort, filter,
     }));

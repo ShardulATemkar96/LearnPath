@@ -14,7 +14,7 @@ import {
 } from "@mui/icons-material";
 import { AppDispatch } from "../../redux/store";
 import {
-  fetchPostById, clearSelectedPost, votePostThunk,
+  fetchPostById, clearSelectedPost, clearCommunityError, votePostThunk,
   createCommentThunk, deletePostThunk,
 } from "../../redux/slices/communitySlice";
 import {
@@ -48,8 +48,13 @@ const CommunityPostPage = () => {
   const notify = (msg: string) => setToast(msg);
 
   useEffect(() => {
-    if (id) dispatch(fetchPostById(Number(id)));
-    return () => { dispatch(clearSelectedPost()); };
+    dispatch(clearCommunityError());
+    let promise: any;
+    if (id) promise = dispatch(fetchPostById(Number(id)));
+    return () => {
+      promise?.abort?.();
+      dispatch(clearSelectedPost());
+    };
   }, [id, dispatch]);
 
   const handleVotePost = async (isUpvote: boolean) => {

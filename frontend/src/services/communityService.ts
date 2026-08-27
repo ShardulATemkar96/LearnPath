@@ -17,7 +17,8 @@ export const communityService = {
     pageSize = 10,
     sort?: PostSortOrder,
     filter?: PostFilter,
-    tag?: string
+    tag?: string,
+    signal?: AbortSignal
   ): Promise<PostListResponse> => {
     const FILTER_PARAM: Record<PostFilter, string> = {
       "All Posts":  "All",
@@ -32,12 +33,13 @@ export const communityService = {
         filter: filter ? FILTER_PARAM[filter] : undefined,
         tag,
       },
+      signal,
     });
     return data.data;
   },
 
-  getPostById: async (postId: number): Promise<PostDetail> => {
-    const { data } = await apiClient.get(`/community/posts/${postId}`);
+  getPostById: async (postId: number, signal?: AbortSignal): Promise<PostDetail> => {
+    const { data } = await apiClient.get(`/community/posts/${postId}`, { signal });
     return data.data;
   },
 
@@ -141,10 +143,12 @@ export const communityService = {
     category?: string,
     groupId?: number,
     page = 1,
-    pageSize = 10
+    pageSize = 10,
+    signal?: AbortSignal
   ): Promise<PostListResponse> => {
     const { data } = await apiClient.get("/community/posts/search", {
       params: { search, category, groupId, page, pageSize },
+      signal,
     });
     return data.data;
   },
@@ -153,10 +157,12 @@ export const communityService = {
     search?: string,
     isPublic?: boolean,
     page = 1,
-    pageSize = 10
+    pageSize = 10,
+    signal?: AbortSignal
   ): Promise<GroupListResponse> => {
     const { data } = await apiClient.get("/community/groups", {
       params: { search, isPublic, page, pageSize },
+      signal,
     });
     return data.data;
   },
@@ -165,16 +171,18 @@ export const communityService = {
     search?: string,
     isPublic?: boolean,
     page = 1,
-    pageSize = 10
+    pageSize = 10,
+    signal?: AbortSignal
   ): Promise<GroupListResponse> => {
     const { data } = await apiClient.get("/community/groups/search", {
       params: { search, isPublic, page, pageSize },
+      signal,
     });
     return data.data;
   },
 
-  getGroup: async (groupId: number): Promise<GroupDetail> => {
-    const { data } = await apiClient.get(`/community/groups/${groupId}`);
+  getGroup: async (groupId: number, signal?: AbortSignal): Promise<GroupDetail> => {
+    const { data } = await apiClient.get(`/community/groups/${groupId}`, { signal });
     return data.data;
   },
 
@@ -217,10 +225,12 @@ export const communityService = {
     category?: string,
     sort?: PostSortOrder,
     page = 1,
-    pageSize = 10
+    pageSize = 10,
+    signal?: AbortSignal
   ): Promise<PostListResponse> => {
     const { data } = await apiClient.get(`/community/groups/${groupId}/posts`, {
       params: { search, category, sort, page, pageSize },
+      signal,
     });
     return data.data;
   },

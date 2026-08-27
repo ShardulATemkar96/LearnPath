@@ -2,12 +2,12 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import {
-  Alert, Box, Button, Card, CardContent, Chip, CircularProgress, Stack, Typography,
+  Alert, Box, Button, Card, CardContent, Chip, CircularProgress, Stack, Typography, Divider,
 } from "@mui/material";
 import {
   ArrowBackRounded, CalendarTodayRounded, CheckCircleRounded,
   CloudUploadRounded, UploadRounded,
-  DescriptionRounded, InsertDriveFileRounded,
+  DescriptionRounded, InsertDriveFileRounded, LockRounded,
 } from "@mui/icons-material";
 import { AppDispatch } from "../../redux/store";
 import { fetchClassroomById } from "../../redux/slices/classroomSlice";
@@ -20,6 +20,67 @@ import { Assignment, Submission, SubmissionStatus } from "../../types/classroom.
 import { ROUTES } from "../../constants/routes";
 import { classroomService } from "../../services/classroomService";
 import AssignmentUploadCard from "../../components/classroom/AssignmentUploadCard/AssignmentUploadCard";
+
+const FormattedDescription = ({ text }: { text: string }) => {
+  if (!text?.trim()) return <Typography variant="body2" color="text.secondary">No description provided.</Typography>;
+
+  const lines = text.split("\n");
+  const elements: React.ReactNode[] = [];
+  let bulletGroup: string[] = [];
+  let numberedGroup: string[] = [];
+
+  const flushBullets = () => {
+    if (bulletGroup.length) {
+      elements.push(
+        <Box key={`b-${elements.length}`} component="ul" sx={{ pl: 3, mb: 1.5, mt: 1 }}>
+          {bulletGroup.map((t, i) => <li key={i}><Typography variant="body2" sx={{ mb: 0.5 }}>{t}</Typography></li>)}
+        </Box>
+      );
+      bulletGroup = [];
+    }
+  };
+  const flushNumbered = () => {
+    if (numberedGroup.length) {
+      elements.push(
+        <Box key={`n-${elements.length}`} component="ol" sx={{ pl: 3, mb: 1.5, mt: 1 }}>
+          {numberedGroup.map((t, i) => <li key={i}><Typography variant="body2" sx={{ mb: 0.5 }}>{t}</Typography></li>)}
+        </Box>
+      );
+      numberedGroup = [];
+    }
+  };
+
+  lines.forEach((raw, idx) => {
+    const line = raw.trim();
+    if (!line) {
+      flushBullets();
+      flushNumbered();
+      elements.push(<Box key={`s-${idx}`} sx={{ height: 8 }} />);
+      return;
+    }
+    if (line.startsWith("# ")) {
+      flushBullets(); flushNumbered();
+      elements.push(<Typography key={idx} variant="h6" fontWeight={700} sx={{ mt: 2, mb: 1 }}>{line.slice(2)}</Typography>);
+    } else if (line.startsWith("## ")) {
+      flushBullets(); flushNumbered();
+      elements.push(<Typography key={idx} variant="subtitle1" fontWeight={700} sx={{ mt: 1.5, mb: 1 }}>{line.slice(3)}</Typography>);
+    } else if (/^[-*•]\s+/.test(line)) {
+      flushNumbered();
+      bulletGroup.push(line.replace(/^[-*•]\s+/, ""));
+    } else if (/^\d+\.\s+/.test(line)) {
+      flushBullets();
+      numberedGroup.push(line.replace(/^\d+\.\s+/, ""));
+    } else if (line.endsWith(":") && line.length < 80 && !line.includes(".")) {
+      flushBullets(); flushNumbered();
+      elements.push(<Typography key={idx} variant="subtitle2" fontWeight={700} sx={{ mt: 1.5, mb: 0.5 }}>{line}</Typography>);
+    } else {
+      flushBullets(); flushNumbered();
+      elements.push(<Typography key={idx} variant="body2" color="text.secondary" sx={{ mb: 1, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{raw}</Typography>);
+    }
+  });
+  flushBullets(); flushNumbered();
+  return <Box>{elements}</Box>;
+};
 
 const AssignmentDetailPage = () => {
   const { classroomId, assignmentId } = useParams<{ classroomId: string; assignmentId: string }>();
@@ -118,6 +179,25 @@ const AssignmentDetailPage = () => {
 
   if (!assignment) return null;
 
+  const isUnlocked = assignment.isUnlocked ?? true;
+  const isLockedForStudent = !isInstructor && !isUnlocked;
+
+  if (isLockedForStudent) {
+    return (
+      <Box sx={{ maxWidth: 600, mx: "auto", py: 8, textAlign: "center" }}>
+        <LockRounded sx={{ fontSize: 64, color: "text.disabled", mb: 2 }} />
+        <Alert severity="warning" sx={{ mb: 3, maxWidth: 500, mx: "auto", borderRadius: 2 }}>
+          Complete the previous assignment to unlock this assignment.
+        </Alert>
+        <Button variant="outlined" startIcon={<ArrowBackRounded />}
+          onClick={() => navigate(ROUTES.CLASSROOM_DETAIL.replace(":id", String(cid)))}
+          sx={{ borderRadius: 2 }}>
+          Back to Classroom
+        </Button>
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ maxWidth: 700, mx: "auto", py: 6, px: 2 }}>
       <Button startIcon={<ArrowBackRounded />}
@@ -146,9 +226,8 @@ const AssignmentDetailPage = () => {
         <CardContent sx={{ p: 3 }}>
           <Typography variant="h6" fontWeight={600} mb={2}>Assignment Information</Typography>
           <Stack spacing={2}>
-            <Typography variant="body2" color="text.secondary">
-              {assignment.description}
-            </Typography>
+            <FormattedDescription text={assignment.description} />
+            <Divider />
 
             <Stack direction="row" spacing={1.5} alignItems="center">
               <CalendarTodayRounded color={isOverdue ? "error" : "primary"} />

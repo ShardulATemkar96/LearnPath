@@ -17,7 +17,7 @@ public class ProgressServiceTests
         ctx.LearningPaths.Add(EntityFactory.CreateLearningPath(id: 1));
         ctx.Modules.Add(EntityFactory.CreateModule(id: 1, learningPathId: 1));
         await ctx.SaveChangesAsync();
-        var svc = new ProgressService(ctx);
+        var svc = new ProgressService(ctx, new FakeAuditLogService());
 
         await svc.MarkModuleCompleteFromQuizAsync(userId, 1);
 
@@ -35,7 +35,7 @@ public class ProgressServiceTests
         ctx.LearningPaths.Add(EntityFactory.CreateLearningPath(id: 1));
         ctx.Modules.Add(EntityFactory.CreateModule(id: 1, learningPathId: 1));
         await ctx.SaveChangesAsync();
-        var svc = new ProgressService(ctx);
+        var svc = new ProgressService(ctx, new FakeAuditLogService());
 
         await svc.MarkModuleCompleteFromQuizAsync(userId, 1);
         var act = () => svc.MarkModuleCompleteFromQuizAsync(userId, 1);
@@ -48,7 +48,7 @@ public class ProgressServiceTests
     public async Task MarkModuleCompleteFromQuizAsync_MissingModule_Throws()
     {
         using var ctx = DbContextFactory.Create();
-        var svc = new ProgressService(ctx);
+        var svc = new ProgressService(ctx, new FakeAuditLogService());
 
         var act = () => svc.MarkModuleCompleteFromQuizAsync(Guid.NewGuid().ToString(), 999);
 
