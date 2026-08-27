@@ -5,7 +5,7 @@ import { progressService } from "../../services/progressService";
 
 import {
   Alert, Box, Button, Chip, Divider,
-  Grid, Skeleton, Stack, Typography,Tabs, Tab,
+  Grid, Skeleton, Stack, Typography,Tabs, Tab, Snackbar,
 } from "@mui/material";
 import {
   ArrowBackRounded, CheckCircleRounded,
@@ -13,7 +13,7 @@ import {
 } from "@mui/icons-material";
 import { AppDispatch } from "../../redux/store";
 import PathGraph from "../../components/learningPath/PathGraph/PathGraph";  
-import { fetchPathById, clearSelectedPath } from "../../redux/slices/pathSlice";
+import { fetchPathById, clearSelectedPath, clearPathError } from "../../redux/slices/pathSlice";
 import {
   selectSelectedPath,
   selectPathDetailLoading,
@@ -25,14 +25,19 @@ import { useAuth } from "../../hooks/useAuth";
 
 const ModuleCard = ({ module, dispatch, pathId ,navigate }: { module: Module; dispatch: AppDispatch; pathId: number ; navigate:(path:string) =>void;}) => {
   const { isAdmin } = useAuth();
+  const [showLockedToast, setShowLockedToast] = useState(false);
   return (
+  <>
   <Box 
     onClick={() => {
       if(module.isUnlocked){
         navigate(`/paths/${pathId}/modules/${module.id}`);
+      } else {
+        setShowLockedToast(true);
       }
     }}
     sx={{
+      cursor: module.isUnlocked ? "pointer" : "not-allowed",
       p: 2.5,
       borderRadius: 3,
       border: "1.5px solid",
@@ -119,7 +124,15 @@ const ModuleCard = ({ module, dispatch, pathId ,navigate }: { module: Module; di
   </Box>
 )}
   </Box>
-  );
+  <Snackbar
+    open={showLockedToast}
+    autoHideDuration={3000}
+    onClose={() => setShowLockedToast(false)}
+    message="Please complete the previous module to unlock this module."
+    anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+  />
+  </>
+   );
 };
 
 const LearningPathDetailPage = () => {
@@ -134,6 +147,7 @@ const LearningPathDetailPage = () => {
   const error   = useSelector(selectPathError);
 
   useEffect(() => {
+    dispatch(clearPathError());
     if (id) dispatch(fetchPathById(Number(id)));
     return () => { dispatch(clearSelectedPath()); };
   }, [id, dispatch]);
@@ -261,8 +275,8 @@ const LearningPathDetailPage = () => {
   </Box>
 )}
       
-    </Box>
-  );
+  </Box>
+    );
 };
 
 export default LearningPathDetailPage;

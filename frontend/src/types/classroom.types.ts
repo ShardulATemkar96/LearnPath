@@ -41,6 +41,8 @@ export interface Assignment {
   myGrade?: number;
   myFeedback?: string;
   createdAt: string;
+  isUnlocked: boolean;
+  isCompleted: boolean;
 }
 
 export interface Submission {

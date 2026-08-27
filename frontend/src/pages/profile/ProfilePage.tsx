@@ -9,7 +9,6 @@ import {
   RouteRounded, WorkspacePremiumRounded,
 } from "@mui/icons-material";
 import { userService, UserProfile, UpdateProfilePayload } from "../../services/userService";
-import { useAuth } from "../../hooks/useAuth";
 
 const StatBadge = ({
   icon, label, value, color,
@@ -33,7 +32,6 @@ const StatBadge = ({
 );
 
 const ProfilePage = () => {
-  const { user } = useAuth();
   const [profile, setProfile]   = useState<UserProfile | null>(null);
   const [loading, setLoading]   = useState(true);
   const [editing, setEditing]   = useState(false);
@@ -44,13 +42,6 @@ const ProfilePage = () => {
   const [form, setForm] = useState<UpdateProfilePayload>({
     firstName: "", lastName: "", avatarUrl: "", bio: "",
   });
-
-  const [pwForm, setPwForm] = useState({
-    currentPassword: "", newPassword: "", confirmPassword: "",
-  });
-  const [pwError,   setPwError]   = useState("");
-  const [pwSuccess, setPwSuccess] = useState("");
-  const [pwSaving,  setPwSaving]  = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -77,24 +68,6 @@ const ProfilePage = () => {
     } catch (e: any) {
       setError(e.response?.data?.message ?? "Update failed.");
     } finally { setSaving(false); }
-  };
-
-  const handlePasswordChange = async () => {
-    setPwError(""); setPwSuccess("");
-    if (pwForm.newPassword !== pwForm.confirmPassword) {
-      setPwError("Passwords do not match."); return;
-    }
-    if (pwForm.newPassword.length < 8) {
-      setPwError("Minimum 8 characters."); return;
-    }
-    setPwSaving(true);
-    try {
-      await userService.changePassword(pwForm.currentPassword, pwForm.newPassword);
-      setPwSuccess("Password changed successfully.");
-      setPwForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
-    } catch (e: any) {
-      setPwError(e.response?.data?.message ?? "Password change failed.");
-    } finally { setPwSaving(false); }
   };
 
   if (loading) return (
@@ -173,99 +146,64 @@ const ProfilePage = () => {
 
         {/* Right — Edit Form */}
         <Grid item xs={12} md={8}>
-          <Stack spacing={3}>
-            {/* Profile Info */}
-            <Card sx={{ borderRadius: 4, boxShadow: "0 4px 24px rgba(0,0,0,0.07)" }}>
-              <CardContent sx={{ p: 3 }}>
-                <Stack direction="row" alignItems="center"
-                  justifyContent="space-between" mb={3}>
-                  <Typography variant="h6" fontWeight={700}>
-                    Personal Information
-                  </Typography>
-                  {!editing ? (
-                    <Button startIcon={<EditRounded />} size="small"
-                      onClick={() => setEditing(true)} sx={{ borderRadius: 2 }}>
-                      Edit
-                    </Button>
-                  ) : (
-                    <Stack direction="row" spacing={1}>
-                      <Button size="small" onClick={() => setEditing(false)}
-                        sx={{ borderRadius: 2 }}>
-                        Cancel
-                      </Button>
-                      <Button variant="contained" size="small"
-                        startIcon={saving
-                          ? <CircularProgress size={14} sx={{ color: "#fff" }} />
-                          : <SaveRounded />}
-                        onClick={handleSave} disabled={saving}
-                        sx={{
-                          borderRadius: 2,
-                          background: "linear-gradient(135deg, #6C63FF, #9D97FF)",
-                        }}>
-                        Save
-                      </Button>
-                    </Stack>
-                  )}
-                </Stack>
-
-                <Grid container spacing={2.5}>
-                  <Grid item xs={12} sm={6}>
-                    <TextField label="First Name" fullWidth disabled={!editing}
-                      value={form.firstName}
-                      onChange={(e) => setForm((p) => ({ ...p, firstName: e.target.value }))} />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField label="Last Name" fullWidth disabled={!editing}
-                      value={form.lastName}
-                      onChange={(e) => setForm((p) => ({ ...p, lastName: e.target.value }))} />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TextField label="Avatar URL" fullWidth disabled={!editing}
-                      value={form.avatarUrl}
-                      onChange={(e) => setForm((p) => ({ ...p, avatarUrl: e.target.value }))} />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TextField label="Bio" fullWidth multiline rows={3}
-                      disabled={!editing} value={form.bio}
-                      onChange={(e) => setForm((p) => ({ ...p, bio: e.target.value }))}
-                      placeholder="Tell others about yourself..." />
-                  </Grid>
-                </Grid>
-              </CardContent>
-            </Card>
-
-            {/* Change Password */}
-            <Card sx={{ borderRadius: 4, boxShadow: "0 4px 24px rgba(0,0,0,0.07)" }}>
-              <CardContent sx={{ p: 3 }}>
-                <Typography variant="h6" fontWeight={700} mb={3}>
-                  Change Password
+          <Card sx={{ borderRadius: 4, boxShadow: "0 4px 24px rgba(0,0,0,0.07)" }}>
+            <CardContent sx={{ p: 3 }}>
+              <Stack direction="row" alignItems="center"
+                justifyContent="space-between" mb={3}>
+                <Typography variant="h6" fontWeight={700}>
+                  Personal Information
                 </Typography>
-
-                {pwError   && <Alert severity="error"   sx={{ mb: 2, borderRadius: 2 }}>{pwError}</Alert>}
-                {pwSuccess && <Alert severity="success" sx={{ mb: 2, borderRadius: 2 }}>{pwSuccess}</Alert>}
-
-                <Stack spacing={2.5}>
-                  <TextField label="Current Password" type="password" fullWidth
-                    value={pwForm.currentPassword}
-                    onChange={(e) => setPwForm((p) => ({ ...p, currentPassword: e.target.value }))} />
-                  <TextField label="New Password" type="password" fullWidth
-                    value={pwForm.newPassword}
-                    onChange={(e) => setPwForm((p) => ({ ...p, newPassword: e.target.value }))} />
-                  <TextField label="Confirm New Password" type="password" fullWidth
-                    value={pwForm.confirmPassword}
-                    onChange={(e) => setPwForm((p) => ({ ...p, confirmPassword: e.target.value }))} />
-                  <Button variant="contained" onClick={handlePasswordChange}
-                    disabled={pwSaving}
-                    sx={{
-                      alignSelf: "flex-start", borderRadius: 2,
-                      background: "linear-gradient(135deg, #6C63FF, #9D97FF)",
-                    }}>
-                    {pwSaving ? "Saving..." : "Update Password"}
+                {!editing ? (
+                  <Button startIcon={<EditRounded />} size="small"
+                    onClick={() => setEditing(true)} sx={{ borderRadius: 2 }}>
+                    Edit
                   </Button>
-                </Stack>
-              </CardContent>
-            </Card>
-          </Stack>
+                ) : (
+                  <Stack direction="row" spacing={1}>
+                    <Button size="small" onClick={() => setEditing(false)}
+                      sx={{ borderRadius: 2 }}>
+                      Cancel
+                    </Button>
+                    <Button variant="contained" size="small"
+                      startIcon={saving
+                        ? <CircularProgress size={14} sx={{ color: "#fff" }} />
+                        : <SaveRounded />}
+                      onClick={handleSave} disabled={saving}
+                      sx={{
+                        borderRadius: 2,
+                        background: "linear-gradient(135deg, #6C63FF, #9D97FF)",
+                      }}>
+                      Save
+                    </Button>
+                  </Stack>
+                )}
+              </Stack>
+
+              <Grid container spacing={2.5}>
+                <Grid item xs={12} sm={6}>
+                  <TextField label="First Name" fullWidth disabled={!editing}
+                    value={form.firstName}
+                    onChange={(e) => setForm((p) => ({ ...p, firstName: e.target.value }))} />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField label="Last Name" fullWidth disabled={!editing}
+                    value={form.lastName}
+                    onChange={(e) => setForm((p) => ({ ...p, lastName: e.target.value }))} />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField label="Avatar URL" fullWidth disabled={!editing}
+                    value={form.avatarUrl}
+                    onChange={(e) => setForm((p) => ({ ...p, avatarUrl: e.target.value }))} />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField label="Bio" fullWidth multiline rows={3}
+                    disabled={!editing} value={form.bio}
+                    onChange={(e) => setForm((p) => ({ ...p, bio: e.target.value }))}
+                    placeholder="Tell others about yourself..." />
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
         </Grid>
       </Grid>
     </Box>

@@ -66,7 +66,8 @@ const pathSlice = createSlice({
   name: "paths",
   initialState,
   reducers: {
-    clearSelectedPath(state) { state.selectedPath = null; },
+    clearSelectedPath(state) { state.selectedPath = null; state.error = null; },
+    clearPathError(state) { state.error = null; },
   },
   extraReducers: (builder) => {
     builder
@@ -95,5 +96,5 @@ const pathSlice = createSlice({
   },
 });
 
-export const { clearSelectedPath } = pathSlice.actions;
+export const { clearSelectedPath, clearPathError } = pathSlice.actions;
 export default pathSlice.reducer;

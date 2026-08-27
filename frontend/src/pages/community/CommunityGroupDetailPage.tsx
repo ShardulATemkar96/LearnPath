@@ -76,7 +76,13 @@ const CommunityGroupDetailPage = () => {
   const postsError   = isTrending ? trendingError : groupsError;
 
   useEffect(() => {
-    if (groupId) dispatch(fetchGroup(Number(groupId)));
+    if (groupId) {
+      const promise = dispatch(fetchGroup(Number(groupId)));
+      return () => {
+        (promise as any).abort?.();
+        dispatch(clearSelectedGroup());
+      };
+    }
     return () => { dispatch(clearSelectedGroup()); };
   }, [groupId, dispatch]);
 
@@ -89,16 +95,20 @@ const CommunityGroupDetailPage = () => {
   useEffect(() => {
     if (!groupId) return;
     const gid = Number(groupId);
+    let promise: any;
     if (isTrending) {
-      dispatch(searchPostsThunk({ groupId: gid, search: debouncedSearch, page }));
+      promise = dispatch(searchPostsThunk({ groupId: gid, search: debouncedSearch, page }));
     } else {
-      dispatch(fetchGroupPosts({
+      promise = dispatch(fetchGroupPosts({
         groupId: gid,
         search: debouncedSearch,
         sort: sort === "Newest" ? "Newest" : "Score",
         page,
       }));
     }
+    return () => {
+      promise?.abort?.();
+    };
   }, [groupId, isTrending, sort, debouncedSearch, page, dispatch]);
 
   const handleSortChange = (value: SortOption) => {

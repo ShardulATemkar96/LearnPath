@@ -37,6 +37,11 @@ interface CommunityState {
   reportsPage: number;
   reportsLoading: boolean;
   reportsError: string | null;
+  postsRequestId: string | null;
+  groupsRequestId: string | null;
+  groupDetailRequestId: string | null;
+  groupPostsRequestId: string | null;
+  postDetailRequestId: string | null;
 }
 
 const initialState: CommunityState = {
@@ -67,6 +72,11 @@ const initialState: CommunityState = {
   reportsPage: 1,
   reportsLoading: false,
   reportsError: null,
+  postsRequestId: null,
+  groupsRequestId: null,
+  groupDetailRequestId: null,
+  groupPostsRequestId: null,
+  postDetailRequestId: null,
 };
 
 const findComment = (comments: Comment[], commentId: number): Comment | undefined => {
@@ -94,14 +104,18 @@ export const fetchPosts = createAsyncThunk(
       filter?: PostFilter;
       tag?: string;
     },
-    { rejectWithValue }
+    { rejectWithValue, signal }
   ) => {
     try {
       return await communityService.getPosts(
         args.category, args.search, args.page ?? 1, 10,
-        args.sort, args.filter, args.tag
+        args.sort, args.filter, args.tag,
+        signal
       );
     } catch (err: any) {
+      if (err.name === "CanceledError" || err.code === "ERR_CANCELED" || signal.aborted) {
+        return rejectWithValue("__ABORTED__");
+      }
       return rejectWithValue(err.response?.data?.message ?? "Failed to load posts.");
     }
   }
@@ -111,13 +125,17 @@ export const searchPostsThunk = createAsyncThunk(
   "community/searchPosts",
   async (
     args: { search?: string; category?: string; groupId?: number; page?: number },
-    { rejectWithValue }
+    { rejectWithValue, signal }
   ) => {
     try {
       return await communityService.searchPosts(
-        args.search, args.category, args.groupId, args.page ?? 1
+        args.search, args.category, args.groupId, args.page ?? 1,
+        undefined, signal
       );
     } catch (err: any) {
+      if (err.name === "CanceledError" || err.code === "ERR_CANCELED" || signal.aborted) {
+        return rejectWithValue("__ABORTED__");
+      }
       return rejectWithValue(err.response?.data?.message ?? "Failed to search posts.");
     }
   }
@@ -125,9 +143,12 @@ export const searchPostsThunk = createAsyncThunk(
 
 export const fetchPostById = createAsyncThunk(
   "community/fetchById",
-  async (postId: number, { rejectWithValue }) => {
-    try { return await communityService.getPostById(postId); }
+  async (postId: number, { rejectWithValue, signal }) => {
+    try { return await communityService.getPostById(postId, signal); }
     catch (err: any) {
+      if (err.name === "CanceledError" || err.code === "ERR_CANCELED" || signal.aborted) {
+        return rejectWithValue("__ABORTED__");
+      }
       return rejectWithValue(err.response?.data?.message ?? "Post not found.");
     }
   }
@@ -328,13 +349,17 @@ export const fetchGroups = createAsyncThunk(
   "community/fetchGroups",
   async (
     args: { search?: string; isPublic?: boolean; page?: number },
-    { rejectWithValue }
+    { rejectWithValue, signal }
   ) => {
     try {
       return await communityService.getGroups(
-        args.search, args.isPublic, args.page ?? 1
+        args.search, args.isPublic, args.page ?? 1,
+        undefined, signal
       );
     } catch (err: any) {
+      if (err.name === "CanceledError" || err.code === "ERR_CANCELED" || signal.aborted) {
+        return rejectWithValue("__ABORTED__");
+      }
       return rejectWithValue(err.response?.data?.message ?? "Failed to load groups.");
     }
   }
@@ -344,13 +369,17 @@ export const searchGroupsThunk = createAsyncThunk(
   "community/searchGroups",
   async (
     args: { search?: string; isPublic?: boolean; page?: number },
-    { rejectWithValue }
+    { rejectWithValue, signal }
   ) => {
     try {
       return await communityService.searchGroups(
-        args.search, args.isPublic, args.page ?? 1
+        args.search, args.isPublic, args.page ?? 1,
+        undefined, signal
       );
     } catch (err: any) {
+      if (err.name === "CanceledError" || err.code === "ERR_CANCELED" || signal.aborted) {
+        return rejectWithValue("__ABORTED__");
+      }
       return rejectWithValue(err.response?.data?.message ?? "Failed to search groups.");
     }
   }
@@ -358,9 +387,12 @@ export const searchGroupsThunk = createAsyncThunk(
 
 export const fetchGroup = createAsyncThunk(
   "community/fetchGroup",
-  async (groupId: number, { rejectWithValue }) => {
-    try { return await communityService.getGroup(groupId); }
+  async (groupId: number, { rejectWithValue, signal }) => {
+    try { return await communityService.getGroup(groupId, signal); }
     catch (err: any) {
+      if (err.name === "CanceledError" || err.code === "ERR_CANCELED" || signal.aborted) {
+        return rejectWithValue("__ABORTED__");
+      }
       return rejectWithValue(err.response?.data?.message ?? "Group not found.");
     }
   }
@@ -455,13 +487,17 @@ export const fetchGroupPosts = createAsyncThunk(
       sort?: PostSortOrder;
       page?: number;
     },
-    { rejectWithValue }
+    { rejectWithValue, signal }
   ) => {
     try {
       return await communityService.getGroupPosts(
-        args.groupId, args.search, args.category, args.sort, args.page ?? 1
+        args.groupId, args.search, args.category, args.sort, args.page ?? 1,
+        undefined, signal
       );
     } catch (err: any) {
+      if (err.name === "CanceledError" || err.code === "ERR_CANCELED" || signal.aborted) {
+        return rejectWithValue("__ABORTED__");
+      }
       return rejectWithValue(err.response?.data?.message ?? "Failed to load group posts.");
     }
   }
@@ -524,9 +560,11 @@ const communitySlice = createSlice({
   name: "community",
   initialState,
   reducers: {
-    clearSelectedPost(state) { state.selectedPost = null; },
-    clearSelectedGroup(state) { state.selectedGroup = null; },
-    clearGroupPosts(state) { state.groupPosts = []; },
+    clearSelectedPost(state) { state.selectedPost = null; state.error = null; state.postDetailRequestId = null; },
+    clearSelectedGroup(state) { state.selectedGroup = null; state.groupsError = null; state.groupDetailRequestId = null; },
+    clearGroupPosts(state) { state.groupPosts = []; state.groupPostsRequestId = null; },
+    clearCommunityError(state) { state.error = null; },
+    clearGroupsError(state) { state.groupsError = null; },
     updatePostVote(
       state,
       action: PayloadAction<{ postId: number; upvoteCount: number; userVote: number }>
@@ -553,41 +591,56 @@ const communitySlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchPosts.pending, (s) => { s.loading = true; s.error = null; })
+      .addCase(fetchPosts.pending, (s, a) => { s.loading = true; s.error = null; s.postsRequestId = a.meta.requestId; })
       .addCase(fetchPosts.fulfilled, (s, a) => {
+        if (s.postsRequestId !== a.meta.requestId) return;
         s.loading    = false;
+        s.postsRequestId = null;
         s.posts      = a.payload.posts;
         s.totalCount = a.payload.totalCount;
         s.totalPages = a.payload.totalPages;
         s.page       = a.payload.page;
       })
       .addCase(fetchPosts.rejected, (s, a) => {
+        if (s.postsRequestId !== a.meta.requestId) return;
+        if (a.payload === "__ABORTED__") { s.loading = false; s.postsRequestId = null; return; }
         s.loading = false;
+        s.postsRequestId = null;
         s.error   = a.payload as string;
       });
 
     builder
-      .addCase(searchPostsThunk.pending, (s) => { s.loading = true; s.error = null; })
+      .addCase(searchPostsThunk.pending, (s, a) => { s.loading = true; s.error = null; s.postsRequestId = a.meta.requestId; })
       .addCase(searchPostsThunk.fulfilled, (s, a) => {
+        if (s.postsRequestId !== a.meta.requestId) return;
         s.loading    = false;
+        s.postsRequestId = null;
         s.posts      = a.payload.posts;
         s.totalCount = a.payload.totalCount;
         s.totalPages = a.payload.totalPages;
         s.page       = a.payload.page;
       })
       .addCase(searchPostsThunk.rejected, (s, a) => {
+        if (s.postsRequestId !== a.meta.requestId) return;
+        if (a.payload === "__ABORTED__") { s.loading = false; s.postsRequestId = null; return; }
         s.loading = false;
+        s.postsRequestId = null;
         s.error   = a.payload as string;
       });
 
     builder
-      .addCase(fetchPostById.pending, (s) => { s.detailLoading = true; s.error = null; })
+      .addCase(fetchPostById.pending, (s, a) => { s.detailLoading = true; s.error = null; s.postDetailRequestId = a.meta.requestId; })
       .addCase(fetchPostById.fulfilled, (s, a) => {
+        if (s.postDetailRequestId !== a.meta.requestId) return;
         s.detailLoading = false;
+        s.postDetailRequestId = null;
         s.selectedPost  = a.payload;
       })
       .addCase(fetchPostById.rejected, (s, a) => {
+        if (s.postDetailRequestId !== a.meta.requestId) return;
+        if (a.payload === "__ABORTED__") { s.detailLoading = false; s.postDetailRequestId = null; return; }
         s.detailLoading = false;
+        s.postDetailRequestId = null;
         s.error         = a.payload as string;
       });
 
@@ -706,35 +759,56 @@ const communitySlice = createSlice({
       });
 
     builder
-      .addCase(fetchGroups.pending, (s) => { s.groupsLoading = true; s.groupsError = null; })
+      .addCase(fetchGroups.pending, (s, a) => { s.groupsLoading = true; s.groupsError = null; s.groupsRequestId = a.meta.requestId; })
       .addCase(fetchGroups.fulfilled, (s, a) => {
+        if (s.groupsRequestId !== a.meta.requestId) return;
         s.groupsLoading    = false;
+        s.groupsRequestId = null;
         s.groups           = a.payload.groups;
         s.groupsTotalCount = a.payload.totalCount;
         s.groupsTotalPages = a.payload.totalPages;
         s.groupsPage       = a.payload.page;
       })
       .addCase(fetchGroups.rejected, (s, a) => {
+        if (s.groupsRequestId !== a.meta.requestId) return;
+        if (a.payload === "__ABORTED__") { s.groupsLoading = false; s.groupsRequestId = null; return; }
         s.groupsLoading = false;
+        s.groupsRequestId = null;
         s.groupsError   = a.payload as string;
       });
 
     builder
+      .addCase(searchGroupsThunk.pending, (s, a) => { s.groupsLoading = true; s.groupsError = null; s.groupsRequestId = a.meta.requestId; })
       .addCase(searchGroupsThunk.fulfilled, (s, a) => {
+        if (s.groupsRequestId !== a.meta.requestId) return;
+        s.groupsLoading = false;
+        s.groupsRequestId = null;
         s.groups           = a.payload.groups;
         s.groupsTotalCount = a.payload.totalCount;
         s.groupsTotalPages = a.payload.totalPages;
         s.groupsPage       = a.payload.page;
+      })
+      .addCase(searchGroupsThunk.rejected, (s, a) => {
+        if (s.groupsRequestId !== a.meta.requestId) return;
+        if (a.payload === "__ABORTED__") { s.groupsLoading = false; s.groupsRequestId = null; return; }
+        s.groupsLoading = false;
+        s.groupsRequestId = null;
+        s.groupsError   = a.payload as string;
       });
 
     builder
-      .addCase(fetchGroup.pending, (s) => { s.groupDetailLoading = true; s.groupsError = null; })
+      .addCase(fetchGroup.pending, (s, a) => { s.groupDetailLoading = true; s.groupsError = null; s.groupDetailRequestId = a.meta.requestId; })
       .addCase(fetchGroup.fulfilled, (s, a) => {
+        if (s.groupDetailRequestId !== a.meta.requestId) return;
         s.groupDetailLoading = false;
+        s.groupDetailRequestId = null;
         s.selectedGroup      = a.payload;
       })
       .addCase(fetchGroup.rejected, (s, a) => {
+        if (s.groupDetailRequestId !== a.meta.requestId) return;
+        if (a.payload === "__ABORTED__") { s.groupDetailLoading = false; s.groupDetailRequestId = null; return; }
         s.groupDetailLoading = false;
+        s.groupDetailRequestId = null;
         s.groupsError        = a.payload as string;
       });
 
@@ -792,16 +866,21 @@ const communitySlice = createSlice({
       });
 
     builder
-      .addCase(fetchGroupPosts.pending, (s) => { s.groupPostsLoading = true; s.groupsError = null; })
+      .addCase(fetchGroupPosts.pending, (s, a) => { s.groupPostsLoading = true; s.groupsError = null; s.groupPostsRequestId = a.meta.requestId; })
       .addCase(fetchGroupPosts.fulfilled, (s, a) => {
+        if (s.groupPostsRequestId !== a.meta.requestId) return;
         s.groupPostsLoading      = false;
+        s.groupPostsRequestId = null;
         s.groupPosts             = a.payload.posts;
         s.groupPostsTotalCount   = a.payload.totalCount;
         s.groupPostsTotalPages   = a.payload.totalPages;
         s.groupPostsPage         = a.payload.page;
       })
       .addCase(fetchGroupPosts.rejected, (s, a) => {
+        if (s.groupPostsRequestId !== a.meta.requestId) return;
+        if (a.payload === "__ABORTED__") { s.groupPostsLoading = false; s.groupPostsRequestId = null; return; }
         s.groupPostsLoading = false;
+        s.groupPostsRequestId = null;
         s.groupsError       = a.payload as string;
       });
 
@@ -840,7 +919,7 @@ const communitySlice = createSlice({
 });
 
 export const {
-  clearSelectedPost, clearSelectedGroup, clearGroupPosts,
+  clearSelectedPost, clearSelectedGroup, clearGroupPosts, clearCommunityError, clearGroupsError,
   updatePostVote, updateCommentVote,
 } = communitySlice.actions;
 export default communitySlice.reducer;

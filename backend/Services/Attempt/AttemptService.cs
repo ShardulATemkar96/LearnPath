@@ -36,6 +36,35 @@ public class AttemptService : IAttemptService
             .FirstOrDefaultAsync(mq => mq.ModuleId == moduleId && mq.QuizId == quizId)
             ?? throw new InvalidOperationException("Quiz is not assigned to this module.");
 
+        // Enforce module unlock: prevent starting quiz for locked module (bypass via direct API)
+        var targetModule = await _context.Modules
+            .Include(m => m.Dependencies)
+            .FirstOrDefaultAsync(m => m.Id == moduleId)
+            ?? throw new KeyNotFoundException("Module not found.");
+
+        var pathModules = await _context.Modules
+            .Where(m => m.LearningPathId == targetModule.LearningPathId)
+            .Include(m => m.Dependencies)
+            .ToListAsync();
+
+        var completedIdsList = await _context.Progresses
+            .Where(p => p.UserId == userId && p.IsCompleted && pathModules.Select(pm => pm.Id).Contains(p.ModuleId))
+            .Select(p => p.ModuleId)
+            .ToListAsync();
+        var completedIds = completedIdsList.ToHashSet();
+
+        var depIds = targetModule.Dependencies.Select(d => d.DependsOnModuleId).ToList();
+        var dagUnlocked = depIds.All(dId => completedIds.Contains(dId));
+        var seqUnlocked = true;
+        if (!depIds.Any())
+        {
+            var sorted = pathModules.OrderBy(m => m.Order).ToList();
+            var idx = sorted.FindIndex(x => x.Id == moduleId);
+            if (idx > 0) seqUnlocked = completedIds.Contains(sorted[idx - 1].Id);
+        }
+        if (!(dagUnlocked && seqUnlocked))
+            throw new UnauthorizedAccessException("Please complete the previous module to unlock this module.");
+
         var existingAttempts = await _context.QuizAttempts
             .Where(a => a.UserId == userId && a.QuizId == quizId && a.ModuleId == moduleId)
             .OrderByDescending(a => a.AttemptNumber)

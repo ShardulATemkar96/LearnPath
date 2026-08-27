@@ -70,14 +70,40 @@ public class ClassroomService : IClassroomService
             JoinedAt = uc.JoinedAt,
         }).ToList();
 
-        var assignments = classroom.Assignments.Select(a =>
+        var isInstructor = membership.Role == "Instructor";
+        var sortedAssignments = classroom.Assignments.OrderBy(a => a.Id).ToList();
+        var assignments = sortedAssignments.Select((a, idx) =>
         {
             var mySubmission = a.Submissions.FirstOrDefault(s => s.UserId == userId);
+            var isCompleted = mySubmission?.Grade >= 5;
+            bool isUnlocked;
+            if (isInstructor)
+            {
+                isUnlocked = true;
+            }
+            else if (idx == 0)
+            {
+                isUnlocked = true;
+            }
+            else
+            {
+                var prevAssignment = sortedAssignments[idx - 1];
+                var prevSubmission = prevAssignment.Submissions.FirstOrDefault(s => s.UserId == userId);
+                isUnlocked = prevSubmission?.Grade >= 5;
+            }
+
+            // For locked assignments, don't expose description to students
+            var description = a.Description;
+            if (!isUnlocked && !isInstructor)
+            {
+                description = string.Empty;
+            }
+
             return new AssignmentResponseDto
             {
                 Id = a.Id,
                 Title = a.Title,
-                Description = a.Description,
+                Description = description,
                 DueDate = a.DueDate,
                 ClassroomId = a.ClassroomId,
                 SubmissionCount = a.Submissions.Count,
@@ -88,6 +114,8 @@ public class ClassroomService : IClassroomService
                 MyGrade = mySubmission?.Grade,
                 MyFeedback = mySubmission?.Feedback,
                 CreatedAt = a.CreatedAt,
+                IsUnlocked = isUnlocked,
+                IsCompleted = isCompleted,
             };
         }).ToList();
 
@@ -419,6 +447,8 @@ public class ClassroomService : IClassroomService
             .FirstOrDefaultAsync(a => a.Id == assignmentId && a.ClassroomId == classroomId)
             ?? throw new KeyNotFoundException("Assignment not found.");
 
+        await EnsureAssignmentUnlockedAsync(classroomId, assignmentId, userId);
+
         var validation = _fileValidator.Validate(file);
         if (!validation.IsValid)
             throw new ArgumentException(validation.ErrorMessage);
@@ -525,6 +555,8 @@ public class ClassroomService : IClassroomService
             .AnyAsync(uc => uc.ClassroomId == classroomId && uc.UserId == userId);
         if (!isMember)
             throw new UnauthorizedAccessException("Not a member.");
+
+        await EnsureAssignmentUnlockedAsync(classroomId, assignmentId, userId);
 
         var submission = await _context.Submissions
             .Include(s => s.User)
@@ -1003,6 +1035,28 @@ public class ClassroomService : IClassroomService
             SubmittedAt = submission.SubmittedAt,
             PublishedAt = submission.PublishedAt,
         };
+    }
+
+    private async Task EnsureAssignmentUnlockedAsync(int classroomId, int assignmentId, string userId)
+    {
+        var membership = await _context.UserClassrooms
+            .FirstOrDefaultAsync(uc => uc.ClassroomId == classroomId && uc.UserId == userId);
+        if (membership == null) return;
+        if (membership.Role == "Instructor") return;
+
+        var assignments = await _context.Assignments
+            .Where(a => a.ClassroomId == classroomId)
+            .OrderBy(a => a.Id)
+            .Include(a => a.Submissions.Where(s => s.UserId == userId))
+            .ToListAsync();
+
+        var idx = assignments.FindIndex(a => a.Id == assignmentId);
+        if (idx <= 0) return;
+
+        var prev = assignments[idx - 1];
+        var prevSubmission = prev.Submissions.FirstOrDefault(s => s.UserId == userId);
+        if (prevSubmission?.Grade == null || prevSubmission.Grade < 5)
+            throw new UnauthorizedAccessException("Complete the previous assignment to unlock this assignment.");
     }
 
     // ── Private Helpers ───────────────────────────────────────

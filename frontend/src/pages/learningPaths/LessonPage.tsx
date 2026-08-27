@@ -4,7 +4,7 @@ import { useSelector } from "react-redux";
 import { pathService } from "../../services/pathService";
 import { progressService } from "../../services/progressService";
 import { Module } from "../../types/path.types";
-import { Box, Button, Typography, Chip, Alert, Skeleton, Stack, Divider, Grid, Paper } from "@mui/material";
+import { Box, Button, Typography, Chip, Alert, Skeleton, Stack, Divider, Grid, Paper, Tooltip } from "@mui/material";
 import { ArrowBackRounded, CheckCircleRounded, LockRounded, ChevronLeftRounded, ChevronRightRounded } from "@mui/icons-material";
 import { quizService } from "../../services/quizService";
 import { ModuleQuizResponseDto } from "../../types/quiz.types";
@@ -20,6 +20,7 @@ const LessonPage = () => {
   const [moduleQuiz, setModuleQuiz] = useState<ModuleQuizResponseDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [siblingUnlock, setSiblingUnlock] = useState<{ prev: boolean; next: boolean }>({ prev: true, next: true });
 
   useEffect(() => {
     if (!pathId || !moduleId) return;
@@ -28,15 +29,24 @@ const LessonPage = () => {
     Promise.all([
       pathService.getModuleContent(Number(pathId), Number(moduleId)),
       quizService.getModuleQuiz(Number(moduleId)).catch(() => null),
+      pathService.getById(Number(pathId)).catch(() => null),
     ])
-      .then(([mod, mq]) => {
+      .then(([mod, mq, pathDetail]) => {
         setModule(mod);
         setModuleQuiz(mq);
+        if (pathDetail) {
+          const mods = pathDetail.modules;
+          const currentIdx = mods.findIndex(m => m.id === mod.id);
+          setSiblingUnlock({
+            prev: currentIdx > 0 ? mods[currentIdx - 1].isUnlocked : false,
+            next: currentIdx >= 0 && currentIdx < mods.length - 1 ? mods[currentIdx + 1].isUnlocked : false,
+          });
+        }
       })
       .catch((e: any) => {
         const msg = e?.response?.data?.message || e?.message || "Failed to load module.";
         if (e?.response?.status === 403) {
-          setError(msg);
+          setError("Please complete the previous module to unlock this module.");
         } else {
           setError("Module not found.");
         }
@@ -166,22 +176,30 @@ const LessonPage = () => {
       )}
 
       <Stack direction="row" justifyContent="space-between" mt={4}>
-        <Button
-          startIcon={<ChevronLeftRounded />}
-          variant="outlined"
-          disabled={!module.previousModuleId}
-          onClick={() => navigate(`/paths/${pathId}/modules/${module.previousModuleId}`)}
-          sx={{ borderRadius: 2 }}>
-          Previous
-        </Button>
-        <Button
-          endIcon={<ChevronRightRounded />}
-          variant="outlined"
-          disabled={!module.nextModuleId}
-          onClick={() => navigate(`/paths/${pathId}/modules/${module.nextModuleId}`)}
-          sx={{ borderRadius: 2 }}>
-          Next
-        </Button>
+        <Tooltip title={!module.previousModuleId ? "This is the first module" : !siblingUnlock.prev ? "Previous module is locked" : ""}>
+          <span>
+            <Button
+              startIcon={<ChevronLeftRounded />}
+              variant="outlined"
+              disabled={!module.previousModuleId || !siblingUnlock.prev}
+              onClick={() => navigate(`/paths/${pathId}/modules/${module.previousModuleId}`)}
+              sx={{ borderRadius: 2 }}>
+              Previous
+            </Button>
+          </span>
+        </Tooltip>
+        <Tooltip title={!module.nextModuleId ? "This is the last module" : !siblingUnlock.next ? "Complete this module's quiz to unlock the next module" : ""}>
+          <span>
+            <Button
+              endIcon={<ChevronRightRounded />}
+              variant="outlined"
+              disabled={!module.nextModuleId || !siblingUnlock.next}
+              onClick={() => navigate(`/paths/${pathId}/modules/${module.nextModuleId}`)}
+              sx={{ borderRadius: 2 }}>
+              Next
+            </Button>
+          </span>
+        </Tooltip>
       </Stack>
     </Box>
   );

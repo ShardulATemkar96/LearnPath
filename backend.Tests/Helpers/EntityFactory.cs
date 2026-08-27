@@ -77,7 +77,8 @@ public static class EntityFactory
         string? title          = null,
         int    questionBankId  = 1,
         int    questionCount   = 5,
-        QuizStatus status      = QuizStatus.Published)
+        QuizStatus status      = QuizStatus.Published,
+        string? createdById    = null)
     {
         return new Quiz
         {
@@ -91,6 +92,7 @@ public static class EntityFactory
             PassingPercentage = 40,
             MaximumAttempts  = 3,
             Status           = status,
+            CreatedById      = createdById,
             CreatedAt        = DateTime.UtcNow,
         };
     }
@@ -158,11 +160,11 @@ public static class EntityFactory
 
     /* ── Original Entity Factories ── */
     public static User CreateUser(
-        string? id        = null,
-        string? email     = null,
-        string? firstName = null,
-        string? lastName  = null,
-        bool    isActive  = true)
+        string?    id        = null,
+        string?    email     = null,
+        string?    firstName = null,
+        string?    lastName  = null,
+        UserStatus status    = UserStatus.Active)
     {
         return new User
         {
@@ -171,7 +173,7 @@ public static class EntityFactory
             UserName      = email ?? "test@learnpath.dev",
             FirstName     = firstName ?? "Test",
             LastName      = lastName  ?? "User",
-            IsActive      = isActive,
+            Status        = status,
             CreatedAt     = DateTime.UtcNow,
             UpdatedAt     = DateTime.UtcNow,
         };
