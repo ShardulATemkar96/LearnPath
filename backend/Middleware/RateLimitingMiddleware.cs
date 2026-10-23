@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using LearnPath.API.Common;
 
 namespace LearnPath.API.Middleware;
 
@@ -29,6 +30,13 @@ public class RateLimitingMiddleware
             return;
         }
 
+        // OPTIONS preflight is CORS negotiation, not a user action — do not count against rate budget
+        if (HttpMethods.IsOptions(context.Request.Method))
+        {
+            await _next(context);
+            return;
+        }
+
         var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         var now = DateTime.UtcNow;
 
@@ -52,12 +60,10 @@ public class RateLimitingMiddleware
             _logger.LogWarning("Rate limit exceeded for IP: {IP}", ip);
             context.Response.StatusCode = 429;
 
-            await context.Response.WriteAsJsonAsync(new
-            {
-                Success = false,
-                Message = "Too many requests. Please slow down.",
-                Timestamp = DateTime.UtcNow,
-            });
+            // Use same envelope as the rest of the API so frontend can show correct message for 429
+            // (not "Path Not Found"). Do not retry automatically — let UI show distinct rate-limit error.
+            var body = ApiResponse<object>.Fail("Too many requests. Please wait a few seconds and try again.");
+            await context.Response.WriteAsJsonAsync(body);
 
             return;
         }

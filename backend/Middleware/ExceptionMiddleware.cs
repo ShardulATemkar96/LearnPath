@@ -1,6 +1,7 @@
 ﻿using System.Net;
 using System.Text.Json;
 using LearnPath.API.Common;
+using LearnPath.API.Interfaces.Services.Logging;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,11 +11,13 @@ public class ExceptionMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<ExceptionMiddleware> _logger;
+    private readonly ISystemLogger? _systemLogger;
 
-    public ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> logger)
+    public ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> logger, ISystemLogger? systemLogger = null)
     {
         _next = next;
         _logger = logger;
+        _systemLogger = systemLogger;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -27,6 +30,12 @@ public class ExceptionMiddleware
         {
             _logger.LogError(ex, "Unhandled exception on {Method} {Path}",
                 context.Request.Method, context.Request.Path);
+
+            try
+            {
+                _systemLogger?.LogError($"Unhandled exception on {context.Request.Method} {context.Request.Path} — {ex.GetType().Name}: {ex.Message}", ex);
+            }
+            catch { }
 
             if (context.Response.HasStarted)
             {
