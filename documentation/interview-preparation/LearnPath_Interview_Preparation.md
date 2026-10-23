@@ -21,7 +21,7 @@ A **Learning Path** is a container for organized learning content. It has:
 - A title and description
 - Published/public status
 - Multiple modules organized within it
-- Created by a specific user (instructor)
+- Created by a specific user (admin)
 
 In the code, `LearningPath` entity contains a collection of `Module` objects. When a learning path is fetched, the system includes all its modules with their dependencies, progress, and other details.
 
@@ -52,7 +52,7 @@ Modules within a learning path have an **Order** number. This serves two purpose
 
 1. **Sequential progression**: When a module has no explicit dependencies, the system checks if the previous module (by order number) is completed. This creates a default linear flow: Module 1 → Module 2 → Module 3, etc.
 
-2. **Reordering**: Instructors can manually reorder modules using the reorder API. The order values are swapped between modules.
+2. **Reordering**: Admins can manually reorder modules using the reorder API. The order values are swapped between modules.
 
 The `GetByIdAsync` method in `LearningPathService` sorts modules by order and checks both DAG and sequential unlocking conditions.
 
@@ -179,7 +179,7 @@ These algorithms ensure the graph remains valid and modules can be properly orde
 
 The system prevents invalid sequences in two ways:
 
-1. **At dependency-add time**: When an instructor adds a new dependency, `DagValidator.WouldCreateCycle()` checks if it would create a loop. If yes, the operation is rejected with: `"Adding this dependency would create a cycle."`
+1. **At dependency-add time**: When an admin adds a new dependency, `DagValidator.WouldCreateCycle()` checks if it would create a loop. If yes, the operation is rejected with: `"Adding this dependency would create a cycle."`
 
 2. **At runtime**: When a student tries to access a module, the system verifies:
    - All explicit dependencies are completed (DAG check)
@@ -448,13 +448,13 @@ Here are the key API areas based on verified implementation:
 - `GET api/v1/paths/public` — get all published/public paths (AllowAnonymous)
 - `GET api/v1/paths/my` — get paths created by current user (Auth required)
 - `GET api/v1/paths/{id}` — get specific path with modules
-- `POST api/v1/paths` — create new path (Admin/Instructor)
-- `PUT api/v1/paths/{id}` — update path (Admin/Instructor)
+- `POST api/v1/paths` — create new path (Admin)
+- `PUT api/v1/paths/{id}` — update path (Admin)
 - `DELETE api/v1/paths/{id}` — delete path (Admin only)
 
 #### Modules
 - `GET api/v1/paths/{pathId}/modules/{moduleId}` — get module content
-- `POST api/v1/paths/{pathId}/modules` — add module (Admin/Instructor)
+- `POST api/v1/paths/{pathId}/modules` — add module (Admin)
 - `PUT api/v1/paths/{pathId}/modules/{moduleId}` — update module
 - `DELETE api/v1/paths/{pathId}/modules/{moduleId}` — delete module (Admin)
 - `PUT api/v1/paths/{pathId}/modules/{moduleId}/publish` — publish module
@@ -520,7 +520,7 @@ The database has tables corresponding to the C# entities. Key tables:
 
 | Table/Entity | Purpose |
 |-------------|---------|
-| `LearningPaths` | Learning paths created by instructors |
+| `LearningPaths` | Learning paths created by admins |
 | `Modules` | Individual learning modules |
 | `ModuleDependencies` | Graph dependencies between modules |
 | `Progress` | Student progress through modules |
@@ -619,13 +619,13 @@ public class User : IdentityUser
 
 **Identity stores**:
 - `Users` table: usernames, emails, password hashes, security stamps
-- `Roles` table: role names (e.g., "Admin", "Instructor", "Student")
+- `Roles` table: role names (e.g., "Admin", "Admin", "Student")
 - `UserRoles` table: many-to-many link between users and roles
 - `Tokens` table: password reset tokens, email confirmation tokens
 
 **Role-based access**: Users are assigned roles. The system checks roles for API authorization:
 - `Admin` — full access, can manage learning paths, users, classrooms
-- `Instructor` — can manage their own learning paths, modules, students
+- `Admin` — can manage their own learning paths, modules, students
 - (Student role exists but may have limited API access)
 
 #### JWT (JSON Web Token)
@@ -740,7 +740,7 @@ This `UserId` is then passed to services which filter data by user (e.g., `_.Whe
 
 LearnPath uses role-based authorization:
 - `[Authorize]` — requires any authenticated user
-- `[Authorize(Roles = "Admin,Instructor")]` — requires specific roles
+- `[Authorize(Roles = "Admin")]` - requires the Admin role
 - `[AllowAnonymous]` — no authentication required
 
 **Example** (LearningPathController):
@@ -753,8 +753,8 @@ LearnPath uses role-based authorization:
     [AllowAnonymous] // ...this one is public
     public async Task<IActionResult> GetPublic() { ... }
     
-    [Authorize(Roles = "Admin,Instructor")]
-    [HttpPost] // create path requires Admin or Instructor
+    [Authorize(Roles = "Admin")]
+    [HttpPost] // create path requires Admin
     public async Task<IActionResult> Create() { ... }
     
     [Authorize(Roles = "Admin")] // delete requires Admin only
@@ -769,7 +769,7 @@ LearnPath uses role-based authorization:
 SQL Server is used as the relational database for LearnPath. It provides strong data integrity with foreign key relationships, supports complex queries via T-SQL, and integrates well with Entity Framework Core. It's a standard choice for .NET applications and handles the structured data (users, paths, modules) efficiently.
 
 **Q: What is ASP.NET Identity?**
-ASP.NET Identity is the membership system that handles user authentication. It stores user accounts in the database, handles password hashing (so passwords aren't stored as plain text), and manages roles (Admin, Instructor, etc.). It's the standard .NET way to handle user accounts and login functionality.
+ASP.NET Identity is the membership system that handles user authentication. It stores user accounts in the database, handles password hashing (so passwords aren't stored as plain text), and manages roles (Admin, etc.). It's the standard .NET way to handle user accounts and login functionality.
 
 **Q: How does JWT work?**
 JWT (JSON Web Token) is a token-based authentication method. When a user logs in, the server generates a signed token containing the user's ID and role. The frontend stores this token and includes it in the `Authorization: Bearer <token>` header on each API request. The backend validates the token on every request — if valid, the user is identified and authorized; if invalid/invalid, the request is rejected with 401 Unauthorized. This is stateless — the server doesn't need to store session data.
@@ -786,7 +786,7 @@ JWT (JSON Web Token) is a token-based authentication method. When a user logs in
 Relational relationships (foreign keys) ensure data integrity. For example, a module must belong to a valid learning path, and progress records must reference valid users and modules. The database enforces these constraints, preventing orphaned records and ensuring consistent data. EF Core models these relationships through navigation properties.
 
 **Q: How does authorization work?**
-Authorization in LearnPath is role-based. Users are assigned roles (Admin, Instructor) during registration or by an admin. API controllers use `[Authorize(Roles = "...")]` attributes to restrict access. When a request includes a valid JWT, the system extracts the user's role from the token claims and checks if it matches the required role for the endpoint. Admin endpoints are only accessible to users with the Admin role, instructor endpoints to Instructor role, and so on.
+Authorization in LearnPath is role-based. Registration always assigns the `Student` role; the seed process creates the `Admin` account. Roles are read-only in the admin UI and API. API controllers use `[Authorize(Roles = "...")]` attributes to restrict access. When a request includes a valid JWT, the system extracts the user's role from the token claims and checks whether it matches the required role for the endpoint. Admin endpoints are only accessible to users with the `Admin` role.
 
 ---
 
@@ -1096,13 +1096,13 @@ Frontend: Module status updates, next modules may unlock
 UI reflects progress
 ```
 
-**3. Instructor creates learning path**
+**3. Admin creates learning path**
 ```
-Instructor: Clicks "Create Path" in admin UI
+Admin: Clicks "Create Path" in admin UI
 ↓
 Frontend: POST api/v1/paths (with path DTO)
 ↓
-Controller: Requires Admin/Instructor role
+Controller: Requires Admin role
 ↓
 Service: Validate input, create LearningPath entity
 ↓
@@ -1113,9 +1113,9 @@ Return created path ID
 Frontend: Navigate to new path, add modules
 ```
 
-**4. Instructor adds module dependency**
+**4. Admin adds module dependency**
 ```
-Instructor: Sets module A depends on module B
+Admin: Sets module A depends on module B
 ↓
 Frontend: POST api/v1/paths/{pathId}/dependencies
        Body: { ModuleId: A, DependsOnModuleId: B }

@@ -42,7 +42,14 @@ export const fetchPathById = createAsyncThunk(
   "paths/fetchById",
   async (id: number, { rejectWithValue }) => {
     try { return await pathService.getById(id); }
-    catch (err: any) { return rejectWithValue(err.response?.data?.message ?? "Path not found."); }
+    catch (err: any) {
+      const status = err.response?.status;
+      const serverMsg = err.response?.data?.message ?? err.response?.data?.Message;
+      if (status === 429) return rejectWithValue(serverMsg ?? "Too many requests. Please wait a few seconds and try again.");
+      if (status === 404) return rejectWithValue(serverMsg ?? "Path not found.");
+      if (status === 403) return rejectWithValue(serverMsg ?? "Access denied.");
+      return rejectWithValue(serverMsg ?? "Path not found.");
+    }
   }
 );
 

@@ -6,8 +6,8 @@ namespace LearnPath.API.Services.Ai;
 public class AiResponseParser
 {
     private static readonly string Disclaimer =
-        "This feedback is AI-generated and is intended only to assist the instructor. " +
-        "The final evaluation is determined solely by the instructor.";
+        "This feedback is AI-generated and is intended only to assist the classroom manager. " +
+        "The final evaluation is determined solely by the classroom manager.";
 
     public AiFeedbackResponseDto Parse(string rawResponse)
     {

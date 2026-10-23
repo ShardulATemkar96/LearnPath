@@ -67,7 +67,7 @@ Examples in the app:
 
 - No server-push, no transport negotiation, no hub groups, no long-held connections.
 - The only timer in the codebase is the quiz attempt **countdown clock** (`setInterval(..., 1000)`), which is pure client-side UI and has nothing to do with real-time transport.
-- Therefore: if two users are looking at the same classroom, neither sees the other's change until they make a new request (or the instructor refreshes/re-navigates).
+- Therefore: if two users are looking at the same classroom, neither sees the other's change until they make a new request (or the admin refreshes/re-navigates).
 
 ---
 
@@ -101,7 +101,7 @@ Not applicable in the sense of real-time. (All existing data access still goes t
 
 ## 10. Simple Real Example
 
-A student uploads a submission in a classroom. The instructor will NOT see it appear automatically on their open page. They will see it only when they reload the classroom page, because that triggers `GET /classrooms/{id}` again.
+A student uploads a submission in a classroom. The admin will NOT see it appear automatically on their open page. They will see it only when they reload the classroom page, because that triggers `GET /classrooms/{id}` again.
 
 Similarly, if a quiz's time limit is 10 minutes, the countdown is kept in the browser (`setInterval`); if the user refreshes mid-attempt, the backend `GetAttemptAsync` returns the saved answers and the frontend restores the timer from `timeLimitMinutes`.
 

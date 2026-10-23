@@ -20,7 +20,7 @@ Quiz Engine
 *   **View results:** Instantly check attempt metrics (percentage score, time spent, correct answer counts, and pass/fail status).
 *   **Review answers:** Examine a detailed breakdown of a submitted attempt, viewing all questions, selected vs. correct options, and explanations.
 
-### Instructor
+### Admin
 *   **Search Question Banks:** Search and inspect active question banks to identify content for quizzes.
 *   **Manage Quizzes:** Create and configure quizzes (Title, question count, difficulty, random/sequential selection, time limit, passing percentage, maximum attempts).
 *   **Publish & Archive Quizzes:** Manage quiz life-cycles (Draft, Published, Archived) to control student visibility.
@@ -58,7 +58,7 @@ Quiz Engine
 ## 5. How It Works Internally
 
 ### Question-Bank Selection
-Instructors or admins create quizzes by associating them with a specific question bank. When creating or updating a quiz via `QuizService.CreateAsync()` or `QuizService.UpdateAsync()`, the backend validates that the requested `QuestionCount` does not exceed the available questions within the target `QuestionBank` (and checks matching counts against the difficulty filter if one is applied).
+Admins or admins create quizzes by associating them with a specific question bank. When creating or updating a quiz via `QuizService.CreateAsync()` or `QuizService.UpdateAsync()`, the backend validates that the requested `QuestionCount` does not exceed the available questions within the target `QuestionBank` (and checks matching counts against the difficulty filter if one is applied).
 
 ### Question Selection
 Question selection is performed dynamically inside `AttemptService.GetSelectedQuestionsAsync()` in `backend/Services/Attempt/AttemptService.cs`. 
@@ -120,7 +120,7 @@ Handled by `AttemptService.GetReviewAsync()`. It recreates the selected question
 | Page | `frontend/src/pages/quiz/QuizResultPage.tsx` | Displays final scores, completion status (pass/fail), attempt statistics, and redirection links. |
 | Page | `frontend/src/pages/quiz/QuizReviewPage.tsx` | Provides step-by-step breakdown of questions, highlighting user responses, correct options, and explanations. |
 | Page | `frontend/src/pages/admin/AdminQuizEditorPage.tsx` | Handles assignment and removal of published quizzes to/from modules. |
-| Page | `frontend/src/pages/admin/AdminQuizManagementPage.tsx` | CRUD controller interface for instructors/admins to design and publish quizzes. |
+| Page | `frontend/src/pages/admin/AdminQuizManagementPage.tsx` | CRUD controller interface for admins to design and publish quizzes. |
 | Page | `frontend/src/pages/admin/AdminQuizAnalyticsPage.tsx` | Visualizes global scores, pass rates, score distribution, and question-level success rates. |
 | Page | `frontend/src/pages/admin/AdminQuestionBanksPage.tsx` | Admin panel to upload, update, download, archive, restore, and delete question bank files. |
 | Service | `frontend/src/services/quizService.ts` | Dispatches API calls for quiz management, linking, attempts, saves, submissions, and analytics. |
@@ -170,11 +170,11 @@ Handled by `AttemptService.GetReviewAsync()`. It recreates the selected question
 
 *   **Role-Based Security:** Endpoints are guarded with role-based policies (`[Authorize]`).
     *   `Admin` only: Delete quizzes, upload/restore/delete question banks, download bank source JSON, and access quiz analytics.
-    *   `Admin,Instructor`: Create/edit quizzes, publish/unpublish quizzes, and assign/remove quizzes to/from modules. Instructors are restricted to managing quizzes they created.
+    *   `Admin`: Create/edit quizzes, publish/unpublish quizzes, and assign/remove quizzes to/from modules. Admins are restricted to managing quizzes they created.
     *   `Student` (No role restrictions): Start attempts, save answers, submit, view results, and review attempts.
 *   **Ownership Checks:**
-    *   Instructors can only retrieve, update, publish, or delete quizzes that match their user ID (`CreatedById == userId`).
-    *   Quizzes can only be assigned to modules if the instructor owns the parent learning path (`module.LearningPath.CreatedById == userId`).
+    *   Admins can only retrieve, update, publish, or delete quizzes that match their user ID (`CreatedById == userId`).
+    *   Quizzes can only be assigned to modules if the admin owns the parent learning path (`module.LearningPath.CreatedById == userId`).
     *   Attempt details, answer saving, submissions, and reviews verify that `attempt.UserId == userId`, preventing students from accessing or modifying other students' attempts.
 
 ---

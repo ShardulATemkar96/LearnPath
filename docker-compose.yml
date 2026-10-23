@@ -1,6 +1,4 @@
-﻿version: "3.9"
-
-services:
+﻿services:
   db:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: learnpath-db
@@ -13,13 +11,14 @@ services:
     volumes:
       - sqldata:/var/opt/mssql
     healthcheck:
-      test: /opt/mssql-tools/bin/sqlcmd -S localhost
-            -U sa -P "${DB_SA_PASSWORD}"
-            -Q "SELECT 1" -b -o /dev/null
+      # SQL Server 2022 images ship mssql-tools18 and require -C to trust the
+      # self-signed certificate it presents.
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa
+            -P "${DB_SA_PASSWORD}" -C -Q "SELECT 1" -b -o /dev/null
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 30s
+      start_period: 60s
     networks:
       - learnpath-net
 
@@ -30,11 +29,14 @@ services:
     container_name: learnpath-api
     environment:
       ASPNETCORE_ENVIRONMENT: "Production"
-      ConnectionStrings__DefaultConnection: >
+      # LEARNPATH_* names are enforced by the application's startup
+      # configuration validation (Program.cs) — do not rename them.
+      LEARNPATH_DB_CONNECTION: >-
         Server=db,1433;Database=LearnPathDb;
         User Id=sa;Password=${DB_SA_PASSWORD};
         TrustServerCertificate=True;
-      JwtSettings__Secret: "${JWT_SECRET}"
+      LEARNPATH_JWT_SECRET: "${JWT_SECRET}"
+      LEARNPATH_NVIDIA_API_KEY: "${LEARNPATH_NVIDIA_API_KEY}"
       JwtSettings__Issuer: "LearnPathAPI"
       JwtSettings__Audience: "LearnPathClient"
       JwtSettings__ExpiryMinutes: "60"
@@ -45,6 +47,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    # Healthcheck lives in backend/Dockerfile (curl /api/v1/health).
     networks:
       - learnpath-net
     restart: unless-stopped
@@ -59,7 +62,8 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - learnpath-net
     restart: unless-stopped

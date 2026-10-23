@@ -3,6 +3,7 @@ using LearnPath.API.Data;
 using LearnPath.API.DTOs.LearningPath;
 using LearnPath.API.Entities;
 using LearnPath.API.Interfaces.Services;
+using LearnPath.API.Interfaces.Services.Logging;
 using Microsoft.EntityFrameworkCore;
 namespace LearnPath.API.Services.LearningPath;
 
@@ -11,42 +12,92 @@ public class LearningPathService : ILearningPathService
     private readonly ApplicationDbContext _context;
     private readonly IAuditLogService _auditLog;
     private readonly ILogger<LearningPathService> _logger;
+    private readonly IUserActivityLogger? _activityLogger;
 
     public LearningPathService(
         ApplicationDbContext context,
         IAuditLogService auditLog,
-        ILogger<LearningPathService> logger)
+        ILogger<LearningPathService> logger,
+        IUserActivityLogger? activityLogger = null)
     {
         _context = context;
         _auditLog = auditLog;
         _logger = logger;
+        _activityLogger = activityLogger;
+    }
+
+    private async Task<(string userId, string name)> ResolveUserAsync(string userId)
+    {
+        if (string.IsNullOrWhiteSpace(userId)) return ("Unknown", "Unknown");
+        try
+        {
+            var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+            if (user == null) return (userId, "Unknown");
+            var name = $"{user.FirstName} {user.LastName}".Trim();
+            if (string.IsNullOrWhiteSpace(name)) name = user.Email ?? "Unknown";
+            return (userId, name);
+        }
+        catch { return (userId, "Unknown"); }
     }
 
     // ── Paths ─────────────────────────────────────────────────
 
+    // Server-side projections: list reads no longer load every Module row
+    // (including the large ContentBody/NotesHtml texts) just to display a
+    // count and metadata. Same response shape as before.
+    private sealed record LearningPathListRow(
+        int Id, string Title, string Description, string? ThumbnailUrl,
+        bool IsPublished, bool IsPublic, string CreatedById, string CreatedByName,
+        int TotalModules, DateTime CreatedAt, DateTime UpdatedAt);
+
+    private static LearningPathResponseDto MapListRow(LearningPathListRow r) =>
+        new()
+        {
+            Id = r.Id,
+            Title = r.Title,
+            Description = r.Description,
+            ThumbnailUrl = r.ThumbnailUrl,
+            IsPublished = r.IsPublished,
+            IsPublic = r.IsPublic,
+            CreatedById = r.CreatedById,
+            CreatedByName = r.CreatedByName,
+            TotalModules = r.TotalModules,
+            CreatedAt = r.CreatedAt,
+            UpdatedAt = r.UpdatedAt,
+        };
+
     public async Task<List<LearningPathResponseDto>> GetAllPublicAsync()
     {
-        return await _context.LearningPaths
+        var rows = await _context.LearningPaths
+            .AsNoTracking()
             .Where(p => p.IsPublished && p.IsPublic)
-            .Include(p => p.CreatedBy)
-            .Include(p => p.Modules)
-            .Select(p => MapToResponse(p))
+            .Select(p => new LearningPathListRow(
+                p.Id, p.Title, p.Description, p.ThumbnailUrl,
+                p.IsPublished, p.IsPublic, p.CreatedById,
+                ((p.CreatedBy.FirstName ?? string.Empty) + " " + (p.CreatedBy.LastName ?? string.Empty)).Trim(),
+                p.Modules.Count(), p.CreatedAt, p.UpdatedAt))
             .ToListAsync();
+        return rows.Select(MapListRow).ToList();
     }
 
     public async Task<List<LearningPathResponseDto>> GetMyPathsAsync(string userId)
     {
-        return await _context.LearningPaths
+        var rows = await _context.LearningPaths
+            .AsNoTracking()
             .Where(p => p.CreatedById == userId)
-            .Include(p => p.CreatedBy)
-            .Include(p => p.Modules)
-            .Select(p => MapToResponse(p))
+            .Select(p => new LearningPathListRow(
+                p.Id, p.Title, p.Description, p.ThumbnailUrl,
+                p.IsPublished, p.IsPublic, p.CreatedById,
+                ((p.CreatedBy.FirstName ?? string.Empty) + " " + (p.CreatedBy.LastName ?? string.Empty)).Trim(),
+                p.Modules.Count(), p.CreatedAt, p.UpdatedAt))
             .ToListAsync();
+        return rows.Select(MapListRow).ToList();
     }
 
     public async Task<LearningPathDetailResponseDto> GetByIdAsync(int id, string userId, bool includeUnpublished = false)
     {
         var path = await _context.LearningPaths
+            .AsNoTracking()
             .Include(p => p.CreatedBy)
             .Include(p => p.Modules.Where(m => includeUnpublished || m.IsPublished))
                 .ThenInclude(m => m.Dependencies)
@@ -61,30 +112,23 @@ public class LearningPathService : ILearningPathService
             .FirstOrDefaultAsync(p => p.Id == id)
             ?? throw new KeyNotFoundException("Learning path not found.");
 
-        // Build completed & unlocked sets
+        // Build completed set, documented ordering, and unlocked flags through
+        // the shared rules (see ModuleUnlockRules for the semantics).
         var completedModuleIds = path.Modules
             .Where(m => m.Progresses.Any(p => p.UserId == userId && p.IsCompleted))
             .Select(m => m.Id)
             .ToHashSet();
 
-        var sortedForUnlock = path.Modules.OrderBy(m => m.Order).ToList();
-        var modules = path.Modules.Select(m =>
+        var moduleNodes = path.Modules.Select(m =>
+            ModuleUnlockRules.Module(m.Id, m.Order, m.Dependencies.Select(d => d.DependsOnModuleId)));
+
+        var (orderedNodes, graphIsValid) = ModuleUnlockRules.OrderModules(moduleNodes);
+
+        var modulesById = path.Modules.ToDictionary(m => m.Id);
+        var modules = orderedNodes.Select(node =>
         {
-            var dependencyIds = m.Dependencies.Select(d => d.DependsOnModuleId).ToList();
-            var dagUnlocked = dependencyIds.All(dId => completedModuleIds.Contains(dId));
-            // Sequential unlocking: if no explicit dependencies, require previous module in Order to be completed
-            // This enforces Module 1 -> Quiz 1 passed -> Module 2 unlocks, etc.
-            var sequentialUnlocked = true;
-            if (!dependencyIds.Any())
-            {
-                var idx = sortedForUnlock.FindIndex(x => x.Id == m.Id);
-                if (idx > 0)
-                {
-                    var prevModuleId = sortedForUnlock[idx - 1].Id;
-                    sequentialUnlocked = completedModuleIds.Contains(prevModuleId);
-                }
-            }
-            var isUnlocked = dagUnlocked && sequentialUnlocked;
+            var m = modulesById[node.Id];
+            var isUnlocked = ModuleUnlockRules.IsUnlocked(orderedNodes, node.Id, completedModuleIds);
             return new ModuleResponseDto
             {
                 Id = m.Id,
@@ -121,7 +165,7 @@ public class LearningPathService : ILearningPathService
                 }).ToList(),
                 Tags = m.Tags.Select(t => t.TagName).ToList(),
             };
-        }).OrderBy(m => m.Order).ToList();
+        }).ToList();
 
         var dependencies = path.Modules
             .SelectMany(m => m.Dependencies)
@@ -130,6 +174,14 @@ public class LearningPathService : ILearningPathService
                 ModuleId = d.ModuleId,
                 DependsOnModuleId = d.DependsOnModuleId,
             }).ToList();
+
+        // ── Developer Activity: Opened Learning Path (meaningful read)
+        try
+        {
+            var (uid, name) = await ResolveUserAsync(userId);
+            _activityLogger?.Log(uid, name, "Opened Learning Path");
+        }
+        catch { }
 
         return new LearningPathDetailResponseDto
         {
@@ -146,6 +198,7 @@ public class LearningPathService : ILearningPathService
             UpdatedAt = path.UpdatedAt,
             Modules = modules,
             Dependencies = dependencies,
+            GraphIsValid = graphIsValid,
         };
     }
 
@@ -335,29 +388,35 @@ public class LearningPathService : ILearningPathService
         var module = path.Modules.FirstOrDefault(m => m.Id == moduleId)
             ?? throw new KeyNotFoundException("Module not found or not published.");
 
+        // Shared unlocking rules (see ModuleUnlockRules): DAG prerequisites
+        // plus the sequential rule for dependency-free modules.
         var completedModuleIds = path.Modules
             .Where(m => m.Progresses.Any(p => p.UserId == userId && p.IsCompleted))
             .Select(m => m.Id)
             .ToHashSet();
 
-        var dependencyIds = module.Dependencies.Select(d => d.DependsOnModuleId).ToList();
-        var dagUnlocked = dependencyIds.All(dId => completedModuleIds.Contains(dId));
-        var sequentialUnlocked = true;
-        if (!dependencyIds.Any())
-        {
-            var sortedForUnlock = path.Modules.OrderBy(m => m.Order).ToList();
-            var idx = sortedForUnlock.FindIndex(x => x.Id == moduleId);
-            if (idx > 0)
-            {
-                var prevModuleId = sortedForUnlock[idx - 1].Id;
-                sequentialUnlocked = completedModuleIds.Contains(prevModuleId);
-            }
-        }
-        var isUnlocked = dagUnlocked && sequentialUnlocked;
+        var moduleNodes = path.Modules.Select(m =>
+            ModuleUnlockRules.Module(m.Id, m.Order, m.Dependencies.Select(d => d.DependsOnModuleId)));
+
+        var (orderedNodes, graphIsValid) = ModuleUnlockRules.OrderModules(moduleNodes);
+        if (!graphIsValid)
+            _logger.LogWarning(
+                "Learning path {PathId} has a prerequisite cycle; falling back to Order for navigation.",
+                pathId);
+
+        var isUnlocked = ModuleUnlockRules.IsUnlocked(orderedNodes, moduleId, completedModuleIds);
         var isCompleted = completedModuleIds.Contains(module.Id);
 
         if (!isUnlocked)
+        {
+            try
+            {
+                var (uid, name) = await ResolveUserAsync(userId);
+                _activityLogger?.Log(uid, name, "Module Access Denied");
+            }
+            catch { }
             throw new UnauthorizedAccessException("Please complete the previous module to unlock this module.");
+        }
 
         // Reload with full includes for the response
         var fullModule = await _context.Modules
@@ -370,12 +429,19 @@ public class LearningPathService : ILearningPathService
         dto.IsCompleted = isCompleted;
         dto.IsUnlocked = true;
 
-        var sortedModules = path.Modules.OrderBy(m => m.Order).ToList();
+        var sortedModules = orderedNodes; // topological ordering with Order tie-break
         var currentIndex = sortedModules.FindIndex(m => m.Id == moduleId);
         if (currentIndex > 0)
             dto.PreviousModuleId = sortedModules[currentIndex - 1].Id;
         if (currentIndex < sortedModules.Count - 1)
             dto.NextModuleId = sortedModules[currentIndex + 1].Id;
+
+        try
+        {
+            var (uid, name) = await ResolveUserAsync(userId);
+            _activityLogger?.Log(uid, name, "Opened Module");
+        }
+        catch { }
 
         return dto;
     }
@@ -683,34 +749,64 @@ public class LearningPathService : ILearningPathService
 
     public async Task AddDependencyAsync(int pathId, AddDependencyDto dto, string userId)
     {
+        if (dto.ModuleId == dto.DependsOnModuleId)
+            throw new ArgumentException("A module cannot depend on itself.");
+
         await GetOwnedPathAsync(pathId, userId);
 
-        var existingDeps = await _context.ModuleDependencies
-            .Where(d => _context.Modules
+        // SQL Server has EnableRetryOnFailure() enabled, so the validation
+        // read + insert must run through the context's execution strategy
+        // (same pattern as DeleteAsync). Serializable isolation makes the
+        // cycle-check and the insert one atomic unit: a concurrent dependency
+        // add cannot be interleaved between reading the graph and writing the
+        // new edge. Residual limitation: the transaction is per-request, so
+        // this protects only operations routed through this method; direct
+        // database edits are outside its reach.
+        var strategy = _context.Database.CreateExecutionStrategy();
+
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await _context.Database.BeginTransactionAsync(
+                System.Data.IsolationLevel.Serializable);
+
+            // Both endpoints of the edge must be modules of this path. This
+            // rejects missing modules and cross-path dependencies, and keeps
+            // the adjacency below a complete description of the path graph.
+            var pathModuleIds = await _context.Modules
                 .Where(m => m.LearningPathId == pathId)
                 .Select(m => m.Id)
-                .Contains(d.ModuleId))
-            .ToListAsync();
+                .ToListAsync();
 
-        var adjacency = existingDeps
-            .GroupBy(d => d.ModuleId)
-            .ToDictionary(g => g.Key, g => g.Select(d => d.DependsOnModuleId).ToList());
+            if (!pathModuleIds.Contains(dto.ModuleId))
+                throw new ArgumentException("Module not found in this learning path.");
+            if (!pathModuleIds.Contains(dto.DependsOnModuleId))
+                throw new ArgumentException("Prerequisite module not found in this learning path.");
 
-        if (DagValidator.WouldCreateCycle(adjacency, dto.ModuleId, dto.DependsOnModuleId))
-            throw new ArgumentException("Adding this dependency would create a cycle.");
+            var existingDeps = await _context.ModuleDependencies
+                .Where(d => pathModuleIds.Contains(d.ModuleId))
+                .ToListAsync();
 
-        var already = await _context.ModuleDependencies
-            .AnyAsync(d => d.ModuleId == dto.ModuleId && d.DependsOnModuleId == dto.DependsOnModuleId);
+            var adjacency = existingDeps
+                .GroupBy(d => d.ModuleId)
+                .ToDictionary(g => g.Key, g => g.Select(d => d.DependsOnModuleId).ToList());
 
-        if (already) throw new ArgumentException("Dependency already exists.");
+            if (DagValidator.WouldCreateCycle(adjacency, dto.ModuleId, dto.DependsOnModuleId))
+                throw new ArgumentException("Adding this dependency would create a cycle.");
 
-        await _context.ModuleDependencies.AddAsync(new ModuleDependency
-        {
-            ModuleId = dto.ModuleId,
-            DependsOnModuleId = dto.DependsOnModuleId,
+            var already = existingDeps.Any(d =>
+                d.ModuleId == dto.ModuleId && d.DependsOnModuleId == dto.DependsOnModuleId);
+            if (already) throw new ArgumentException("Dependency already exists.");
+
+            await _context.ModuleDependencies.AddAsync(new ModuleDependency
+            {
+                ModuleId = dto.ModuleId,
+                DependsOnModuleId = dto.DependsOnModuleId,
+            });
+
+            await _context.SaveChangesAsync();
+
+            await transaction.CommitAsync();
         });
-
-        await _context.SaveChangesAsync();
 
         await _auditLog.LogAsync(
             AuditAction.DEPENDENCY_ADDED,
@@ -750,10 +846,18 @@ public class LearningPathService : ILearningPathService
             .FirstOrDefaultAsync(p => p.Id == id)
             ?? throw new KeyNotFoundException("Learning path not found.");
 
-        if (path.CreatedById != userId)
-            throw new UnauthorizedAccessException("You do not own this learning path.");
+        if (path.CreatedById != userId && !await IsAdminAsync(userId))
+            throw new UnauthorizedAccessException("You do not have permission to manage this learning path.");
 
         return path;
+    }
+
+    private async Task<bool> IsAdminAsync(string userId)
+    {
+        return await _context.UserRoles
+            .Where(ur => ur.UserId == userId)
+            .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => r.Name)
+            .AnyAsync(name => name == "Admin");
     }
 
     private async Task<Entities.Module> GetModuleAsync(int moduleId, int pathId)

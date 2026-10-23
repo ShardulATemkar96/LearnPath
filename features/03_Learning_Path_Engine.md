@@ -8,7 +8,7 @@ Learning Path Engine (DAG-based)
 
 - **Problem Solved:** Courses need structured, ordered content with meaningful progression. A flat list of lessons is not enough — some modules must be completed before others can be attempted.
 - **Why It Exists:** The engine models a learning path as a directed acyclic graph (DAG) of modules. Dependencies between modules define prerequisites, enabling prerequisite-gated content access, meaningful ordering, and clear visual representation of how modules connect.
-- **Role in Application:** It is the core content subsystem. Instructors author paths and modules, students browse/enroll and consume gated content, and the progress/quiz/analytics features all operate on top of these paths and modules.
+- **Role in Application:** It is the core content subsystem. Admins author paths and modules, students browse/enroll and consume gated content, and the progress/quiz/analytics features all operate on top of these paths and modules.
 
 ---
 
@@ -24,29 +24,29 @@ Learning Path Engine (DAG-based)
 - View the path as an interactive dependency graph.
 - Be blocked from modules whose prerequisites are not complete.
 
-### Instructor
+### Admin
 - Create and edit learning paths.
 - Add, edit, delete, publish, unpublish, archive, and reorder modules.
 - Add and remove module dependency edges (prerequisites).
 - Search and filter modules by title, content type, difficulty, draft, and archived status.
 
 ### Admin
-- All instructor capabilities, plus permanent deletion of paths/modules.
+- All admin capabilities, plus permanent deletion of paths/modules.
 
 ---
 
 ## 4. Feature Workflow
 
 ```
-[Instructor creates path]
-  → POST /api/v1/paths (Admin/Instructor)
+[Admin creates path]
+  → POST /api/v1/paths (Admin)
   → LearningPathService.CreateAsync → path stored (isPublic → also published by default)
 
-[Instructor adds modules + dependencies]
+[Admin adds modules + dependencies]
   → POST /paths/{id}/modules (add module content, resources, objectives, tags)
   → POST /paths/{id}/dependencies  (edge module → dependsOnModule; cycle-checked)
 
-[Instructor publishes module]
+[Admin publishes module]
   → PUT /paths/{id}/modules/{moduleId}/publish
   → Validation: has title, description, and at least one content item
 
@@ -109,7 +109,7 @@ In `LearningPathService.GetByIdAsync()` and `GetModuleContentAsync()`:
 `GetModuleContentAsync` returns `ContentUrl`, `ContentType`, `ContentBody`, `NotesHtml`, `PdfUrl`, resources, objectives, and tags, plus `PreviousModuleId`/`NextModuleId` (computed from the module's `Order` position).
 
 ### Ownership Enforcement
-`GetOwnedPathAsync(id, userId)` loads the path and throws `UnauthorizedAccessException` if `path.CreatedById != userId`. Every mutation (update, delete, add/edit/publish/archive/reorder module, add/remove dependency) first calls this helper. Note the `[Authorize(Roles = "Admin,Instructor")]` attribute only checks the role — according to business rules `Instructor` is forced through the same ownership check, so an admin acting on a path they do not own is also blocked by the same check.
+`GetOwnedPathAsync(id, userId)` loads the path and throws `UnauthorizedAccessException` unless `path.CreatedById == userId` or the caller has the `Admin` role. Every mutation (update, delete, add/edit/publish/archive/reorder module, add/remove dependency) first calls this helper. Because authoring is Admin-only, an Admin can manage content created by another user; the ownership branch remains as defense in depth for any future non-Admin authoring path.
 
 ### Frontend Graph Visualization
 - `frontend/src/utils/graphUtils.ts` builds an adjacency map from dependencies, computes **levels** via a Kahn-style BFS (nodes with in-degree 0 get level 0; each child level = max(parent level) + 1, queue-driven), and derives edges (`from = dependsOnModuleId`, `to = moduleId`).
@@ -169,8 +169,8 @@ In `LearningPathService.GetByIdAsync()` and `GetModuleContentAsync()`:
 ## 9. Security & Authorization
 
 - `GET /api/v1/paths/public` is `[AllowAnonymous]`.
-- Path/module/dependency mutations require `[Authorize(Roles = "Admin,Instructor")]`; deletion requires `Admin`.
-- Ownership re-check in `GetOwnedPathAsync`: instructors may only modify paths where `CreatedById == userId`.
+- Path/module/dependency mutations require `[Authorize(Roles = "Admin")]`.
+- `GetOwnedPathAsync` permits an Admin to modify any path; non-Admin callers would still need `CreatedById == userId`.
 - Module content access (student) is gated by prerequisite completion — a 403 is returned if the module is locked.
 - Only `IsPublished` modules are returned to students (`includeUnpublished` query controls author visibility of drafts).
 
@@ -192,8 +192,8 @@ In `LearningPathService.GetByIdAsync()` and `GetModuleContentAsync()`:
 
 ## 11. Example of Internal Execution
 
-### Step 1: Instructor adds a dependency (prerequisite edge)
-- **User Action:** Instructor marks "Module 5 must be completed before Module 7".
+### Step 1: Admin adds a dependency (prerequisite edge)
+- **User Action:** Admin marks "Module 5 must be completed before Module 7".
 - **Frontend:** `POST /api/v1/paths/3/dependencies` with `{ moduleId: 7, dependsOnModuleId: 5 }`.
 - **Controller → Service:** `LearningPathService.AddDependencyAsync`.
 - **Cycle check:** `DagValidator.WouldCreateCycle(adjacency, 7, 5)` — DFS from node 5 looking for node 7. If a path 5 → … → 7 exists, the edge would create a cycle and it is rejected.

@@ -7,8 +7,8 @@ import { AiFeedbackResponse } from "../../../types/classroom.types";
 import { classroomService } from "../../../services/classroomService";
 
 const DISCLAIMER =
-  "This feedback is AI-generated and is intended only to assist the instructor. " +
-  "The final evaluation is determined solely by the instructor.";
+  "This feedback is AI-generated and is intended only to assist the classroom manager. " +
+  "The final evaluation is determined solely by the classroom manager.";
 
 const AiFeedbackSection = ({ submissionId }: { submissionId: number }) => {
   const [feedback, setFeedback] = useState<AiFeedbackResponse | null>(null);

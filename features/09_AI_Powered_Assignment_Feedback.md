@@ -6,19 +6,19 @@ AI-Powered Assignment Feedback
 
 ## 2. Purpose
 
-- **Problem Solved:** Manually reviewing and commenting on every student submission is time-consuming for instructors.
-- **Why It Exists:** The feature gives instructors an AI-generated, structured first-pass review of a student's submission (TXT or PDF) — summary, grammar feedback, rubric coverage, missing topics, a suggested score, and a recommendation — which they can regenerate and use as advisory input.
-- **Role in Application:** It extends the Assignment & Submission workflow (Feature 8). It is explicitly **advisory**: the system prompt and disclaimer state the instructor remains the final evaluator. It is the only LLM/AI integration in the platform.
+- **Problem Solved:** Manually reviewing and commenting on every student submission is time-consuming for admins.
+- **Why It Exists:** The feature gives admins an AI-generated, structured first-pass review of a student's submission (TXT or PDF) — summary, grammar feedback, rubric coverage, missing topics, a suggested score, and a recommendation — which they can regenerate and use as advisory input.
+- **Role in Application:** It extends the Assignment & Submission workflow (Feature 8). It is explicitly **advisory**: the system prompt and disclaimer state the admin remains the final evaluator. It is the only LLM/AI integration in the platform.
 
 ---
 
 ## 3. What the User Can Do
 
-### Instructor
+### Admin
 - Generate AI feedback for a submission (TXT or PDF) in the classroom's assignment detail page.
 - View the persisted AI feedback.
 - Regenerate feedback (re-runs the LLM and overwrites the stored feedback).
-- Students see the feedback only once the instructor publishes the evaluation (handled by the Assignment feature).
+- Students see the feedback only once the admin publishes the evaluation (handled by the Assignment feature).
 
 ### Student
 - View AI feedback only after the evaluation is published (returned as part of `GetMySubmissionAsync`).
@@ -28,10 +28,10 @@ AI-Powered Assignment Feedback
 ## 4. Feature Workflow
 
 ```
-[Instructor clicks "Generate AI Feedback"]
+[Admin clicks "Generate AI Feedback"]
   → POST /api/v1/submissions/{submissionId}/ai-feedback
   → AiFeedbackService.GenerateAsync(submissionId, userId)
-  → Instructor role check (UserClassrooms Role == "Instructor")
+  → Admin role check (UserClassrooms Role == "Admin")
   → ReadSubmissionTextAsync extracts text:
        .txt → read file directly
        .pdf → extract text via PdfPig (UglyToad)
@@ -81,7 +81,7 @@ AI-Powered Assignment Feedback
 ### Response Parsing (`AiResponseParser.Parse`)
 - `ExtractSection` uses a regex with lookbehind/lookahead: `(?<=^##\s*{Name}\s*\n)(.+?)(?=\n##\s|\n*$)` — matches the text between the `## Name` heading and the next heading (or end), with a fallback for `#` single-hash headings.
 - `ParseSuggestedScore` extracts `Percentage: N` and `Marks: N` via regex (case-insensitive), defaulting to 0.
-- A fixed `Disclaimer` string is attached: *"This feedback is AI-generated and is intended only to assist the instructor. The final evaluation is determined solely by the instructor."*
+- A fixed `Disclaimer` string is attached: *"This feedback is AI-generated and is intended only to assist the admin. The final evaluation is determined solely by the admin."*
 - If `Summary` is empty after parsing → treated as failure (`"AI returned an incomplete response. Please try again."`).
 
 ### Persistence & Regeneration
@@ -91,7 +91,7 @@ AI-Powered Assignment Feedback
 - Regeneration is detected by the existence of a prior row and reflected in the audit description (`"regenerated"` vs `"generated"`).
 
 ### Retrieval & Visibility
-- `GetAsync` returns the stored feedback to instructors.
+- `GetAsync` returns the stored feedback to admins.
 - Students receive feedback only through `ClassroomService.GetMySubmissionAsync`, and only when `submission.PublishedAt != null` (see Feature 8).
 
 ---
@@ -103,7 +103,7 @@ AI-Powered Assignment Feedback
 | Component | `frontend/src/components/classroom/AiFeedbackSection/AiFeedbackSection.tsx` | Generate/regenerate button, status chips, structured feedback panel, disclaimer |
 | Service | `frontend/src/services/classroomService.ts` | `getAiFeedback`, `generateAiFeedback` |
 | Types | `frontend/src/types/classroom.types.ts` | `AiFeedbackResponse` |
-| Page | `frontend/src/pages/classroom/AssignmentDetailPage.tsx` | Hosts the AiFeedbackSection for instructors |
+| Page | `frontend/src/pages/classroom/AssignmentDetailPage.tsx` | Hosts the AiFeedbackSection for admins |
 
 ---
 
@@ -138,7 +138,7 @@ AI-Powered Assignment Feedback
 ## 9. Security & Authorization
 
 - `GET`/`POST /ai-feedback` require authentication.
-- Both generation and retrieval require the caller to be an **Instructor** of the submission's classroom (`UserClassrooms.Role == "Instructor"`); otherwise `UnauthorizedAccessException` → `403 Forbidden`.
+- Both generation and retrieval require the caller to be an **Admin** of the submission's classroom (`UserClassrooms.Role == "Admin"`); otherwise `UnauthorizedAccessException` → `403 Forbidden`.
 - Students cannot call these endpoints; they only receive published AI feedback through the assignment submission response.
 - The API key lives in `AiOptions:ApiKey` loaded from `.env` (never committed); missing key produces a clear unavailable error.
 
@@ -146,10 +146,10 @@ AI-Powered Assignment Feedback
 
 ## 10. Important Business Rules
 
-1. **Instructor-only** generation and direct viewing.
+1. **Admin-only** generation and direct viewing.
 2. **Supported files:** TXT and PDF only for AI analysis; others rejected with a clear message.
 3. **Non-empty text required** — submissions without extractable text cannot be analyzed.
-4. **Advisory only:** the prompt and the stored disclaimer make clear the instructor assigns the official grade; suggested score is advisory.
+4. **Advisory only:** the prompt and the stored disclaimer make clear the admin assigns the official grade; suggested score is advisory.
 5. **Regeneration allowed** — re-runs the model and overwrites the stored feedback.
 6. **Student visibility** is gated by the Assignment publish flow (`PublishedAt`).
 7. **Missing API key or model failure** surfaces a user-friendly error rather than a crash.
@@ -158,11 +158,11 @@ AI-Powered Assignment Feedback
 
 ## 11. Example of Internal Execution
 
-### Step 1: Instructor generates feedback
-- **User Action:** Instructor opens the assignment detail and clicks "Generate AI Feedback" for submission 88.
+### Step 1: Admin generates feedback
+- **User Action:** Admin opens the assignment detail and clicks "Generate AI Feedback" for submission 88.
 - **Frontend:** `classroomService.generateAiFeedback(88)` → `POST /api/v1/submissions/88/ai-feedback`.
 - **Controller → Service:** `AiFeedbackService.GenerateAsync(88, userId)`.
-- **Authorization:** the caller is verified as an `Instructor` of the classroom.
+- **Authorization:** the caller is verified as an `Admin` of the classroom.
 - **Extraction:** the file is `.pdf` → PdfPig extracts the page text.
 - **Prompt:** `PromptBuilder` builds the structured prompt (assignment title/description + submission text + output format).
 - **Provider:** `NvidiaProvider` posts to `{BaseUrl}/chat/completions` with the model and prompt; the response content is returned.
@@ -170,10 +170,10 @@ AI-Powered Assignment Feedback
 - **Response:** the structured `AiFeedbackResponseDto` is returned and rendered by `AiFeedbackSection`.
 
 ### Step 2: Regeneration
-- The instructor clicks "Regenerate AI Feedback" — the same flow runs, an existing row is overwritten, and the audit message says "regenerated".
+- The admin clicks "Regenerate AI Feedback" — the same flow runs, an existing row is overwritten, and the audit message says "regenerated".
 
 ### Step 3: Student visibility
-- After the instructor publishes the evaluation, `GetMySubmissionAsync` attaches the stored AI feedback to the submission response the student receives.
+- After the admin publishes the evaluation, `GetMySubmissionAsync` attaches the stored AI feedback to the submission response the student receives.
 
 ---
 
@@ -210,6 +210,6 @@ AI-Powered Assignment Feedback
 - Call the NVIDIA LLM chat-completions API (with timeouts and error mapping)
 - Parse the response into sections (summary, grammar, rubric coverage, missing topics, suggested score, recommendation)
 - Persist and regenerate feedback per submission
-- Instructor-only generation and viewing
+- Admin-only generation and viewing
 - Students see AI feedback only after evaluation is published
 - Audit logging of generation/regeneration

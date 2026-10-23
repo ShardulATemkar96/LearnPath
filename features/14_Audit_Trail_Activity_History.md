@@ -18,7 +18,7 @@ Audit Trail & Activity History
 - View **their own** append-only activity history (`GET /api/v1/history/me`), filtered by action type, date range, and text search, with pagination.
 - Fetch the list of valid action types + their category labels for filter dropdowns.
 
-### Super Admin only (route requires `Admin` role + flag re-check)
+### Super Admin flag only (route requires `Admin` role + flag re-check)
 - View **everyone's** history (`GET /api/v1/history/admin`) with additional filters by user, role, entity type, action, dates, search; sort newest-first or oldest-first.
 - See whether each referenced entity still exists (`EntityExists`), resolved per page.
 - Fetch the distinct entity-type list for filters.
@@ -58,7 +58,7 @@ If `userId`/`username`/`role` aren't supplied, they are pulled from the current 
 - All setters are `private` — entries cannot be mutated after construction; there is no update/delete API.
 
 ### Action Catalog (`AuditActionCatalog`)
-- `AuditAction` enum holds 91 named actions (LOGIN, ROLE_CHANGED, MODULE_COMPLETED, QUIZ_PASSED, POST_CREATED, REPORT_RESOLVED, SUBMISSION_GRADED, AI_FEEDBACK_GENERATED, …).
+- `AuditAction` enum holds 91 named actions (LOGIN, ROLE_CHANGED as a historical value, MODULE_COMPLETED, QUIZ_PASSED, POST_CREATED, REPORT_RESOLVED, SUBMISSION_GRADED, AI_FEEDBACK_GENERATED, …).
 - `GetCategory` classifies actions into categories: **Authentication, Account, Academic, Quiz, Community, Admin, Assignment** (etc.).
 - `GetActionName`/`GetOptions` supply labels/options for the UI filter dropdowns.
 
@@ -88,7 +88,7 @@ Auth (`AUTH_REGISTERED`, `LOGIN`, `LOGIN_FAILED`, `LOGOUT`, `PASSWORD_CHANGED`),
 
 | Layer | File Path | Responsibility |
 |---|---|---|
-| Page | `frontend/src/pages/admin/AdminHistoryPage.tsx` | Super Admin audit viewer (filters, sort, pagination, entity-exists indicator) |
+| Page | `frontend/src/pages/admin/AdminHistoryPage.tsx` | Super-Admin-flag audit viewer (filters, sort, pagination, entity-exists indicator) |
 | Page | user history view (under profile/activity) | "My activity" list for the current user |
 
 ---

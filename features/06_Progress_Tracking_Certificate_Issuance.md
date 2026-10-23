@@ -19,7 +19,7 @@ Progress Tracking & Certificate Issuance
 - See whether they are certificate-eligible for a path (100% complete).
 - List their issued certificates.
 
-### Instructor / Admin
+### Admin
 - Mark a module as complete on behalf of a student (subject to prerequisite checks).
 - Module completion may also occur automatically when a student passes an assigned quiz.
 
@@ -29,7 +29,7 @@ Progress Tracking & Certificate Issuance
 
 ```
 [Student finishes module content]
-  → (quiz pass OR instructor/admin calls) → MarkComplete / MarkModuleCompleteFromQuizAsync
+  → (quiz pass OR admin call) → MarkComplete / MarkModuleCompleteFromQuizAsync
   → ProgressService verifies prerequisite modules are completed
   → Progress row created/updated (IsCompleted = true, CompletedAt = now)
   → MODULE_COMPLETED audit logged
@@ -125,7 +125,7 @@ Progress Tracking & Certificate Issuance
 ## 9. Security & Authorization
 
 - All progress/certificate endpoints require authentication (`[Authorize]`).
-- `POST /progress/complete` requires `Instructor` or `Admin` role (students cannot self-approve module completion manually; quiz-pass automatically completes modules).
+- `POST /progress/complete` requires `Admin` or `Admin` role (students cannot self-approve module completion manually; quiz-pass automatically completes modules).
 - All lookups are scoped to the authenticated user id from the JWT (`ClaimTypes.NameIdentifier`) — a user can only see their own progress and certificates.
 
 ---

@@ -48,13 +48,10 @@ public class AiFeedbackService : IAiFeedbackService
             .FirstOrDefaultAsync(s => s.Id == submissionId)
             ?? throw new KeyNotFoundException("Submission not found.");
 
-        var isInstructor = await _context.UserClassrooms
-            .AnyAsync(uc => uc.ClassroomId == submission.Assignment.ClassroomId
-                         && uc.UserId == userId
-                         && uc.Role == "Instructor");
+        var canManage = submission.Assignment.Classroom.CreatedById == userId;
 
-        if (!isInstructor)
-            throw new UnauthorizedAccessException("Only instructors can generate AI feedback.");
+        if (!canManage)
+            throw new UnauthorizedAccessException("Only a classroom manager can generate AI feedback.");
 
         var isRegeneration = await _context.SubmissionAiFeedbacks
             .AnyAsync(f => f.SubmissionId == submissionId);
@@ -165,13 +162,10 @@ public class AiFeedbackService : IAiFeedbackService
             .FirstOrDefaultAsync(s => s.Id == submissionId)
             ?? throw new KeyNotFoundException("Submission not found.");
 
-        var isInstructor = await _context.UserClassrooms
-            .AnyAsync(uc => uc.ClassroomId == submission.Assignment.ClassroomId
-                         && uc.UserId == userId
-                         && uc.Role == "Instructor");
+        var canManage = submission.Assignment.Classroom.CreatedById == userId;
 
-        if (!isInstructor)
-            throw new UnauthorizedAccessException("Only instructors can view AI feedback.");
+        if (!canManage)
+            throw new UnauthorizedAccessException("Only a classroom manager can view AI feedback.");
 
         var entity = await _context.SubmissionAiFeedbacks
             .FirstOrDefaultAsync(f => f.SubmissionId == submissionId);

@@ -13,20 +13,20 @@ import { ROUTES } from "../../../constants/routes";
 interface AssignmentCardProps {
   assignment: Assignment;
   classroomId: number;
-  isInstructor: boolean;
+  canManage: boolean;
   onViewSubmissions?: (assignment: Assignment) => void;
   onEdit?: (assignment: Assignment) => void;
   onDelete?: (assignment: Assignment) => void;
 }
 
 const AssignmentCard = ({
-  assignment, classroomId, isInstructor, onViewSubmissions, onEdit, onDelete,
+  assignment, classroomId, canManage, onViewSubmissions, onEdit, onDelete,
 }: AssignmentCardProps) => {
   const navigate = useNavigate();
   const [showLockedToast, setShowLockedToast] = useState(false);
 
   const isUnlocked = assignment.isUnlocked ?? true;
-  const isLockedForStudent = !isInstructor && !isUnlocked;
+  const isLockedForStudent = !canManage && !isUnlocked;
 
   const isOverdue = new Date(assignment.dueDate) < new Date();
   const status = assignment.mySubmissionStatus;
@@ -62,7 +62,7 @@ const AssignmentCard = ({
       setShowLockedToast(true);
       return;
     }
-    if (!isInstructor) {
+    if (!canManage) {
       navigate(ROUTES.ASSIGNMENT_DETAIL
         .replace(":classroomId", String(classroomId))
         .replace(":assignmentId", String(assignment.id)));
@@ -77,11 +77,11 @@ const AssignmentCard = ({
       borderColor: getBorderColor(),
       bgcolor: isLockedForStudent ? "rgba(0,0,0,0.02)" : "background.paper",
       opacity: isLockedForStudent ? 0.65 : 1,
-      cursor: isLockedForStudent ? "not-allowed" : isInstructor ? "default" : "pointer",
+      cursor: isLockedForStudent ? "not-allowed" : canManage ? "default" : "pointer",
       transition: "border-color 0.2s, box-shadow 0.2s",
       "&:hover": {
         boxShadow: "0 4px 16px rgba(0,0,0,0.07)",
-        ...(isLockedForStudent || isInstructor ? {} : { borderColor: "primary.light" }),
+        ...(isLockedForStudent || canManage ? {} : { borderColor: "primary.light" }),
       },
     }}
     onClick={handleCardClick}>
@@ -142,7 +142,7 @@ const AssignmentCard = ({
             </Typography>
           </Stack>
 
-          {isInstructor && (
+          {canManage && (
             <Stack direction="row" spacing={0.5}>
               <IconButton size="small" color="primary"
                 onClick={(e) => { e.stopPropagation(); onEdit?.(assignment); }}

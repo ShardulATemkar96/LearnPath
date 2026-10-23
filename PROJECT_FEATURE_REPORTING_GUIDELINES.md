@@ -92,7 +92,7 @@ Explain:
 Explain the major actions available to:
 
 - Student
-- Instructor
+- Admin
 - Admin
 
 Only mention roles that actually have access to the feature.
@@ -258,7 +258,7 @@ Cover where applicable:
 - Role-based authorization
 - Ownership checks
 - Admin permissions
-- Instructor permissions
+- Admin permissions
 - Student permissions
 - Resource access restrictions
 - Validation against unauthorized operations

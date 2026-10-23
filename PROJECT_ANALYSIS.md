@@ -20,28 +20,28 @@ LearnPath is an enterprise-grade Learning Management System (LMS) designed to el
 Traditional Learning Management Systems (LMS) organize course content into rigid, sequential lists. This structure introduces significant operational and pedagogical bottlenecks:
 - **Prerequisite Bypass**: Students are able to access advanced modules without mastering foundational dependencies, leading to high drop-out rates.
 - **Inflexible Pacing**: Fast learners are forced through redundant introductory modules, while struggling learners cannot pinpoint specific missing prerequisites.
-- **Instructor Overhead**: Instructors lack granular topological control over module dependencies, manual grading mechanisms, and automated feedback tools.
+- **Admin Overhead**: Admins lack granular topological control over module dependencies, manual grading mechanisms, and automated feedback tools.
 
 ### 1.4 Solution
 LearnPath addresses these bottlenecks by implementing:
 - **DAG-Driven Module Ordering**: Modules are node entities in a DAG; directed edges represent prerequisite dependencies. The engine dynamically checks reachability via Depth-First Search (DFS) to prevent cyclic dependencies.
 - **Automatic Prerequisite Unlocking**: A student's progress state dynamically calculates which modules are unlocked based on completed prerequisite nodes.
 - **Interactive Visual Graph**: An SVG-based graph visualization allows students to view topological dependencies and progress state in real time.
-- **Integrated Collaborative Classrooms**: Group-based classrooms with invite-code access, assignment submissions, due-date tracking, and instructor grading.
+- **Integrated Collaborative Classrooms**: Group-based classrooms with invite-code access, assignment submissions, due-date tracking, and admin grading.
 - **Multi-Provider AI Feedback Engine**: Automated submission evaluation powered by LLM integration (NVIDIA API and Google Gemini API) with structured criteria parsing and fallback error handling.
 - **Community Forum & Upvoting**: Discussion threads with upvoting, nested comments, content moderation reporting, and tags.
 - **Immutable Audit Logging**: System-level auditing that logs all core actions to an append-only table protected at the EF Core `DbContext` level.
 
 ### 1.5 Target Users
 - **Students**: Self-paced learners who track module progression visually, complete quizzes, submit assignments, collaborate in classrooms, participate in forum discussions, and earn certificates upon path completion.
-- **Instructors**: Content creators who design learning paths, configure module dependencies, create classrooms and assignments, grade submissions manually or view AI-assisted feedback, and issue announcements.
-- **Administrators**: Platform managers who oversee user activation, change user roles, monitor system-wide analytics, review community reports, and manage all paths.
-- **SuperAdmin**: System administrators possessing full administrative privileges including user suspension and audit inspection.
+- **Admins**: Content creators and platform managers who design learning paths, configure module dependencies, create classrooms and assignments, manage users and read-only role display, monitor system-wide analytics, review community reports, and manage all paths.
+- **Classroom managers**: The user recorded in `Classroom.CreatedById` for a given classroom; they manage assignments, grading, and membership. This is a relationship, not a role.
+- **Super Admin flag**: The seeded admin account has `IsSuperAdmin = true`, which gates global audit-history inspection. It is a boolean flag, not a third role.
 
 ### 1.6 Project Goals
 - Guarantee structural integrity of learning paths by enforcing $O(V+E)$ DAG cycle detection.
 - Provide sub-second progress resolution and automatic certificate generation upon 100% path completion.
-- Enforce secure multi-tier RBAC (`Student`, `Instructor`, `Admin`, `SuperAdmin`) with JWT access/refresh token lifecycle.
+- Enforce secure RBAC with exactly two roles (`Student`, `Admin`) plus the `IsSuperAdmin` audit flag, using the JWT access/refresh token lifecycle.
 - Maintain append-only auditability for administrative operations.
 
 ### 1.7 Major Features
@@ -132,7 +132,7 @@ LearnPath addresses these bottlenecks by implementing:
 - `/src/constants/`: System constants (`roles.ts`, `routes.ts`).
 - `/src/hooks/`: Custom React hooks (`useApiError.ts`, `useAuth.ts`, `useDebounce.ts`, `usePagination.ts`, etc.).
 - `/src/layouts/`: Shell layout components (`MainLayout.tsx`, `AuthLayout.tsx`, `DashboardLayout.tsx`, `AdminLayout.tsx`).
-- `/src/pages/`: 37 page components covering all student, instructor, community, classroom, admin, and error views.
+- `/src/pages/`: 37 page components covering all student, admin, community, classroom, admin, and error views.
 - `/src/redux/`: Redux Toolkit store setup, 7 state slices (`auth`, `path`, `classroom`, `community`, `dashboard`, `analytics`, `notification`), and 7 selector files.
 - `/src/routes/`: Central route registry (`AppRoutes.tsx`) and route guards (`ProtectedRoute.tsx`, `GuestRoute.tsx`, `AdminRoute.tsx`).
 - `/src/services/`: 10 API service modules wrapping Axios HTTP calls (`apiClient.ts`, `authService.ts`, `pathService.ts`, etc.).
@@ -217,7 +217,7 @@ The database schema consists of **37 total tables**, comprising 30 custom domain
 | Table Name | Primary Key | Purpose & Description | Foreign Keys | Cascade Rule |
 |------------|-------------|-----------------------|--------------|--------------|
 | `AspNetUsers` | `Id` (nvarchar) | Stores user profile, identity credentials, and status | None | N/A |
-| `AspNetRoles` | `Id` (nvarchar) | Identity security roles (`Student`, `Instructor`, `Admin`, `SuperAdmin`) | None | N/A |
+| `AspNetRoles` | `Id` (nvarchar) | Identity security roles (`Student`, `Admin`) | None | N/A |
 | `AspNetUserRoles` | `UserId`, `RoleId` | Junction table mapping users to roles | `UserId`->`AspNetUsers`, `RoleId`->`AspNetRoles` | Cascade |
 | `AspNetUserClaims` | `Id` (int) | User-specific claim entries | `UserId`->`AspNetUsers` | Cascade |
 | `AspNetUserLogins` | `LoginProvider`, `ProviderKey` | External login provider mapping | `UserId`->`AspNetUsers` | Cascade |
@@ -237,7 +237,7 @@ The database schema consists of **37 total tables**, comprising 30 custom domain
 | `QuizAttempts` | `Id` (int) | Student attempt instance for a quiz | `QuizId`->`Quizzes`, `UserId`->`AspNetUsers` | Cascade |
 | `StudentAnswers` | `Id` (int) | Selected option record for a quiz attempt | `QuizAttemptId`->`QuizAttempts`, `QuestionId`->`Questions`, `SelectedOptionId`->`Options` | Cascade / Restrict |
 | `Progresses` | `Id` (int) | Student completion status per module | `UserId`->`AspNetUsers`, `ModuleId`->`Modules` | Cascade |
-| `Classrooms` | `Id` (int) | Collaborative classroom container | `InstructorId`->`AspNetUsers`, `LearningPathId`->`LearningPaths` | Restrict |
+| `Classrooms` | `Id` (int) | Collaborative classroom container | `AdminId`->`AspNetUsers`, `LearningPathId`->`LearningPaths` | Restrict |
 | `UserClassrooms` | `UserId`, `ClassroomId` | Student membership in classrooms | `UserId`->`AspNetUsers`, `ClassroomId`->`Classrooms` | Cascade |
 | `Assignments` | `Id` (int) | Coursework assignments in a classroom | `ClassroomId`->`Classrooms` | Cascade |
 | `Submissions` | `Id` (int) | Student assignment submissions | `AssignmentId`->`Assignments`, `StudentId`->`AspNetUsers` | Cascade |
@@ -265,7 +265,7 @@ The database schema consists of **37 total tables**, comprising 30 custom domain
 ### 6.1 Verified Features Implementation Directory
 
 #### Feature 1: User Authentication & Role Management
-- **Purpose**: Identity management, registration, login, token refresh, and role assignment.
+- **Purpose**: Identity management, registration, login, token refresh, and role seeding/claims. Registration always creates a Student; role assignment is not exposed as an admin operation.
 - **Workflow**: User registers -> password hashed via ASP.NET Core Identity -> JWT access and refresh token issued.
 - **Endpoints**: `POST /api/v1/auth/register`, `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh-token`, `POST /api/v1/auth/revoke-token`.
 - **Frontend Pages**: `LoginPage.tsx`, `RegisterPage.tsx`, `ProfilePage.tsx`.
@@ -273,7 +273,7 @@ The database schema consists of **37 total tables**, comprising 30 custom domain
 
 #### Feature 2: Directed Acyclic Graph (DAG) Learning Paths
 - **Purpose**: Structure course modules into DAG graphs with verified dependency ordering.
-- **Workflow**: Instructor adds module with prerequisite dependencies -> `DagValidator.WouldCreateCycle()` checks graph reachability via DFS -> If cycle exists, request rejected with HTTP 400.
+- **Workflow**: Admin adds module with prerequisite dependencies -> `DagValidator.WouldCreateCycle()` checks graph reachability via DFS -> If cycle exists, request rejected with HTTP 400.
 - **Endpoints**: `POST /api/v1/learningpaths`, `GET /api/v1/learningpaths/{id}`, `POST /api/v1/learningpaths/{id}/modules`, `POST /api/v1/learningpaths/modules/{id}/dependencies`.
 - **Frontend Pages**: `LearningPathsPage.tsx`, `LearningPathDetailPage.tsx`.
 - **Tables**: `LearningPaths`, `Modules`, `ModuleDependencies`.
@@ -291,22 +291,22 @@ The database schema consists of **37 total tables**, comprising 30 custom domain
 - **Frontend Component**: `PathGraph.tsx`.
 
 #### Feature 5: Classroom & Assignment Management
-- **Purpose**: Enable instructor-led learning groups with assignments and submission tracking.
-- **Workflow**: Instructor creates classroom -> 8-character code generated -> Students join via code -> Instructor creates assignment -> Student submits URL/file -> Instructor grades submission.
+- **Purpose**: Enable admin-led learning groups with assignments and submission tracking.
+- **Workflow**: Admin creates classroom -> 8-character code generated -> Students join via code -> Admin creates assignment -> Student submits URL/file -> Admin grades submission.
 - **Endpoints**: `POST /api/v1/classrooms`, `POST /api/v1/classrooms/join`, `POST /api/v1/classrooms/{id}/assignments`, `POST /api/v1/submissions`.
 - **Frontend Pages**: `ClassroomPage.tsx`, `ClassroomDetailPage.tsx`.
 - **Tables**: `Classrooms`, `UserClassrooms`, `Assignments`, `Submissions`.
 
 #### Feature 6: Quiz Engine & Question Bank
 - **Purpose**: Modular assessment engine with multiple-choice questions and auto-grading.
-- **Workflow**: Instructor creates quiz -> Student starts attempt (`QuizAttempts`) -> Selects options -> Submits attempt -> System calculates percentage score immediately.
+- **Workflow**: Admin creates quiz -> Student starts attempt (`QuizAttempts`) -> Selects options -> Submits attempt -> System calculates percentage score immediately.
 - **Endpoints**: `POST /api/v1/quizzes`, `POST /api/v1/attempts/start/{quizId}`, `POST /api/v1/attempts/submit/{attemptId}`.
 - **Frontend Pages**: Quiz views.
 - **Tables**: `Quizzes`, `Questions`, `Options`, `QuizAttempts`, `StudentAnswers`, `QuestionBanks`.
 
 #### Feature 7: Multi-Provider AI Submission Feedback
 - **Purpose**: Generate structured qualitative feedback on student assignment submissions.
-- **Workflow**: Instructor/Student requests AI feedback -> `AiFeedbackService` formats submission text via `PromptBuilder` -> Calls `IAiProvider` (`NvidiaProvider` or `GeminiProvider`) -> `AiResponseParser` extracts criteria scores and text -> Saved to `SubmissionAiFeedbacks`.
+- **Workflow**: Admin/Student requests AI feedback -> `AiFeedbackService` formats submission text via `PromptBuilder` -> Calls `IAiProvider` (`NvidiaProvider` or `GeminiProvider`) -> `AiResponseParser` extracts criteria scores and text -> Saved to `SubmissionAiFeedbacks`.
 - **Endpoints**: `POST /api/v1/submissions/{id}/ai-feedback`.
 - **Tables**: `SubmissionAiFeedbacks`, `Submissions`.
 
@@ -335,8 +335,8 @@ The database schema consists of **37 total tables**, comprising 30 custom domain
 - **Tables**: `AuditLogs`.
 
 #### Feature 12: Admin Platform Management
-- **Purpose**: Oversee users, roles, paths, and platform metrics.
-- **Endpoints**: `GET /api/v1/admin/users`, `PUT /api/v1/admin/users/{id}/role`, `PUT /api/v1/admin/users/{id}/status`.
+- **Purpose**: Oversee users, read-only role display, paths, classrooms, certificates, and platform metrics.
+- **Endpoints**: `GET /api/v1/admin/users`, `PUT /api/v1/admin/users/{id}/invalid`, `PUT /api/v1/admin/users/{id}/activate`, `PUT /api/v1/admin/users/{id}/deactivate`, `DELETE /api/v1/admin/users/{id}`. There is no role-update endpoint.
 - **Frontend Pages**: `AdminPage.tsx`.
 
 ---
@@ -344,24 +344,26 @@ The database schema consists of **37 total tables**, comprising 30 custom domain
 ## 7. User Roles & Permission Matrix
 
 ### 7.1 Defined Roles
-1. **Student**: Standard enrolled learner.
-2. **Instructor**: Path author and classroom educator.
-3. **Admin**: Platform manager.
-4. **SuperAdmin**: System administrator with immutability inspection access.
+1. **Student**: Standard enrolled learner. A Student may also be assigned as a classroom manager through `Classroom.CreatedById`.
+2. **Admin**: Platform manager and content author. The seeded admin account also carries the `IsSuperAdmin` flag for global audit inspection.
+
+There are no other role values. Classroom manager is an ownership relationship, not a role.
 
 ### 7.2 Access Matrix
 
-| Feature / Action | Student | Instructor | Admin | SuperAdmin |
-|------------------|---------|------------|-------|------------|
-| View Public Paths | Yes | Yes | Yes | Yes |
-| Enroll in Paths | Yes | Yes | Yes | Yes |
-| Complete Modules | Yes | Yes | Yes | Yes |
-| Create Learning Paths | No | Yes | Yes | Yes |
-| Create Modules / DAG Edges | No | Yes | Yes | Yes |
-| Create Classrooms | No | Yes | Yes | Yes |
-| Submit Assignments | Yes | Yes | Yes | Yes |
-| Grade Submissions | No | Yes | Yes | Yes |
-| Request AI Feedback | Yes | Yes | Yes | Yes |
+| Feature / Action | Student | Admin |
+|------------------|---------|-------|
+| View Public Paths | Yes | Yes |
+| Enroll in Paths | Yes | Yes |
+| Complete Modules | Yes | Yes |
+| Create Learning Paths | No | Yes |
+| Create Modules / DAG Edges | No | Yes |
+| Create Classrooms | No | Yes |
+| Submit Assignments | Yes | Yes |
+| Grade Submissions | Only if classroom manager | Only if classroom manager |
+| Request AI Feedback | Only if classroom manager | Only if classroom manager |
+| Manage Users / View Roles | No | Yes |
+| Global Audit History | No | Only with `IsSuperAdmin` flag |
 | Post in Community | Yes | Yes | Yes | Yes |
 | Moderate / Delete Posts | No | No | Yes | Yes |
 | Change User Roles | No | No | Yes | Yes |
@@ -437,7 +439,7 @@ SubmissionAiFeedbacks Table
 |-----------------------------|--------------------|-----------------------------------|
 | **Assignment Feedback** | **Verified** | Implemented via `AiFeedbackService`, `NvidiaProvider`, `GeminiProvider`, and `SubmissionAiFeedback` table. |
 | **Career Recommendation** | *Not verified from source code.* | No career recommendation algorithm or service exists in repository. |
-| **Roadmap Generation** | *Not verified from source code.* | Learning path DAGs are constructed manually by instructors via `LearningPathController`. |
+| **Roadmap Generation** | *Not verified from source code.* | Learning path DAGs are constructed manually by admins via `LearningPathController`. |
 | **Resume ATS Engine** | *Not verified from source code.* | `UglyToad.PdfPig` library is present in `.csproj` for PDF reading, but ATS scoring logic is absent. |
 | **Quiz Generation** | *Not verified from source code.* | Quizzes are created manually via `QuizController` and `QuestionBankController`. |
 | **Chatbot** | *Not verified from source code.* | No conversational chatbot endpoints or UI components exist in repository. |
@@ -454,11 +456,13 @@ The backend exposes **142 total API endpoints** across **17 controllers**.
 ### 10.2 Controller API Specifications
 
 #### 1. AdminController (`/api/v1/admin`)
-- `GET /api/v1/admin/stats`: Get platform-wide statistics. Auth: Required. Role: `Admin`, `SuperAdmin`.
-- `GET /api/v1/admin/users`: Search and paginate users. Auth: Required. Role: `Admin`, `SuperAdmin`.
-- `PUT /api/v1/admin/users/{id}/role`: Update user role. Auth: Required. Role: `Admin`, `SuperAdmin`.
-- `PUT /api/v1/admin/users/{id}/status`: Activate or suspend user account. Auth: Required. Role: `Admin`, `SuperAdmin`.
-- `GET /api/v1/admin/audit-logs`: Query immutable audit logs. Auth: Required. Role: `SuperAdmin`.
+- `GET /api/v1/admin/stats`: Get platform-wide statistics. Auth: Required. Role: `Admin`.
+- `GET /api/v1/admin/users`: Search and paginate users, including read-only roles. Auth: Required. Role: `Admin`.
+- `PUT /api/v1/admin/users/{id}/invalid`: Mark a user invalid with a reason. Auth: Required. Role: `Admin`; the seed super-admin account is protected.
+- `PUT /api/v1/admin/users/{id}/activate` / `deactivate`: Change account status. Auth: Required. Role: `Admin`.
+- `DELETE /api/v1/admin/users/{id}`: Soft-delete a user. Auth: Required. Role: `Admin`.
+- `GET /api/v1/history/admin`: Query global immutable audit logs. Auth: Required. Role: `Admin` + `IsSuperAdmin` flag.
+- There is no `PUT /api/v1/admin/users/{id}/role` endpoint.
 
 #### 2. AuthController (`/api/v1/auth`)
 - `POST /api/v1/auth/register`: Register new user. Request: `RegisterRequestDto`. Response: `AuthResponseDto`. Auth: Public.
@@ -468,27 +472,27 @@ The backend exposes **142 total API endpoints** across **17 controllers**.
 
 #### 3. LearningPathController (`/api/v1/learningpaths`)
 - `GET /api/v1/learningpaths`: List public learning paths. Auth: Public/Optional.
-- `POST /api/v1/learningpaths`: Create new learning path. Request: `CreateLearningPathDto`. Auth: Required. Role: `Instructor`, `Admin`.
+- `POST /api/v1/learningpaths`: Create new learning path. Request: `CreateLearningPathDto`. Auth: Required. Role: `Admin`.
 - `GET /api/v1/learningpaths/{id}`: Get path details with DAG module nodes. Auth: Optional.
-- `PUT /api/v1/learningpaths/{id}`: Update path. Auth: Required. Role: Path Author / Admin.
-- `DELETE /api/v1/learningpaths/{id}`: Delete path. Auth: Required. Role: Path Author / Admin.
-- `POST /api/v1/learningpaths/{id}/modules`: Add module node. Auth: Required. Role: Instructor / Admin.
-- `POST /api/v1/learningpaths/modules/{id}/dependencies`: Create prerequisite edge. Invokes `DagValidator`. Auth: Required. Role: Instructor / Admin.
+- `PUT /api/v1/learningpaths/{id}`: Update path. Auth: Required. Role: `Admin`.
+- `DELETE /api/v1/learningpaths/{id}`: Delete path. Auth: Required. Role: `Admin`.
+- `POST /api/v1/learningpaths/{id}/modules`: Add module node. Auth: Required. Role: Admin.
+- `POST /api/v1/learningpaths/modules/{id}/dependencies`: Create prerequisite edge. Invokes `DagValidator`. Auth: Required. Role: Admin.
 
 #### 4. ClassroomController (`/api/v1/classrooms`)
 - `GET /api/v1/classrooms`: List user classrooms. Auth: Required.
-- `POST /api/v1/classrooms`: Create classroom. Request: `CreateClassroomDto`. Auth: Required. Role: Instructor / Admin.
+- `POST /api/v1/classrooms`: Create classroom. Request: `CreateClassroomDto`. Auth: Required. Role: Admin.
 - `POST /api/v1/classrooms/join`: Join classroom via code. Request: `JoinClassroomDto`. Auth: Required.
-- `POST /api/v1/classrooms/{id}/assignments`: Create assignment. Auth: Required. Role: Instructor.
+- `POST /api/v1/classrooms/{id}/assignments`: Create assignment. Auth: Required. Role: Admin.
 
 #### 5. SubmissionController (`/api/v1/submissions`)
 - `POST /api/v1/submissions`: Submit assignment response. Auth: Required. Student.
-- `GET /api/v1/submissions/assignment/{assignmentId}`: View submissions. Auth: Required. Instructor.
-- `PUT /api/v1/submissions/{id}/grade`: Grade submission manually. Auth: Required. Instructor.
+- `GET /api/v1/submissions/assignment/{assignmentId}`: View submissions. Auth: Required. Admin.
+- `PUT /api/v1/submissions/{id}/grade`: Grade submission manually. Auth: Required. Admin.
 - `POST /api/v1/submissions/{id}/ai-feedback`: Request automated AI evaluation. Auth: Required.
 
 #### 6. QuizController & AttemptController (`/api/v1/quizzes`, `/api/v1/attempts`)
-- `POST /api/v1/quizzes`: Create quiz. Auth: Required. Instructor.
+- `POST /api/v1/quizzes`: Create quiz. Auth: Required. Admin.
 - `POST /api/v1/attempts/start/{quizId}`: Start quiz attempt. Auth: Required. Student.
 - `POST /api/v1/attempts/submit/{attemptId}`: Submit answers & auto-grade. Auth: Required. Student.
 
@@ -519,7 +523,7 @@ The React SPA contains **37 Page Components** and **36 Reusable UI Components**.
 ### 11.2 Key Frontend Components
 - `AppRoutes.tsx`: Central route registry wrapped with `BrowserRouter`.
 - `ProtectedRoute.tsx`: Route guard checking Redux `isAuthenticated` state; redirects unauthenticated users to `/login`.
-- `AdminRoute.tsx`: Route guard requiring `Admin` or `SuperAdmin` role claim.
+- `AdminRoute.tsx`: Route guard requiring the `Admin` role claim.
 - `PathGraph.tsx`: Custom SVG graph component rendering DAG dependency trees with dynamic coordinate layout math.
 - `MiniStatCard.tsx`, `WeeklyBarChart.tsx`, `ModuleTypeChart.tsx`, `PathProgressChart.tsx`: Recharts analytics visualization widgets.
 
@@ -545,11 +549,11 @@ The React SPA contains **37 Page Components** and **36 Reusable UI Components**.
 6. **AI Feedback Execution**: Student clicks "Request AI Feedback" -> Backend invokes `AiFeedbackService` -> NVIDIA/Gemini API evaluates submission -> Displays detailed feedback score breakdown.
 7. **Certificate Issuance**: Upon completing 100% of path modules, progress service creates `Certificate` entry -> Student views certificate at `/certificates`.
 
-### 12.2 Instructor Path & Coursework Creation Workflow
-1. **Path Setup**: Instructor opens `/paths` -> Clicks "Create Path" -> Fills title and description.
+### 12.2 Admin Path & Coursework Creation Workflow
+1. **Path Setup**: Admin opens `/paths` -> Clicks "Create Path" -> Fills title and description.
 2. **DAG Construction**: Adds Module A and Module B -> Defines dependency edge (Module A is prerequisite for Module B) -> Backend validates graph acyclicity via `DagValidator`.
-3. **Classroom Setup**: Instructor creates Classroom linked to path -> System generates 8-character invite code -> Shares code with students.
-4. **Grading & Feedback**: Instructor views submissions at `/classroom/{id}` -> Applies numeric grade and text comments -> Student receives notification.
+3. **Classroom Setup**: Admin creates Classroom linked to path -> System generates 8-character invite code -> Shares code with students.
+4. **Grading & Feedback**: Admin views submissions at `/classroom/{id}` -> Applies numeric grade and text comments -> Student receives notification.
 
 ---
 
@@ -617,7 +621,7 @@ The React SPA contains **37 Page Components** and **36 Reusable UI Components**.
 ## 16. Technical Challenges & Architectural Solutions
 
 ### 16.1 Graph Cycle Prevention in Concurrent Settings
-- **Challenge**: Multiple instructors updating module prerequisites concurrently could create circular dependencies ($A \rightarrow B \rightarrow C \rightarrow A$), breaking progress unlocking.
+- **Challenge**: Multiple admins updating module prerequisites concurrently could create circular dependencies ($A \rightarrow B \rightarrow C \rightarrow A$), breaking progress unlocking.
 - **Solution**: `DagValidator.WouldCreateCycle()` executes a Depth-First Search (DFS) reachability test before writing dependency records. If target node $A$ is reachable from proposed prerequisite node $B$, the edge is rejected immediately.
 
 ### 16.2 Append-Only System Audit Security
@@ -708,7 +712,7 @@ erDiagram
 ```mermaid
 graph LR
     Student((Student))
-    Instructor((Instructor))
+    Admin((Admin))
     Admin((Admin))
 
     subgraph Platform [LearnPath Platform]
@@ -726,9 +730,9 @@ graph LR
     Student --> UC2
     Student --> UC3
 
-    Instructor --> UC4
-    Instructor --> UC5
-    Instructor --> UC6
+    Admin --> UC4
+    Admin --> UC5
+    Admin --> UC6
 
     Admin --> UC7
     Admin --> UC8

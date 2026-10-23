@@ -649,7 +649,7 @@ authentication; locking admin endpoints to the Admin role is authorization."
 
 ### LearnPath Example
 Login/register (authentication) → issues JWT. `[Authorize]` (must be logged in),
-`[Authorize(Roles = "Admin")]` (admin only), policies `AdminOnly`/`InstructorOrAdmin`
+`[Authorize(Roles = "Admin")]` (admin only), policy `AdminOnly`
 (authorization). Deep dive in Phase 7.
 
 ### Common Mistake

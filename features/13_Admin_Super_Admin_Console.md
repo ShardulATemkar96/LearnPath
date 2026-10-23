@@ -1,13 +1,13 @@
-# Admin & Super Admin Console
+# Admin Console (with Super Admin History Flag)
 
 ## 1. Feature Name
 
-Admin & Super Admin Console
+Admin Console (with Super Admin History Flag)
 
 ## 2. Purpose
 
-- **Problem Solved:** Platform operators need central oversight: user administration (roles, statuses), platform statistics, learning-path visibility, certificate management, and classroom management.
-- **Why It Exists:** The `Admin` role gates a controller with full user/classroom/certificate CRUD, while a two-tier privilege model (`IsSuperAdmin` flag + roles) restricts the most sensitive operations (role changes) to the Super Admin only.
+- **Problem Solved:** Platform operators need central oversight: user administration (read-only role display and statuses), platform statistics, learning-path visibility, certificate management, and classroom management.
+- **Why It Exists:** The `Admin` role gates a controller with full user/classroom/certificate CRUD. The `IsSuperAdmin` flag additionally gates global audit-history browsing; it is not a third role.
 - **Role in Application:** It is the governance/operations subsystem for the whole platform, layered on top of all other domains.
 
 ---
@@ -20,15 +20,15 @@ Admin & Super Admin Console
 - Search/filter/paginate certificates (search by name/email/path title; filter by issue-date range).
 - View a certificate detail and delete certificates.
 - Search/filter/paginate classrooms (search by title/code/path/creator; filter by learning path and status).
-- View classroom detail (members, roles, statuses) and edit classroom title/description.
-- Reassign a classroom to a new learning path.
+- View classroom detail (members, statuses) and edit classroom title/description.
+- Reassign a classroom to a new learning path or transfer classroom ownership.
 - Delete classrooms and users.
 - Mark users invalid (requires a reason), activate/deactivate users.
 - View all learning paths.
-- (Super Admin only) Change a user's role (Admin / Instructor / Student).
+- View each user's roles read-only (Admin / Student). There is no role-update UI or API.
 
-### Super Admin
-- Everything an Admin can do, **plus** changing user roles. Role endpoints reject non-Super-Admin actors.
+### Super Admin flag
+- Everything an Admin can do, **plus** access to the global audit-history view. The flag does not create a separate role and does not permit role assignment.
 
 ---
 
@@ -39,9 +39,8 @@ Admin & Super Admin Console
   → aggregates platform-wide counts + 6-month growth series
 
 [Admin manages users]
-  → GET /admin/users?search= → role/status/counters per user
-  → PUT /admin/users/{id}/role         (Super Admin only)
-  → PUT /admin/users/{id}/invalid      {reason} (Super Admin or Instructor)
+  → GET /admin/users?search= → read-only role/status/counters per user
+  → PUT /admin/users/{id}/invalid      {reason}
   → PUT /admin/users/{id}/activate | /deactivate
   → DELETE /admin/users/{id}           (soft delete + revoke tokens)
 
@@ -69,14 +68,14 @@ Counts users, learning paths, classrooms, certificates, and completed progresses
 - Last-login heuristic: `RefreshTokens` grouped by `UserId`, taking `Max(CreatedAt)` per user, joined into a dictionary — the latest refresh-token issuance approximates the last login.
 - Per-user DTO (`BuildUserDtoAsync`) adds live counters: paths created, modules completed, quiz attempts, certificates, classrooms joined.
 
-### Role Change (`UpdateUserRoleAsync`)
-- **Guard:** actor must have `IsSuperAdmin == true` (role field is otherwise ignored because the controller allows any Authenticated+Admin and permission is enforced inside the service).
-- **Guard:** target user cannot be the Super Admin account (`user.IsSuperAdmin` → reject).
-- Valid roles: `Admin`, `Instructor`, `Student` — anything else is rejected.
-- Removes current roles, adds the new role, logs `ROLE_CHANGED` (old/new values) plus conditional `INSTRUCTOR_ASSIGNED` / `INSTRUCTOR_REMOVED` audits.
+### Read-Only Roles
+- The only valid role values are `Admin` and `Student`.
+- `UpdateUserRoleAsync`, the role-update endpoint, and the role-update UI were removed. Roles are returned in user DTOs for display only.
+- Registration always creates a `Student`; the seed process creates the one `Admin` account. Neither path accepts a caller-supplied role.
+- Historical `ROLE_CHANGED` audit rows remain readable, but no new role-change events are produced.
 
 ### Mark Invalid / Activate / Deactivate (`MarkInvalidAsync` / `ActivateUserAsync` / `DeactivateUserAsync`)
-- **MarkInvalid:** allowed for Super Admin or any `Instructor` role (checked via `IsInRoleAsync`). A non-empty `Reason` is required. Sets `Status = Invalid`, stores `InvalidReason`, logs `USER_MARKED_INVALID`.
+- **MarkInvalid:** allowed for any `Admin` actor (checked via `IsInRoleAsync`). The seed Super Admin account is protected. A non-empty `Reason` is required. Sets `Status = Invalid`, stores `InvalidReason`, logs `USER_MARKED_INVALID`.
 - **Activate:** restores `Status = Active`, clears `InvalidReason`; logs distinct audit messages depending on whether the user was `Invalid` (`INVALID_REMOVED` vs `USER_ACTIVATED`).
 - **Deactivate:** sets `Status = Inactive`, logs `USER_DEACTIVATED`. Both activate/deactivate refuse a user already in `Deleted` status.
 
@@ -94,13 +93,13 @@ Counts users, learning paths, classrooms, certificates, and completed progresses
 ### Classrooms (controller-level, direct EF + auditing)
 - Paged/searchable listing; search matches title, invite code, path title, creator name/email; optional filter by `learningPathId`; `status == "Archived"` intentionally matches nothing (no archived state today — filter reserved for future).
 - `MemberCount = c.UserClassrooms.Count`; every classroom is reported `Status = "Active"`.
-- Detail loads members (ordered by join date) with role + user status + invalid reason.
-- Update requires a title; can optionally reassign `LearningPathId` (validated to exist) and `TrainerId` (validated to exist).
+- Detail loads members (ordered by join date) with user status + invalid reason; classroom membership has no separate role.
+- Update requires a title; can optionally reassign `LearningPathId` (validated to exist) and `TrainerId` (validated to exist). Changing `TrainerId` transfers `CreatedById` ownership and auto-joins the new manager.
 - `ReassignLearningPath` refuses no-op reassignment, logs old → new path titles.
 - Deletion removes the classroom and logs `CLASSROOM_DELETED` with path title. `JOINED/LOCKED` status of memory: classroom delete is cascading via EF relationships.
 
 ### Super Admin Model
-`User.IsSuperAdmin` is a **boolean flag** separate from Identity roles. `RoleSeeder` seeds the seed admin account with `IsSuperAdmin = true` and keeps it true on subsequent runs. Role changes and invalid marking for the super-admin account are blocked. The frontend distinguishes Super Admin vs. Admin, and the audit-log viewer is Super-Admin-gated (feature 14).
+`User.IsSuperAdmin` is a **boolean flag** separate from Identity roles. `AdminSeeder` keeps it true on the seed admin account across runs. The super-admin account cannot be marked invalid or deleted, and its roles are not editable. The audit-log viewer is Super-Admin-gated (feature 14).
 
 ---
 
@@ -109,7 +108,7 @@ Counts users, learning paths, classrooms, certificates, and completed progresses
 | Layer | File Path | Responsibility |
 |---|---|---|
 | Page | `frontend/src/pages/admin/AdminPage.tsx` | Layout/nav shell + stats dashboard |
-| Page | `frontend/src/pages/admin/AdminUsersPage.tsx` | User list, search, role/status management UI |
+| Page | `frontend/src/pages/admin/AdminUsersPage.tsx` | User list, search, read-only role display, status actions |
 | Page | `frontend/src/pages/admin/AdminCertificatesPage.tsx` | Certificate list/detail/delete |
 | Page | `frontend/src/pages/admin/AdminClassroomsPage.tsx` | Classroom list/detail/edit/reassign/delete |
 | Page | `frontend/src/pages/admin/AdminPathsPage.tsx` | All learning paths |
@@ -123,10 +122,10 @@ Counts users, learning paths, classrooms, certificates, and completed progresses
 | Layer | File Path | Responsibility |
 |---|---|---|
 | Controller | `backend/Controllers/AdminController.cs` | `api/v1/admin/*` endpoints (stats, users, certificates, classrooms) |
-| Service | `backend/Services/Admin/AdminService.cs` | Stats, user management, role transitions, soft delete, paths |
+| Service | `backend/Services/Admin/AdminService.cs` | Stats, user management, read-only role display, soft delete, paths |
 | Interface | `backend/Interfaces/Services/IAdminService.cs` | Service contract |
-| DTO | `backend/DTOs/Admin/AdminDto.cs` | Admin response/request models |
-| Seeder | `backend/Data/Seeders/RoleSeeder.cs` | Super Admin seed account + flag maintenance |
+| DTO | `backend/DTOs/AdminDto.cs` | Admin response/request models |
+| Seeder | `backend/Data/Seeders/RoleSeeder.cs` | Seed Admin account + super-admin flag maintenance |
 
 ---
 
@@ -147,9 +146,9 @@ Migrations of note: `20260731094731_AddUserStatusAndSuperAdmin.cs` (adds `Status
 ## 9. Security & Authorization
 
 - Whole controller is `[Authorize(Roles = "Admin")]` — the endpoint surface is Admin-only.
-- **Role change** additionally requires the actor's `IsSuperAdmin` flag inside the service; the Super Admin account's own role is immutable.
-- **Mark invalid** requires Super Admin *or* the `Instructor` role.
-- **Soft delete / activate / deactivate** — Admin only, with Super-Admin-protection and deleted-user guards.
+- **Role display** is read-only; there is no role-update endpoint or service method.
+- **Mark invalid** requires the `Admin` role; the seed super-admin account is protected.
+- **Soft delete / activate / deactivate** — Admin only, with super-admin protection and deleted-user guards.
 - `KeyNotFoundException` → 404; `ArgumentException` → 400; `UnauthorizedAccessException` → (403 via middleware) for guarded actions.
 - All mutations emit audit log entries (see feature 14).
 
@@ -157,8 +156,8 @@ Migrations of note: `20260731094731_AddUserStatusAndSuperAdmin.cs` (adds `Status
 
 ## 10. Important Business Rules
 
-1. Only the **Super Admin** can change roles; the Super Admin account itself cannot be reassigned/deleted/marked invalid.
-2. Roles are limited to `Admin`, `Instructor`, `Student`.
+1. Roles are limited to `Admin` and `Student`; they are read-only in the UI and API.
+2. The seed super-admin account cannot be deleted or marked invalid.
 3. **Soft delete** preserves row integrity (rename to `deleted_user_{id}` + `deleted_{id}@deleted.local`) and revokes active refresh tokens.
 4. `MarkInvalid` requires a reason; deleted users cannot be activated/deactivated/invalidated.
 5. Certificate number is computed (`CERT-{Id:D6}`), not stored.
@@ -170,13 +169,13 @@ Migrations of note: `20260731094731_AddUserStatusAndSuperAdmin.cs` (adds `Status
 
 ## 11. Example of Internal Execution
 
-### Step 1: Super Admin changes a user's role
-- `PUT /api/v1/admin/users/a1b2c3/role` with `{ role: "Instructor" }`, acting user `superadmin`.
-- Service checks `actor.IsSuperAdmin` → pass; target is not super admin → pass; `"Instructor"` is valid → roles swapped; `ROLE_CHANGED` (+ `INSTRUCTOR_ASSIGNED`) audit rows written; updated DTO returned.
+### Step 1: Admin views a user's roles
+- `GET /api/v1/admin/users` returns each user's `Admin`/`Student` roles for display.
+- There is no `PUT /api/v1/admin/users/{id}/role` endpoint; role changes are not supported.
 
 ### Step 2: Admin marks a user invalid
-- `PUT /api/v1/admin/users/u7/mark-invalid` with `{ reason: "Plagiarism" }`.
-- Actor is Admin (not super admin, not instructor) → the service **rejects** — only Super Admin or Instructor may mark invalid. 403 returned.
+- `PUT /api/v1/admin/users/u7/invalid` with `{ reason: "Plagiarism" }`.
+- The actor has the `Admin` role → pass; the target is not the protected super-admin account → pass; status becomes `Invalid` and `USER_MARKED_INVALID` is logged.
 
 ### Step 3: Admin soft-deletes a user
 - `DELETE /api/v1/admin/users/abc123`.
@@ -202,7 +201,7 @@ Migrations of note: `20260731094731_AddUserStatusAndSuperAdmin.cs` (adds `Status
 - `backend/Controllers/AdminController.cs`
 - `backend/Services/Admin/AdminService.cs`
 - `backend/Interfaces/Services/IAdminService.cs`
-- `backend/DTOs/Admin/AdminDto.cs`
+- `backend/DTOs/AdminDto.cs`
 - `backend/Data/Seeders/RoleSeeder.cs`
 
 ### Database
@@ -216,8 +215,8 @@ Migrations of note: `20260731094731_AddUserStatusAndSuperAdmin.cs` (adds `Status
 
 - Platform-wide stats with 6-month user-growth series
 - User search/list/detail with live activity counters
-- Role assignment (Super Admin only; Admin/Instructor/Student)
-- Mark-invalid with required reason (Super Admin or Instructor)
+- Read-only role display (Admin/Student)
+- Mark-invalid with required reason (Admin; seed super-admin protected)
 - Activate / deactivate users
 - Soft delete with token revocation and identity renaming
 - Certificate search/filter/paginate, detail, delete

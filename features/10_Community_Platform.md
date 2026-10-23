@@ -6,7 +6,7 @@ Community Platform (Forum, Groups, Moderation)
 
 ## 2. Purpose
 
-- **Problem Solved:** Learners and instructors need a place to discuss, ask questions, share code, and build study communities.
+- **Problem Solved:** Learners and admins need a place to discuss, ask questions, share code, and build study communities.
 - **Why It Exists:** The community layer provides posts with threaded comments and voting, public/private study groups, and an admin moderation pipeline (report → resolve/dismiss) to keep content safe.
 - **Role in Application:** It is the social subsystem. It operates independently of learning content but can link posts to learning paths; group posts add a scoped-community layer on top of the forum.
 
@@ -14,7 +14,7 @@ Community Platform (Forum, Groups, Moderation)
 
 ## 3. What the User Can Do
 
-### All users (Student / Instructor / Admin)
+### All users (Student / Admin)
 - Browse, search, filter, and sort community posts (newest / score / pinned / trending).
 - Read a post (increments the view count) and its nested comment tree.
 - Create / edit / delete their own posts (with title, content, tags, category, optional code snippet + language, optional learning-path link).

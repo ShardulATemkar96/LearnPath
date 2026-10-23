@@ -16,8 +16,8 @@ Simple answer: *"Audit logging is an append-only trail of user actions so we can
 
 ## 2. Why Is It Used?
 
-LearnPath is an education platform where actions matter: logins, quiz attempts, role changes,
-deactivated users, created content. Admin and instructors need to **prove** and **review** what
+LearnPath is an education platform where actions matter: logins, quiz attempts, historical role
+changes, deactivated users, created content. Admins need to **prove** and **review** what
 happened:
 
 - Catch suspicious behavior (e.g., failed login attempts).
@@ -57,7 +57,7 @@ Examples seen in the source:
 | `QUESTION_BANK_UPLOADED` / `VERSION_UPLOADED` / `ARCHIVED` | `QuestionBankService` |
 | `CLASSROOM_CREATED` / `JOINED` / `LEFT` / `MEMBER_REMOVED` | `ClassroomService` |
 | `LEARNING_PATH_CREATED` / `MODULE_PUBLISHED` / `DEPENDENCY_ADDED` | `LearningPathService` |
-| `ROLE_CHANGED` / `INSTRUCTOR_ASSIGNED` / `USER_DEACTIVATED` / `USER_ACTIVATED` | `AdminService` |
+| `ROLE_CHANGED` (historical only) / `USER_DEACTIVATED` / `USER_ACTIVATED` | `AdminService` |
 | `POST_CREATED` / `COMMENT_CREATED` | `CommunityService` |
 | `SUBMISSION_UPLOADED` / `GRADED` / `STATUS_CHANGED` | `ClassroomService` |
 
@@ -217,7 +217,7 @@ A student starts and finishes "Java Basics Quiz":
 ## 11. Interview Answer
 
 > "In LearnPath I built an audit logging system. When important actions happen — like login, quiz
-> started or completed, role changes, or content created — the service calls
+> started or completed, historical role changes, or content created - the service calls
 > `IAuditLogService.LogAsync` and writes an `AuditLog` row. It records the action type, entity, a
 > description, old/new values, and who did it; the actor is resolved automatically from the JWT
 > claims using `IHttpContextAccessor`, so services don't have to pass the user around. The

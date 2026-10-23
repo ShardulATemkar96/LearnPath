@@ -1,6 +1,6 @@
 # 🌟 LearnPath — Graph-Based Personalized Learning Platform
 
-> A full-stack learning management system where instructors build structured learning paths as directed acyclic graphs (DAGs), and students progress through modules, collaborate in classrooms, earn certificates, and track everything with rich analytics.
+> A full-stack learning management system where admins build structured learning paths as directed acyclic graphs (DAGs), and students progress through modules, collaborate in classrooms, earn certificates, and track everything with rich analytics.
 
 <div align="center">
 
@@ -20,14 +20,14 @@
 
 ## 📝 About The Project
 
-**The problem:** Traditional learning platforms use linear course progression. Students often waste time on material they already know, or skip prerequisites they don't have, leading to confusion and drop-off. Instructors lack fine-grained control over module ordering and dependency enforcement.
+**The problem:** Traditional learning platforms use linear course progression. Students often waste time on material they already know, or skip prerequisites they don't have, leading to confusion and drop-off. Admins lack fine-grained control over module ordering and dependency enforcement.
 
 **The solution:** LearnPath organizes learning content as a **directed acyclic graph (DAG)**. Each module has explicit prerequisites. The platform automatically enforces dependency ordering, visualizes the graph so students see their progression path, and unlocks modules only when all prerequisites are completed.
 
 **Target audience:**
 - **Students** who want self-paced, structured, and visual learning
-- **Instructors** who need flexible module ordering with automatic dependency enforcement
-- **Administrators** who manage users, classrooms, and platform-wide analytics
+- **Admins** who author modules with automatic dependency enforcement
+- **Classroom managers** who run assignments and grading for a classroom
 
 **Why it matters:** LearnPath combines the structure of academic course management with the flexibility of modern self-paced platforms — all in one open-source package with a clean, modern UI.
 ---
@@ -244,14 +244,17 @@ After seeding, log in with:
 | Role | Capabilities |
 |------|-------------|
 | **Student** | Browse public paths, enroll, complete modules, join classrooms, participate in community, earn certificates |
-| **Instructor** | Everything in Student + create/manage learning paths, create classrooms, create assignments, grade submissions |
-| **Admin** | Everything + manage users, change roles, view platform stats, manage all paths |
+| **Admin** | Author and manage learning paths, modules, quizzes and question banks; create classrooms; manage users and platform content; view stats. The seeded `admin@learnpath.com` account also has the `IsSuperAdmin` flag for global audit history. |
+
+Classroom management is a relationship, not a role: the user recorded in `Classroom.CreatedById` manages that classroom. An Admin can transfer classroom ownership to another user, who is then auto-joined as manager. There is no per-classroom role column.
+
+> **Upgrade note:** migration `20261023085336_RemoveInstructorRole` removes the retired Instructor role and the `UserClassrooms.Role` column. Former Instructor-only users become Students; affected non-Admin refresh tokens are revoked; classroom ownership may transfer to a former Instructor member. This data change is irreversible without restoring the pre-migration backup. See [`documentation/INSTRUCTOR_ROLE_REMOVAL.md`](documentation/INSTRUCTOR_ROLE_REMOVAL.md) for the exact transformation and backup location.
 
 ### Typical User Flow
 
 1. **Register** as a Student (or log in with the seeded admin account)
 2. **Browse** the dashboard — view enrolled path progress, recent activity, and key stats
-3. **Explore** the **Learning Paths** page — browse public paths or create your own
+3. **Explore** the **Learning Paths** page — browse public paths; Admins can create and edit content
 4. **Open a Path** — see the module list and an interactive **dependency graph** (DAG visualization)
 5. **Complete modules** — the next modules unlock automatically when prerequisites are done
 6. **Join a Classroom** — use an invite code to collaborate with peers on assignments
@@ -337,7 +340,7 @@ LearnPath/
 
 - **JWT-based authentication** with short-lived access tokens (60 min) and long-lived refresh tokens (7 days)
 - **Refresh token rotation** — each refresh revokes the previous token; tokens stored in the database
-- **Role-based authorization** — three tiers: `Student`, `Instructor`, `Admin`
+- **Role-based authorization** — two roles: `Student`, `Admin`; `IsSuperAdmin` is a flag for global audit history, not a third role
 - **Rate limiting** — IP-based, configurable (default 100 requests/minute), with `X-RateLimit` headers
 - **Password policy** — minimum 8 characters, requires uppercase, lowercase, digit; account lockout after 5 failed attempts
 - **Input validation** — FluentValidation on all write endpoints
@@ -355,7 +358,7 @@ LearnPath/
 - Route guards for authenticated, guest, and admin-only pages
 
 ### 📚 Learning Paths
-- Create, update, delete learning paths (admin/instructor)
+- Create, update, delete learning paths (Admin only)
 - Public / private visibility toggle
 - Browse public paths and personal paths
 - Detailed path view with module list and progress
@@ -370,10 +373,10 @@ LearnPath/
 ### 🏫 Classrooms
 - Create classrooms linked to a learning path
 - Join via 8-character invite code
-- Instructor and student roles within classrooms
+- Classroom manager ownership through `Classroom.CreatedById`; members have no separate role
 - Create and manage assignments with due dates
-- Submit assignment URLs
-- Grade submissions (instructor)
+- Submit assignment files
+- Grade submissions (classroom manager)
 
 ### 💬 Community Forum
 - Create posts (title, content, category)
@@ -399,7 +402,7 @@ LearnPath/
 
 ### 👑 Admin Panel
 - Platform-wide statistics (users, paths, classrooms, certificates)
-- User management (search, view, change roles, activate/deactivate, delete)
+- User management (search, view read-only roles, mark invalid, activate/deactivate, delete)
 - All paths overview
 - Module editor
 

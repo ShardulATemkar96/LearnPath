@@ -1,3 +1,4 @@
+using LearnPath.API.Algorithms.Graph;
 using LearnPath.API.Data;
 using LearnPath.API.DTOs.Attempt;
 using LearnPath.API.Entities;
@@ -53,16 +54,14 @@ public class AttemptService : IAttemptService
             .ToListAsync();
         var completedIds = completedIdsList.ToHashSet();
 
-        var depIds = targetModule.Dependencies.Select(d => d.DependsOnModuleId).ToList();
-        var dagUnlocked = depIds.All(dId => completedIds.Contains(dId));
-        var seqUnlocked = true;
-        if (!depIds.Any())
-        {
-            var sorted = pathModules.OrderBy(m => m.Order).ToList();
-            var idx = sorted.FindIndex(x => x.Id == moduleId);
-            if (idx > 0) seqUnlocked = completedIds.Contains(sorted[idx - 1].Id);
-        }
-        if (!(dagUnlocked && seqUnlocked))
+        // Enforce module unlock (bypass via direct API): the shared rules in
+        // ModuleUnlockRules — DAG prerequisites plus the sequential rule for
+        // dependency-free modules — identical to LearningPathService.
+        var moduleNodes = pathModules.Select(m =>
+            ModuleUnlockRules.Module(m.Id, m.Order, m.Dependencies.Select(d => d.DependsOnModuleId)));
+        var (orderedNodes, _) = ModuleUnlockRules.OrderModules(moduleNodes);
+
+        if (!ModuleUnlockRules.IsUnlocked(orderedNodes, moduleId, completedIds))
             throw new UnauthorizedAccessException("Please complete the previous module to unlock this module.");
 
         var existingAttempts = await _context.QuizAttempts

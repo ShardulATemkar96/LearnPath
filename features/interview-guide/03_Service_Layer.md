@@ -184,7 +184,7 @@ Admins can act on any quiz; everyone else only on quizzes they created (`quiz.Cr
 **Create — `CreateAsync(dto, userId)`**
 - Learning path must exist.
 - Creates `Classroom` with `InviteCode = Guid.NewGuid().ToString("N")[..8].ToUpper()` (first 8 hex chars, uppercased).
-- **Auto-joins the creator as `Instructor`** in `UserClassrooms`.
+- **Auto-joins the creator as `Admin`** in `UserClassrooms`.
 - Logs `CLASSROOM_CREATED`.
 
 **Join — `JoinAsync(inviteCode, userId)`**
@@ -193,13 +193,13 @@ Admins can act on any quiz; everyone else only on quizzes they created (`quiz.Cr
 
 **Memberships & roles**
 - `GetByIdAsync` requires membership, else unauthorized.
-- `LeaveAsync`: an **Instructor cannot leave** ("Transfer ownership first.").
-- `RemoveMemberAsync`: instructor-only; cannot remove another instructor.
-- `MarkInvalidAsync`: instructor-only; only **students** can be marked invalid; the Super Admin can never be marked invalid; requires a reason; sets `User.Status = Invalid` + `InvalidReason`; logs `USER_MARKED_INVALID` (old=Active, new=Invalid).
+- `LeaveAsync`: an **Admin cannot leave** ("Transfer ownership first.").
+- `RemoveMemberAsync`: admin-only; cannot remove another admin.
+- `MarkInvalidAsync`: classroom-manager only; only **non-Admin members** can be marked invalid; the seed super-admin account can never be marked invalid; requires a reason; sets `User.Status = Invalid` + `InvalidReason`; logs `USER_MARKED_INVALID` (old=Active, new=Invalid).
 
 **Permissions helpers**
 - `GetOwnedClassroomAsync(id, userId)` — creator-only for update/delete.
-- `EnsureInstructorAsync` — membership role must be `Instructor` (used for assignment update/delete, grading, etc.).
+- `EnsureAdminAsync` — membership role must be `Admin` (used for assignment update/delete, grading, etc.).
 - `EnsureAdminAsync` — must be a member AND have the `Admin` role (used for assignment creation).
 
 **Assignments**
@@ -209,7 +209,7 @@ Admins can act on any quiz; everyone else only on quizzes they created (`quiz.Cr
 - `UploadSubmissionAsync`: file validated by `FileValidationService`, stored by `FileStorageService`; **`IsLate = assignment.DueDate < DateTime.UtcNow`**. Cannot replace a submission that is `UnderReview/Reviewed/Graded`. Status becomes `Submitted`, or `SubmittedAgain` if it was `ReturnedForResubmission`.
 - `DeleteSubmissionAsync`: only allowed when `Submitted`/`SubmittedAgain` ("Can only cancel a submitted submission.").
 - `TransitionStatusAsync`: only to `UnderReview` (from Submitted/SubmittedAgain) or `Reviewed` (from UnderReview) — strict state machine.
-- `GradeSubmissionAsync`: instructor; sets grade+feedback, status `Graded`.
+- `GradeSubmissionAsync`: admin; sets grade+feedback, status `Graded`.
 - `CompleteSubmissionAsync`: requires a grade; then `Grade >= 5 ? Graded : ReturnedForResubmission` (5 is the pass mark).
 - `PublishEvaluationAsync`: only from `Graded`; releases results + AI feedback to the student.
 
@@ -307,8 +307,8 @@ LoginPage/RegisterPage → authSlice (loginThunk/registerThunk) → authService
 - `[Authorize]` / `[Authorize(Roles = "...")]` on controllers plus **service-level ownership checks**:
   - Quiz: owner-or-admin (`GetOwnedQuizAsync`).
   - Attempts: only the owner can view/save/submit their own attempt (`attempt.UserId != userId` → unauthorized).
-  - Question bank upload: `[Authorize(Roles = "Admin")]`; search/get for `Admin,Instructor`.
-  - Classroom: membership required; instructor/admin-gated actions via `EnsureInstructorAsync` / `EnsureAdminAsync`.
+  - Question bank upload: `[Authorize(Roles = "Admin")]`; search/get for `Admin`.
+  - Classroom: membership required; management actions require `Classroom.CreatedById` ownership via `EnsureFacilitatorAsync`.
   - Auth endpoints: `[AllowAnonymous]` on register/login/refresh; `[Authorize]` on revoke; account status blocks login.
 - Claims come from the JWT (`ClaimTypes.NameIdentifier`); roles from `Identity`.
 
@@ -316,10 +316,10 @@ LoginPage/RegisterPage → authSlice (loginThunk/registerThunk) → authService
 
 ## 10. Simple Real Example
 
-An instructor uploads a bank, creates a quiz, publishes it, and a student takes it.
+An admin uploads a bank, creates a quiz, publishes it, and a student takes it.
 
-1. Instructor uploads `java.json` → `QuestionBankService.UploadAsync` → `JsonValidationService.Validate` passes → bank v1 saved with parsed `Question`/`Option` rows.
-2. Instructor creates a quiz: 5 questions from that bank, `SelectionMode=Random`, `PassingPercentage=70`, `MaximumAttempts=2`. `QuizService.CreateAsync` validates counts and saves it as `Draft`, then publishes it.
+1. Admin uploads `java.json` → `QuestionBankService.UploadAsync` → `JsonValidationService.Validate` passes → bank v1 saved with parsed `Question`/`Option` rows.
+2. Admin creates a quiz: 5 questions from that bank, `SelectionMode=Random`, `PassingPercentage=70`, `MaximumAttempts=2`. `QuizService.CreateAsync` validates counts and saves it as `Draft`, then publishes it.
 3. Student starts the quiz attached to module M3 → `AttemptService.StartAttemptAsync` picks seed `ABC`, shuffles 5 questions (Fisher–Yates) and shuffles each question's options, returns them.
 4. Student answers; each click calls `SaveAnswerAsync` (upsert). Timer hits zero → auto `SubmitAttemptAsync`.
 5. Server re-selects the same questions with seed `ABC`, computes correct count, `Percentage = correct/total*100`, `Passed = Percentage >= 70`.
@@ -331,7 +331,7 @@ An instructor uploads a bank, creates a quiz, publishes it, and a student takes 
 
 ## 11. Interview Answer
 
-"In LearnPath I kept the controllers thin and put all business logic in a service layer. For example, `QuizService` handles quiz creation, publishing and archive with validation, `AttemptService` handles starting an attempt, saving answers, scoring and review. When a student starts a quiz I store a random seed on the attempt; on submit I re-select the same questions using that seed, shuffle the options, count how many match the correct option, calculate a percentage, and mark passed if it's at least the quiz's passing percentage. `QuestionBankService` handles uploading JSON banks that are validated by `JsonValidationService`, which checks the file extension, size, JSON structure, and each question's options and correct answer. `ClassroomService` handles invite codes, instructor/student roles, assignments and submissions with a strict status flow. And `AuthService` handles registration, login, refresh-token rotation and logout using ASP.NET Identity. Every service also writes audit log entries through `AuditLogService`."
+"In LearnPath I kept the controllers thin and put all business logic in a service layer. For example, `QuizService` handles quiz creation, publishing and archive with validation, `AttemptService` handles starting an attempt, saving answers, scoring and review. When a student starts a quiz I store a random seed on the attempt; on submit I re-select the same questions using that seed, shuffle the options, count how many match the correct option, calculate a percentage, and mark passed if it's at least the quiz's passing percentage. `QuestionBankService` handles uploading JSON banks that are validated by `JsonValidationService`, which checks the file extension, size, JSON structure, and each question's options and correct answer. `ClassroomService` handles invite codes, admin/student roles, assignments and submissions with a strict status flow. And `AuthService` handles registration, login, refresh-token rotation and logout using ASP.NET Identity. Every service also writes audit log entries through `AuditLogService`."
 
 ---
 
@@ -359,7 +359,7 @@ An instructor uploads a bank, creates a quiz, publishes it, and a student takes 
    `backend/Services/Validation/JsonValidationService.cs`, used by `QuestionBankService` before anything is saved; invalid files produce per-question errors and nothing is stored.
 
 8. **How do classroom permissions work?**
-   Three levels: creator-only (`GetOwnedClassroomAsync`), membership+Instructor (`EnsureInstructorAsync`), membership+Admin role (`EnsureAdminAsync`), all enforced inside the service.
+   Three levels: creator-only (`GetOwnedClassroomAsync`), membership+Admin (`EnsureAdminAsync`), membership+Admin role (`EnsureAdminAsync`), all enforced inside the service.
 
 ---
 
@@ -373,6 +373,6 @@ An instructor uploads a bank, creates a quiz, publishes it, and a student takes 
 
 **JsonValidationService:** `.json` extension + 5 MB limit + parse + required fields + per-question rules (≥2 options, correct answer present and matching, difficulty in easy/medium/hard, explanation, no duplicates), structured `ValidationError` list, nothing saved on failure.
 
-**ClassroomService:** create with 8-char invite code, auto-instructor membership, join/leave (instructor cannot leave), member removal, mark-invalid flows (students only, reason required, super admin protected), assignments CRUD, submission upload with file validation/storage + late detection + status rules, submission status state machine, grading, complete (grade ≥ 5), publish evaluation, audit on each step.
+**ClassroomService:** create with 8-char invite code, auto-join the creator as manager (`CreatedById`), join/leave (the manager cannot leave), member removal, mark-invalid flows (non-Admin members only, reason required, seed super-admin protected), assignments CRUD, submission upload with file validation/storage + late detection + status rules, submission status state machine, grading, complete (grade ≥ 5), publish evaluation, audit on each step.
 
 **AuthService:** register (auto Student role), login (Identity password check + account-status gating + failed-login audit), refresh-token rotation with 7-day expiry, logout (revoke all tokens + `LOGOUT` audit), JWT building with roles, password policy from Identity config.

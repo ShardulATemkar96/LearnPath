@@ -18,7 +18,7 @@ Authentication & Account Management
 - Register a new account (becomes a `Student` by default).
 - Log in with email and password.
 
-### Authenticated user (Student / Instructor / Admin)
+### Authenticated user (Student / Admin)
 - View their own profile (name, email, avatar, bio, roles, and personal aggregate stats: paths created, modules completed, certificates).
 - Update their own profile (first name, last name, avatar URL, bio).
 - Change their own password (requires the current password).
@@ -157,7 +157,7 @@ In `BuildAuthResponseAsync()`:
 | Entity/Table | Purpose | Important Relationship |
 |---|---|---|
 | `AspNetUsers` | Identity user (inherits `IdentityUser`) with FirstName, LastName, AvatarUrl, Bio, Status, IsSuperAdmin | PK id; FK target for RefreshTokens, LearningPaths, Progresses, UserClassrooms, GroupMemberships |
-| `AspNetUserRoles` | Role assignment (Admin / Instructor / Student) | User ↔ IdentityRole |
+| `AspNetUserRoles` | User ↔ IdentityRole mapping (Admin / Student) | User ↔ IdentityRole |
 | `RefreshTokens` | Server-side refresh token store | FK `UserId` → `AspNetUsers`; has Token, ExpiresAt, IsRevoked |
 
 - The `User` entity adds `UserStatus Status` (`Active`, `Inactive`, `Deleted`, `Invalid`) and `IsSuperAdmin`.

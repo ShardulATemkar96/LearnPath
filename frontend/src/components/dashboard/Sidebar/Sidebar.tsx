@@ -38,10 +38,10 @@ const NAV_ITEMS: NavItem[] = [
 const Sidebar = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const { user, isAdmin, isInstructor, logout } = useAuth();
+  const { user, isAdmin, logout } = useAuth();
 
   const visibleItems = NAV_ITEMS.filter(
-    (item) => (item.contentCreator && (isAdmin || isInstructor)) || (!item.contentCreator && !item.adminOnly) || (item.adminOnly && isAdmin)
+    (item) => (item.contentCreator && isAdmin) || (!item.contentCreator && !item.adminOnly) || (item.adminOnly && isAdmin)
   );
 
   const handleLogout = async () => {

@@ -162,7 +162,7 @@ Expected knowledge: ExceptionMiddleware, type→status mapping, ApiResponse enve
 
 ## Practical scenario questions
 
-**S1.** A student reports they can access an instructor-only endpoint. How do you
+**S1.** A student reports they can access an admin-only endpoint. How do you
 debug it?
 
 Expected knowledge: Check controller has [Authorize(Roles=...)], principal has role
@@ -311,7 +311,7 @@ a new pair; logout revokes all.
 
 **A7.** Authentication = verifying who (login, JWT). Authorization = what you may do
 (roles). LearnPath: login/register are authentication; `[Authorize(Roles = "Admin")]`
-and `AdminOnly`/`InstructorOrAdmin` policies are authorization.
+and the `AdminOnly` policy are authorization.
 
 **A8.** React → middleware (Exception/Logging/RateLimit/CORS/Authn/Authz) → controller
 binds and validates DTO → service applies rules (ownership, prerequisites, audit) →
@@ -333,7 +333,7 @@ reach services. One global handler beats scattered try/catch.
 ## SCENARIO ANSWER KEY
 
 **S1.** Check: does the endpoint actually have `[Authorize(Roles = ...)]`? Is the
-token fresh (role claim updated after a role change — old tokens carry old roles)?
+token fresh (not expired, and issued after any authorization-relevant account change)?
 Is `UseAuthentication` before `UseAuthorization`? Add service-level ownership checks as
 a second layer (like `GetOwnedPathAsync`).
 

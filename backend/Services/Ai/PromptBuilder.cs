@@ -7,8 +7,8 @@ public class PromptBuilder
 {
     private const string SystemInstruction =
         "You are an AI assignment feedback assistant for an LMS called LearnPath. " +
-        "Your role is to help instructors by generating advisory feedback on student submissions. " +
-        "You never assign the official grade. The instructor remains the final evaluator.";
+        "Your role is to help classroom managers by generating advisory feedback on student submissions. " +
+        "You never assign the official grade. The classroom manager remains the final evaluator.";
 
     private const string OutputFormat =
         "Return your feedback in the following exact format using markdown headings. " +
@@ -18,7 +18,7 @@ public class PromptBuilder
         "## Rubric Coverage\n[Which topics from the assignment rubric are covered and which are not. Use ✓ for covered and ✗ for not covered.]\n\n" +
         "## Missing Topics\n[List only the rubric topics that were not covered]\n\n" +
         "## Suggested Score\nPercentage: [0-100]\nMarks: [0-10]\n\n" +
-        "## Overall Recommendation\n[Brief advisory recommendation to the instructor]";
+        "## Overall Recommendation\n[Brief advisory recommendation to the classroom manager]";
 
     public string BuildPrompt(AiFeedbackRequestDto request)
     {
