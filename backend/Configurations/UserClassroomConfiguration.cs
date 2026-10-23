@@ -19,7 +19,5 @@ public class UserClassroomConfiguration : IEntityTypeConfiguration<UserClassroom
                .WithMany(c => c.UserClassrooms)
                .HasForeignKey(uc => uc.ClassroomId)
                .OnDelete(DeleteBehavior.Cascade);
-
-        builder.Property(uc => uc.Role).HasMaxLength(50);
     }
 }

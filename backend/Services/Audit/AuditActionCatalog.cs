@@ -28,6 +28,7 @@ public static class AuditActionCatalog
         AuditAction.USER_MARKED_INVALID or
         AuditAction.INVALID_REMOVED or
         AuditAction.ROLE_CHANGED or
+        // Legacy historical actions (13/14). Kept only to classify old rows.
         AuditAction.INSTRUCTOR_ASSIGNED or
         AuditAction.INSTRUCTOR_REMOVED => "Account",
 
@@ -82,6 +83,9 @@ public static class AuditActionCatalog
 
     public static List<AuditActionOptionDto> GetOptions() =>
         Enum.GetValues<AuditAction>()
+            // Historical Instructor actions are not selectable for new filters.
+            .Where(a => a is not AuditAction.INSTRUCTOR_ASSIGNED
+                          and not AuditAction.INSTRUCTOR_REMOVED)
             .Select(a => new AuditActionOptionDto
             {
                 ActionType = a,

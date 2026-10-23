@@ -55,13 +55,6 @@ public class AdminController : ControllerBase
         return Ok(ApiResponse<AdminUserResponseDto>.Ok(result));
     }
 
-    [HttpPut("users/{userId}/role")]
-    public async Task<IActionResult> UpdateRole(string userId, [FromBody] UpdateUserRoleDto dto)
-    {
-        var result = await _service.UpdateUserRoleAsync(userId, dto, UserId);
-        return Ok(ApiResponse<AdminUserResponseDto>.Ok(result, "Role updated."));
-    }
-
     [HttpPut("users/{userId}/invalid")]
     public async Task<IActionResult> MarkInvalid(string userId, [FromBody] MarkInvalidDto dto)
     {
@@ -355,7 +348,6 @@ public class AdminController : ControllerBase
                 UserId = uc.UserId,
                 FullName = $"{uc.User.FirstName} {uc.User.LastName}",
                 Email = uc.User.Email ?? string.Empty,
-                Role = uc.Role,
                 Status = uc.User.Status,
                 InvalidReason = uc.User.InvalidReason,
                 JoinedAt = uc.JoinedAt,
@@ -393,6 +385,17 @@ public class AdminController : ControllerBase
             if (!await _context.Users.AnyAsync(u => u.Id == dto.TrainerId))
                 throw new KeyNotFoundException("Trainer not found.");
             classroom.CreatedById = dto.TrainerId;
+
+            // The classroom manager needs membership so the classroom remains
+            // accessible from their own dashboard after ownership transfer.
+            if (!classroom.UserClassrooms.Any(uc => uc.UserId == dto.TrainerId))
+            {
+                classroom.UserClassrooms.Add(new UserClassroom
+                {
+                    UserId = dto.TrainerId,
+                    ClassroomId = classroom.Id,
+                });
+            }
         }
 
         classroom.UpdatedAt = DateTime.UtcNow;

@@ -26,7 +26,7 @@ public class ClassroomResponseDto
     public string CreatedById { get; set; } = string.Empty;
     public string CreatedByName { get; set; } = string.Empty;
     public int MemberCount { get; set; }
-    public string UserRole { get; set; } = string.Empty;
+    public bool CanManage { get; set; }
     public DateTime CreatedAt { get; set; }
 }
 
@@ -41,7 +41,6 @@ public class ClassroomMemberDto
     public string UserId { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
-    public string Role { get; set; } = string.Empty;
     public UserStatus Status { get; set; } = UserStatus.Active;
     public string? InvalidReason { get; set; }
     public DateTime JoinedAt { get; set; }

@@ -13,7 +13,7 @@ import { AdminStats } from "../../types/admin.types";
 
 const NAV_CARDS = [
   { label: "Manage Paths", desc: "Edit, delete, or manage modules", path: "/admin/paths", icon: <RouteRounded sx={{ fontSize: 40 }} /> },
-  { label: "Manage Users", desc: "Change roles, activate, delete users", path: "/admin/users", icon: <PeopleRounded sx={{ fontSize: 40 }} /> },
+  { label: "Manage Users", desc: "View roles, activate, delete users", path: "/admin/users", icon: <PeopleRounded sx={{ fontSize: 40 }} /> },
   { label: "Manage Certificates", desc: "View and revoke issued certificates", path: "/admin/certificates", icon: <WorkspacePremiumRounded sx={{ fontSize: 40 }} /> },
   { label: "Manage Classrooms", desc: "View, edit, reassign, or delete classrooms", path: "/admin/classrooms", icon: <ClassRounded sx={{ fontSize: 40 }} /> },
   { label: "Question Banks", desc: "Upload, version, and archive question banks", path: "/admin/question-banks", icon: <CloudUploadRounded sx={{ fontSize: 40 }} /> },

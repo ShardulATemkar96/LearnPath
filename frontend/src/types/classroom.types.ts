@@ -8,7 +8,7 @@ export interface Classroom {
   createdById: string;
   createdByName: string;
   memberCount: number;
-  userRole: string;
+  canManage: boolean;
   createdAt: string;
 }
 
@@ -21,7 +21,6 @@ export interface ClassroomMember {
   userId: string;
   fullName: string;
   email: string;
-  role: string;
   status: string;
   invalidReason?: string | null;
   joinedAt: string;

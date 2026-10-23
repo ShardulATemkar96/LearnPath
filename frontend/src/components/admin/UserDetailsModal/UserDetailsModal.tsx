@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   Alert, Avatar, Box, Button, Chip, CircularProgress, Dialog,
-  DialogActions, DialogContent, DialogTitle, Divider, IconButton, MenuItem, Select,
+  DialogActions, DialogContent, DialogTitle, Divider, IconButton,
   Stack, TextField, Tooltip, Typography,
 } from "@mui/material";
 import {
@@ -13,8 +13,6 @@ import { AdminUser } from "../../../types/admin.types";
 import { dateUtils } from "../../../utils/dateUtils";
 import { useApiError } from "../../../hooks/useApiError";
 import ConfirmDialog from "../../common/ConfirmDialog/ConfirmDialog";
-
-const ROLES = ["Student", "Instructor", "Admin"];
 
 interface UserDetailsModalProps {
   open: boolean;
@@ -157,22 +155,6 @@ const UserDetailsModal = ({
     }
   };
 
-  const handleRoleChange = async (role: string) => {
-    if (!user || role === user.roles[0]) return;
-    setSaving(true);
-    setSuccess("");
-    clearError();
-    try {
-      const updated = await adminService.updateRole(user.userId, role);
-      setUser(updated);
-      onChanged?.();
-    } catch (err) {
-      handleError(err);
-    } finally {
-      setSaving(false);
-    }
-  };
-
   return (
     <>
       <Dialog
@@ -222,12 +204,6 @@ const UserDetailsModal = ({
                     )}
                   </Stack>
                   <Stack direction="row" alignItems="center" spacing={1} mt={0.5}>
-                    <Chip
-                      label={user.roles[0] || "Student"}
-                      size="small"
-                      variant="outlined"
-                      sx={{ fontWeight: 600 }}
-                    />
                     {statusChip(user)}
                   </Stack>
                 </Box>
@@ -267,17 +243,12 @@ const UserDetailsModal = ({
                 <Stack direction="row" alignItems="center"
                   justifyContent="space-between" flexWrap="wrap" gap={1}>
                   <Typography variant="body2" fontWeight={600}>Role</Typography>
-                  <Select
+                  <Chip
+                    label={user.roles[0] || "Student"}
                     size="small"
-                    value={user.roles[0] || "Student"}
-                    disabled={saving || isDeleted}
-                    onChange={(e) => handleRoleChange(e.target.value)}
-                    sx={{ minWidth: 150, fontSize: "0.85rem" }}
-                  >
-                    {ROLES.map((r) => (
-                      <MenuItem key={r} value={r}>{r}</MenuItem>
-                    ))}
-                  </Select>
+                    variant="outlined"
+                    sx={{ fontWeight: 600 }}
+                  />
                 </Stack>
 
                 <Stack direction="row" flexWrap="wrap" gap={1}>

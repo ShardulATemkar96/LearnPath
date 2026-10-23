@@ -18,7 +18,7 @@ public class ProgressController : ControllerBase
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
     [HttpPost("complete")]
-    [Authorize(Roles = "Instructor,Admin")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> MarkComplete([FromBody] MarkCompleteDto dto)
     {
         var result = await _service.MarkCompleteAsync(dto, UserId);

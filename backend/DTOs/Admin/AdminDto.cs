@@ -40,8 +40,3 @@ public class AdminUserGrowthDto
     public string Month { get; set; } = string.Empty;
     public int Count { get; set; }
 }
-
-public class UpdateUserRoleDto
-{
-    public string Role { get; set; } = string.Empty;
-}
