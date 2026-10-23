@@ -125,4 +125,115 @@ public class DagValidatorTests
               .BeGreaterThan(result.IndexOf(1))
               .And.BeGreaterThan(result.IndexOf(2));
     }
+
+    /* ── TryTopologicalSort (Kahn's, tie-break order) ────── */
+
+    [Fact]
+    public void TryTopologicalSort_AcyclicChain_PlacesPrerequisitesFirst()
+    {
+        // Children map: 1 must be completed before 2, 2 before 3.
+        var adjacency = new Dictionary<int, List<int>>
+        {
+            { 1, [2] },
+            { 2, [3] },
+        };
+
+        var ok = DagValidator.TryTopologicalSort(
+            adjacency, new[] { 3, 2, 1 }, out var sorted);
+
+        ok.Should().BeTrue();
+        sorted.Should().Equal([1, 2, 3]);
+    }
+
+    [Fact]
+    public void TryTopologicalSort_IndependentNodes_UsesTieBreakOrder()
+    {
+        var adjacency = new Dictionary<int, List<int>>();
+
+        var ok = DagValidator.TryTopologicalSort(
+            adjacency, new[] { 7, 3, 9 }, out var sorted);
+
+        ok.Should().BeTrue();
+        sorted.Should().Equal([7, 3, 9]);
+    }
+
+    [Fact]
+    public void TryTopologicalSort_BranchedGraph_TieBreakChoosesEarliestAvailable()
+    {
+        // 1 and 2 are both roots; 4 depends on 2, 3 depends on 1.
+        var adjacency = new Dictionary<int, List<int>>
+        {
+            { 1, [3] },
+            { 2, [4] },
+        };
+
+        var ok = DagValidator.TryTopologicalSort(
+            adjacency, new[] { 2, 1, 3, 4 }, out var sorted);
+
+        ok.Should().BeTrue();
+        sorted[0].Should().Be(2);
+        sorted.IndexOf(4).Should().BeGreaterThan(sorted.IndexOf(2));
+        sorted.IndexOf(3).Should().BeGreaterThan(sorted.IndexOf(1));
+    }
+
+    [Fact]
+    public void TryTopologicalSort_LongCycle_ReturnsFalseAndNoOrder()
+    {
+        var adjacency = new Dictionary<int, List<int>>
+        {
+            { 1, [2] },
+            { 2, [3] },
+            { 3, [1] },
+        };
+
+        var ok = DagValidator.TryTopologicalSort(
+            adjacency, new[] { 1, 2, 3 }, out var sorted);
+
+        ok.Should().BeFalse();
+        sorted.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void TryTopologicalSort_SelfLoop_ReturnsFalse()
+    {
+        var adjacency = new Dictionary<int, List<int>>
+        {
+            { 1, [1] },
+        };
+
+        var ok = DagValidator.TryTopologicalSort(
+            adjacency, new[] { 1 }, out var sorted);
+
+        ok.Should().BeFalse();
+        sorted.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void TryTopologicalSort_EmptyGraph_ReturnsTrueAndEmptyOrder()
+    {
+        var adjacency = new Dictionary<int, List<int>>();
+
+        var ok = DagValidator.TryTopologicalSort(
+            adjacency, Array.Empty<int>(), out var sorted);
+
+        ok.Should().BeTrue();
+        sorted.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void TryTopologicalSort_DuplicateEdges_DoNotCorruptInDegree()
+    {
+        var adjacency = new Dictionary<int, List<int>>
+        {
+            { 1, [3, 3, 3] },
+            { 2, [3] },
+        };
+
+        var ok = DagValidator.TryTopologicalSort(
+            adjacency, new[] { 1, 2, 3 }, out var sorted);
+
+        ok.Should().BeTrue();
+        sorted.Should().Contain([1, 2, 3]);
+        sorted.IndexOf(3).Should().Be(2);
+    }
 }

@@ -203,9 +203,10 @@ public static class EntityFactory
         int     id           = 1,
         int     learningPathId = 1,
         string? title        = null,
-        int     order        = 1)
+        int     order        = 1,
+        IEnumerable<int>? prereqIds = null)
     {
-        return new Module
+        var module = new Module
         {
             Id             = id,
             Title          = title ?? $"Module {id}",
@@ -216,6 +217,12 @@ public static class EntityFactory
             CreatedAt      = DateTime.UtcNow,
             UpdatedAt      = DateTime.UtcNow,
         };
+
+        // prereqIds: modules this module depends on (ModuleId -> DependsOnModuleId).
+        foreach (var prereqId in prereqIds ?? [])
+            module.Dependencies.Add(new ModuleDependency { ModuleId = id, DependsOnModuleId = prereqId });
+
+        return module;
     }
 
     public static Classroom CreateClassroom(
