@@ -15,6 +15,10 @@ backend/appsettings.Development.json
 backend/uploads/
 uploads/
 
+# ── Developer Runtime Logs ──────────────────────────────────────
+backend/Logs/
+backend/Logs/*.log
+
 # ── AI / Agent Working Directories ──────────────────────────────
 .agent/
 .claude/
@@ -69,3 +73,33 @@ Desktop.ini
 **/Temp/
 **/tmp/
 testingErrorReport.txt
+
+# ── Benchmark Artifacts ─────────────────────────────────────────
+# Keep benchmark source code and reproducible results; ignore only generated output.
+backend.Benchmark/bin/
+backend.Benchmark/obj/
+
+# ── Backend Diagnostic Output ───────────────────────────────────
+backend/backend-*.err
+backend/*.log
+
+# ── Local Database & Backup Files ──────────────────────────────
+*.mdf
+*.ldf
+*.bak
+
+# ── Python / Local Tool Caches (if generated) ────────────────────
+__pycache__/
+*.py[cod]
+
+# ── Local Agent / Dev Tooling (not project code) ─────────────────
+SkillsForOpenCode/
+
+# ── Generated / Binary Documentation ────────────────────────────
+# Markdown sources are the canonical form; compiled outputs are not tracked.
+documentation/**/*.pdf
+documentation/**/*.html
+
+# ── Backend Diagnostic Stubs (empty runtime files) ───────────────
+backend/backend.err
+backend/*.err

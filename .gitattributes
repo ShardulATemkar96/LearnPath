@@ -1,0 +1,27 @@
+# Normalize line endings: store as LF in the git object store.
+# git will handle checkout encoding per platform based on core.autocrlf.
+* text=auto eol=lf
+
+# Explicitly text files
+*.cs    text eol=lf
+*.tsx   text eol=lf
+*.ts    text eol=lf
+*.md    text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.json  text eol=lf
+*.sh    text eol=lf
+*.html  text eol=lf
+*.css   text eol=lf
+*.conf  text eol=lf
+
+# Binary files — never touch line endings
+*.pdf   binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.ico   binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.eot   binary
