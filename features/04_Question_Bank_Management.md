@@ -8,7 +8,7 @@ Question Bank Management
 
 - **Problem Solved:** Quizzes need reusable question content. Authoring questions one by one in the UI is slow and hard to maintain.
 - **Why It Exists:** The feature lets administrators upload complete question banks as JSON files, which are validated, reformatted into relational tables (`Questions`, `Options`), versioned, and made available to the Quiz Engine for building quizzes.
-- **Role in Application:** It is the content source for the Quiz Engine. Quizzes reference `QuestionBankId` and pull their questions from these banks. Admins manage banks; instructors search and reference them when authoring quizzes.
+- **Role in Application:** It is the content source for the Quiz Engine. Quizzes reference `QuestionBankId` and pull their questions from these banks. Admins manage banks; admins search and reference them when authoring quizzes.
 
 ---
 
@@ -22,8 +22,8 @@ Question Bank Management
 - Delete a bank (blocked if quizzes reference it).
 - Search banks by title, subject, or tag.
 
-### Instructor
-- Search and view question banks (Admin-only write actions are not exposed to instructors).
+### Admin
+- Search and view question banks (Admin-only write actions are not exposed to admins).
 
 ---
 
@@ -133,7 +133,7 @@ Each version is a **separate row** (full snapshot), so history is preserved. `St
 ## 9. Security & Authorization
 
 - Upload, version, download, delete, archive, restore: `[Authorize(Roles = "Admin")]`.
-- Search and get-by-id: `[Authorize(Roles = "Admin,Instructor")]`.
+- Search and get-by-id: `[Authorize(Roles = "Admin")]`.
 - Upload endpoints are size-limited at the HTTP level (`[RequestSizeLimit(6 * 1024 * 1024)]`).
 - Server-side validation prevents malformed or oversized files from being stored.
 - No secrets are involved; all validation is content-based.

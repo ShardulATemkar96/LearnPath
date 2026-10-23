@@ -69,7 +69,7 @@ So a row `(ModuleId = 5, DependsOnModuleId = 2)` means "module 5 depends on modu
 ### Adding a dependency (the moment DAG validation runs)
 
 ```
-Instructor UI → POST /api/v1/paths/{pathId}/dependencies  { moduleId, dependsOnModuleId }
+Admin UI → POST /api/v1/paths/{pathId}/dependencies  { moduleId, dependsOnModuleId }
    → LearningPathController.AddDependency
    → LearningPathService.AddDependencyAsync
        → GetOwnedPathAsync (ownership check)
@@ -138,7 +138,7 @@ Path: `LearningPathDetailPage` → `pathService.getById` → `redux` (path slice
   - `removeDependency(...)` → DELETE
 - `frontend/src/utils/graphUtils.ts` — `assignLevels` (level layout), `getEdges`, `getUnlockedModules`.
 - `frontend/src/components/learningPath/PathGraph/PathGraph.tsx` — draws nodes/edges, colors by completed/unlocked/locked.
-- When the instructor adds a dependency that would create a cycle, the backend returns 400; the UI shows the error message and the graph is unchanged.
+- When the admin adds a dependency that would create a cycle, the backend returns 400; the UI shows the error message and the graph is unchanged.
 
 ---
 
@@ -176,7 +176,7 @@ Path: `LearningPathDetailPage` → `pathService.getById` → `redux` (path slice
 
 ## 10. Simple Real Example
 
-An instructor creates a Java learning path with modules:
+An admin creates a Java learning path with modules:
 - M1 (Java basics)
 - M2 (OOP)
 - M3 (Inheritance)
@@ -186,7 +186,7 @@ They want M4 to require M2 and M3. They POST `{ moduleId: 4, dependsOnModuleId: 
 
 A student completes M1, M2, M3. On the path page, M4's `isUnlocked` becomes true because both dependencies are in the completed set. If they tried to open M4 early, `GetModuleContentAsync` would throw "Complete all prerequisite modules first."
 
-If the instructor tried to add `{ moduleId: 2, dependsOnModuleId: 4 }` right now, `WouldCreateCycle` would find that M4 already depends on M2, so it rejects the request — the graph stays a DAG.
+If the admin tried to add `{ moduleId: 2, dependsOnModuleId: 4 }` right now, `WouldCreateCycle` would find that M4 already depends on M2, so it rejects the request — the graph stays a DAG.
 
 ---
 

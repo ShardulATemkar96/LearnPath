@@ -597,7 +597,7 @@ const ClassroomDetailPage = () => {
     return () => { dispatch(clearSelectedClassroom()); };
   }, [id, dispatch]);
 
-  const isInstructor = classroom?.userRole === "Instructor";
+  const canManage = !!classroom?.canManage;
 
   const handleCopyCode = () => {
     if (classroom?.inviteCode) {
@@ -669,12 +669,6 @@ const ClassroomDetailPage = () => {
       }}>
         <Stack spacing={2}>
           <Stack direction="row" alignItems="center" spacing={1.5} flexWrap="wrap">
-            <Chip
-              label={classroom.userRole}
-              size="small"
-              color={classroom.userRole === "Instructor" ? "primary" : "secondary"}
-              sx={{ fontWeight: 600 }}
-            />
             <Typography variant="caption" color="text.secondary">
               {classroom.learningPathTitle}
             </Typography>
@@ -704,14 +698,14 @@ const ClassroomDetailPage = () => {
         </Stack>
       </Box>
 
-      <Tabs value={isInstructor ? tab : 0} onChange={(_, v) => setTab(v)} sx={{ mb: 3 }}>
+      <Tabs value={canManage ? tab : 0} onChange={(_, v) => setTab(v)} sx={{ mb: 3 }}>
         <Tab label={`Assignments (${classroom.assignments.length})`} />
-        {isInstructor && <Tab label={`Members (${classroom.members.length})`} />}
+        {canManage && <Tab label={`Members (${classroom.members.length})`} />}
       </Tabs>
 
       {tab === 0 && (
         <Box>
-          {isInstructor && (
+          {canManage && (
             <Button variant="contained" startIcon={<AddRounded />}
               onClick={() => setAssignmentModal(true)}
               sx={{ mb: 2 }}>
@@ -725,7 +719,7 @@ const ClassroomDetailPage = () => {
                 key={a.id}
                 assignment={a}
                 classroomId={classroom.id}
-                isInstructor={isInstructor}
+                canManage={canManage}
                 onRefresh={refresh}
                 onViewSubmissions={handleViewSubmissions}
                 onEdit={handleEditAssignment}
@@ -736,7 +730,7 @@ const ClassroomDetailPage = () => {
         </Box>
       )}
 
-      {tab === 1 && isInstructor && (
+      {tab === 1 && canManage && (
         <Stack spacing={2}>
           {classroom.members.map((m) => (
             <Box key={m.userId} sx={{ p: 2, border: "1px solid", borderColor: "divider", borderRadius: 2, bgcolor: "background.paper" }}>
@@ -749,14 +743,14 @@ const ClassroomDetailPage = () => {
                         title={m.invalidReason ?? undefined} sx={{ fontWeight: 600 }} />
                     )}
                   </Stack>
-                  <Typography variant="caption" noWrap>{m.email} — {m.role}</Typography>
+                  <Typography variant="caption" noWrap>{m.email}</Typography>
                   {m.status === "Invalid" && m.invalidReason && (
                     <Typography variant="caption" color="warning.main" sx={{ display: "block" }}>
                       Reason: {m.invalidReason}
                     </Typography>
                   )}
                 </Box>
-                {m.role !== "Instructor" && (
+                {m.userId !== classroom.createdById && (
                   <Stack direction="row" spacing={1}>
                     {m.status !== "Invalid" && (
                       <IconButton size="small" color="warning"

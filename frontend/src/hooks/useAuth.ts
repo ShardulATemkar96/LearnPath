@@ -24,8 +24,7 @@ export const useAuth = () => {
   const logout = () => dispatch(logoutThunk());
 
   const isAdmin = roles.includes(ROLES.ADMIN);
-  const isInstructor = roles.includes(ROLES.INSTRUCTOR);
   const isStudent = roles.includes(ROLES.STUDENT);
 
-  return { user, isAuthenticated, loading, error, roles, isAdmin, isInstructor, isStudent, login, register, logout };
+  return { user, isAuthenticated, loading, error, roles, isAdmin, isStudent, login, register, logout };
 };

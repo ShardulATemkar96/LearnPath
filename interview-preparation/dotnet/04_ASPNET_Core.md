@@ -436,7 +436,7 @@ only admins may act."
 ### LearnPath Example
 `UserController` (`[Authorize]` at class level), `AdminController`
 (`[Authorize(Roles = "Admin")]`), `AuthController` has `[AllowAnonymous]` on
-register/login/refresh. Policies defined in Program.cs: `AdminOnly`, `InstructorOrAdmin`.
+register/login/refresh. Policies defined in Program.cs: `AdminOnly`.
 
 ### Common Mistake
 - Forgetting `[AllowAnonymous]` on the login/register endpoints (they'd need a token

@@ -15,7 +15,7 @@ const LessonPage = () => {
   const { pathId, moduleId } = useParams<{ pathId: string; moduleId: string }>();
   const navigate = useNavigate();
   const roles = useSelector(selectUserRoles);
-  const canManuallyComplete = roles.includes("Instructor") || roles.includes("Admin");
+  const canManuallyComplete = roles.includes("Admin");
   const [module, setModule] = useState<Module | null>(null);
   const [moduleQuiz, setModuleQuiz] = useState<ModuleQuizResponseDto | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,11 +44,16 @@ const LessonPage = () => {
         }
       })
       .catch((e: any) => {
-        const msg = e?.response?.data?.message || e?.message || "Failed to load module.";
-        if (e?.response?.status === 403) {
+        const status = e?.response?.status;
+        const serverMsg = e?.response?.data?.message ?? e?.response?.data?.Message;
+        if (status === 429) {
+          setError(serverMsg ?? "Too many requests. Please wait a few seconds and try again.");
+        } else if (status === 403) {
           setError("Please complete the previous module to unlock this module.");
+        } else if (status === 404) {
+          setError(serverMsg ?? "Module not found.");
         } else {
-          setError("Module not found.");
+          setError(serverMsg ?? "Failed to load module.");
         }
       })
       .finally(() => setLoading(false));

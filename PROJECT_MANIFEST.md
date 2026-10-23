@@ -41,7 +41,7 @@
 ║38 ║ backend/Controllers/UserController.cs                    ║ User profile endpoints   ║ Phase 6   ║ —             ║ IUserService, UserDto                   ║
 ║39 ║ backend/Data/ApplicationDbContext.cs                     ║ EF Core DB context       ║ Phase 1   ║ 7,9           ║ All 16 entities + configurations        ║
 ║40 ║ backend/Data/Seeders/RoleSeeder.cs                       ║ Role seed data           ║ Phase 2   ║ —             ║ Microsoft.AspNetCore.Identity           ║
-║41 ║ backend/DTOs/Admin/AdminDto.cs                           ║ Admin DTOs               ║ Phase 7   ║ —             ║ None                                    ║
+║41 ║ backend/DTOs/AdminDto.cs                           ║ Admin DTOs               ║ Phase 7   ║ —             ║ None                                    ║
 ║42 ║ backend/DTOs/Analytics/AnalyticsDto.cs                   ║ Analytics DTOs           ║ Phase 6   ║ —             ║ None                                    ║
 ║43 ║ backend/DTOs/Auth/AuthResponseDto.cs                     ║ Auth response DTO        ║ Phase 1   ║ —             ║ None                                    ║
 ║44 ║ backend/DTOs/Auth/LoginRequestDto.cs                     ║ Login request DTO        ║ Phase 1   ║ —             ║ None                                    ║
@@ -90,7 +90,7 @@
 ║87 ║ backend/Middleware/LoggingMiddleware.cs                   ║ Request logger           ║ Phase 8   ║ —             ║ None                                    ║
 ║88 ║ backend/Middleware/RateLimitingMiddleware.cs              ║ IP rate limiter          ║ Phase 10  ║ —             ║ None                                    ║
 ║89 ║ backend/Repositories/GenericRepository.cs                ║ Generic EF repository    ║ Phase 1   ║ —             ║ IGenericRepository, DbContext           ║
-║90 ║ backend/Services/Admin/AdminService.cs                   ║ Admin business logic     ║ Phase 7   ║ —             ║ DbContext, UserManager, AdminDto        ║
+║90 ║ backend/Services/AdminService.cs                   ║ Admin business logic     ║ Phase 7   ║ —             ║ DbContext, UserManager, AdminDto        ║
 ║91 ║ backend/Services/Analytics/AnalyticsService.cs           ║ Analytics aggregation    ║ Phase 6   ║ —             ║ DbContext, AnalyticsDto                 ║
 ║92 ║ backend/Services/Auth/AuthService.cs                     ║ Auth business logic      ║ Phase 2   ║ —             ║ UserManager, JwtTokenGenerator, DbCtx  ║
 ║93 ║ backend/Services/Classroom/ClassroomService.cs           ║ Classroom business logic ║ Phase 5   ║ —             ║ DbContext, ClassroomDTOs                ║

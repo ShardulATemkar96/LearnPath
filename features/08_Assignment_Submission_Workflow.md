@@ -6,15 +6,15 @@ Assignment & Submission Workflow
 
 ## 2. Purpose
 
-- **Problem Solved:** Classrooms need structured coursework: instructors publish assignments with due dates, students upload work files, and instructors review, grade, return, or approve that work through a controlled status workflow.
-- **Why It Exists:** This feature gives the platform a complete assessment loop beyond quizzes. It enforces file constraints, tracks late submissions, and gates the visibility of grades/feedback until the instructor publishes the evaluation.
+- **Problem Solved:** Classrooms need structured coursework: admins publish assignments with due dates, students upload work files, and admins review, grade, return, or approve that work through a controlled status workflow.
+- **Why It Exists:** This feature gives the platform a complete assessment loop beyond quizzes. It enforces file constraints, tracks late submissions, and gates the visibility of grades/feedback until the admin publishes the evaluation.
 - **Role in Application:** It operates inside the Classroom Engine's scope. Assignments belong to classrooms; submissions belong to assignments and users. The AI feedback feature (Feature 9) builds on top of submissions.
 
 ---
 
 ## 3. What the User Can Do
 
-### Instructor
+### Admin
 - Create / edit / delete assignments in a classroom (title, description, due date).
 - View all students' submissions for an assignment (one row per student, including non-submitters).
 - Preview and download submission files.
@@ -36,8 +36,8 @@ Assignment & Submission Workflow
 ## 4. Feature Workflow
 
 ```
-[Instructor creates assignment]
-  → POST /classrooms/{id}/assignments  (requires platform Admin role via EnsureAdminAsync)
+[Admin creates assignment]
+  → POST /classrooms/{id}/assignments  (requires platform Admin role + classroom-manager ownership)
   → Assignment row created with title, description, due date
 
 [Student uploads]
@@ -50,7 +50,7 @@ Assignment & Submission Workflow
   → Submission row created/updated (Status = SUBMITTED, or SUBMITTED_AGAIN if returning)
   → SUBMISSION_UPLOADED audit
 
-[Instructor reviews & grades]
+[Admin reviews & grades]
   → PUT .../submissions/{sid}/verify        → SUBMITTED → UNDER_REVIEW
   → PUT .../submissions/{sid}/grade {grade, feedback} → GRADED
   → PUT .../submissions/{sid}/complete      → GRADED (grade ≥ 5) else RETURNED_FOR_RESUBMISSION
@@ -66,8 +66,8 @@ Assignment & Submission Workflow
 ## 5. How It Works Internally
 
 ### Assignment CRUD
-- `CreateAssignmentAsync` requires platform `Admin` role (`EnsureAdminAsync`) and membership.
-- `UpdateAssignmentAsync` / `DeleteAssignmentAsync` require the per-classroom `Instructor` role (`EnsureInstructorAsync`).
+- `CreateAssignmentAsync` requires the platform `Admin` role at the controller and classroom-manager ownership in the service.
+- `UpdateAssignmentAsync` / `DeleteAssignmentAsync` require classroom-manager ownership (`CreatedById`).
 
 ### File Validation
 `FileValidationService.Validate(IFormFile)` checks in order:
@@ -110,10 +110,10 @@ In `GetMySubmissionAsync`:
 
 - `Feedback` and `Grade` are returned to the student **only if `PublishedAt` is not null**.
 - AI feedback (Feature 9) is also only attached when published.
-- Instructors see grades/feedback regardless (their own list endpoint).
+- Admins see grades/feedback regardless (their own list endpoint).
 
 ### Submission Listing (per classroom)
-`GetSubmissionsAsync` lists all `Student`-role classroom members joined to their submissions (or `NOT_SUBMITTED`), ordered by `SubmittedAt` descending. This gives instructors a roster-style view.
+`GetSubmissionsAsync` lists all `Student`-role classroom members joined to their submissions (or `NOT_SUBMITTED`), ordered by `SubmittedAt` descending. This gives admins a roster-style view.
 
 ### Cancellation
 `DeleteSubmissionAsync` — only allowed when status is `SUBMITTED` or `SUBMITTED_AGAIN`; deletes the row (the file is not removed from disk by this method).
@@ -122,7 +122,7 @@ In `GetMySubmissionAsync`:
 `GetAuthorizedFileStreamAsync`:
 
 - Loads the submission with assignment/classroom.
-- Authorizes if the caller is the submission owner **or** an `Instructor` of the classroom.
+- Authorizes if the caller is the submission owner **or** an `Admin` of the classroom.
 - Returns stream + original file name + MIME. Preview sets `X-Content-Type-Options: nosniff`.
 
 ---
@@ -169,11 +169,11 @@ In `GetMySubmissionAsync`:
 ## 9. Security & Authorization
 
 - All endpoints require authentication.
-- Assignment create requires the platform `Admin` role; assignment update/delete and submission grading/verification/completion/publishing/return require the per-classroom `Instructor` role.
+- Assignment create requires the platform `Admin` role; assignment update/delete and submission grading/verification/completion/publishing/return require classroom-manager ownership.
 - Upload/own-submission view/cancel are scoped to the authenticated user.
-- File preview/download requires the submission owner **or** an instructor of the classroom.
+- File preview/download requires the submission owner **or** an admin of the classroom.
 - File validation blocks wrong types/sizes and MIME/extension mismatches; storage path-traversal is prevented at the filesystem layer.
-- Grade/feedback are hidden from students until the instructor publishes the evaluation.
+- Grade/feedback are hidden from students until the admin publishes the evaluation.
 
 ---
 
@@ -199,7 +199,7 @@ In `GetMySubmissionAsync`:
 - **Storage:** file written to `uploads/assignments/assignment-10/student-u123/submission.pdf`.
 - **DB:** Submission row created: `Status = SUBMITTED`, `IsLate = true`, `SubmittedAt = now`.
 
-### Step 2: Instructor verifies and grades
+### Step 2: Admin verifies and grades
 - `PUT /classrooms/4/assignments/10/submissions/88/verify` → status `UNDER_REVIEW`.
 - `PUT /classrooms/4/assignments/10/submissions/88/grade` `{ grade: 8, feedback: "Good work" }` → status `GRADED`.
 - `POST /classrooms/4/assignments/10/submissions/88/publish` → `PublishedAt` set.
@@ -250,5 +250,5 @@ In `GetMySubmissionAsync`:
 - Return for resubmission
 - Publish evaluation gate (visible to students only after publishing)
 - Preview and download submission files with authorization
-- Roster-style submission listing for instructors (including non-submitters)
+- Roster-style submission listing for admins (including non-submitters)
 - Audit logging of assignment/submission lifecycle events

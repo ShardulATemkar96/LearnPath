@@ -1428,11 +1428,6 @@ namespace LearnPath.API.Migrations
                     b.Property<DateTime>("JoinedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
                     b.HasKey("UserId", "ClassroomId");
 
                     b.HasIndex("ClassroomId");

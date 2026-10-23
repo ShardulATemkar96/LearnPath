@@ -194,7 +194,7 @@ const AdminClassroomsPage = () => {
             <TextField
               size="small"
               label="Search"
-              placeholder="Name, invite code, path or trainer..."
+              placeholder="Name, invite code, path or manager..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               sx={{ minWidth: 260, flexGrow: 1 }}
@@ -261,7 +261,7 @@ const AdminClassroomsPage = () => {
                 <TableRow>
                   <TableCell sx={{ fontWeight: 700 }}>Name</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Learning Path</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Trainer</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Classroom Manager</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Members</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Created</TableCell>
@@ -357,7 +357,7 @@ const AdminClassroomsPage = () => {
               <DetailRow label="Description" value={detail.description || "—"} />
               <DetailRow label="Invite Code" value={detail.inviteCode} />
               <DetailRow label="Learning Path" value={detail.learningPathTitle} />
-              <DetailRow label="Trainer" value={`${detail.createdByName} (${detail.createdByEmail})`} />
+              <DetailRow label="Classroom Manager" value={`${detail.createdByName} (${detail.createdByEmail})`} />
               <DetailRow label="Members" value={`${detail.memberCount}`} />
               <DetailRow label="Assignments" value={`${detail.assignmentCount}`} />
               <DetailRow label="Created At" value={formatDateTime(detail.createdAt)} />
@@ -375,7 +375,6 @@ const AdminClassroomsPage = () => {
                       <Typography variant="body2" fontWeight={600}>{m.fullName}</Typography>
                       <Typography variant="caption" color="text.secondary">{m.email}</Typography>
                     </Box>
-                    <Chip label={m.role} size="small" variant="outlined" />
                     <Chip label={m.status} size="small"
                       sx={{ height: 20, fontSize: "0.68rem", fontWeight: 600,
                         color: m.status === "Active" ? "#10B981" : "#EF4444",
@@ -413,7 +412,7 @@ const AdminClassroomsPage = () => {
               </Select>
             </Box>
             <Box>
-              <Typography variant="caption" color="text.secondary">Trainer</Typography>
+              <Typography variant="caption" color="text.secondary">Classroom Manager</Typography>
               <Select fullWidth size="small" value={editForm.trainerId}
                 onChange={(e) => setEditForm(f => ({ ...f, trainerId: String(e.target.value) }))}>
                 <MenuItem value="">Unchanged</MenuItem>

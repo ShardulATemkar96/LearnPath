@@ -21,7 +21,7 @@ public class QuizController : ControllerBase
 
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
-    [Authorize(Roles = "Admin,Instructor")]
+    [Authorize(Roles = "Admin")]
     [HttpGet("quizzes")]
     public async Task<IActionResult> GetAll()
     {
@@ -43,7 +43,7 @@ public class QuizController : ControllerBase
         }
     }
 
-    [Authorize(Roles = "Admin,Instructor")]
+    [Authorize(Roles = "Admin")]
     [HttpPost("quizzes")]
     public async Task<IActionResult> Create([FromBody] CreateQuizDto dto)
     {
@@ -59,7 +59,7 @@ public class QuizController : ControllerBase
         }
     }
 
-    [Authorize(Roles = "Admin,Instructor")]
+    [Authorize(Roles = "Admin")]
     [HttpPut("quizzes/{id:int}")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateQuizDto dto)
     {
@@ -78,7 +78,7 @@ public class QuizController : ControllerBase
         }
     }
 
-    [Authorize(Roles = "Admin,Instructor")]
+    [Authorize(Roles = "Admin")]
     [HttpPatch("quizzes/{id:int}/archive")]
     public async Task<IActionResult> Archive(int id)
     {
@@ -89,7 +89,7 @@ public class QuizController : ControllerBase
         return Ok(ApiResponse<QuizResponseDto>.Ok(result, "Quiz archived."));
     }
 
-    [Authorize(Roles = "Admin,Instructor")]
+    [Authorize(Roles = "Admin")]
     [HttpPatch("quizzes/{id:int}/publish")]
     public async Task<IActionResult> Publish(int id)
     {
@@ -107,7 +107,7 @@ public class QuizController : ControllerBase
         }
     }
 
-    [Authorize(Roles = "Admin,Instructor")]
+    [Authorize(Roles = "Admin")]
     [HttpPatch("quizzes/{id:int}/unpublish")]
     public async Task<IActionResult> Unpublish(int id)
     {
@@ -143,7 +143,7 @@ public class QuizController : ControllerBase
         }
     }
 
-    [Authorize(Roles = "Admin,Instructor")]
+    [Authorize(Roles = "Admin")]
     [HttpPost("modules/{moduleId:int}/quiz")]
     public async Task<IActionResult> LinkQuiz(int moduleId, [FromBody] LinkQuizDto dto)
     {
@@ -158,7 +158,7 @@ public class QuizController : ControllerBase
         }
     }
 
-    [Authorize(Roles = "Admin,Instructor")]
+    [Authorize(Roles = "Admin")]
     [HttpDelete("modules/{moduleId:int}/quiz")]
     public async Task<IActionResult> UnlinkQuiz(int moduleId)
     {

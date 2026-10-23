@@ -6,7 +6,7 @@ Analytics Dashboard (User & Quiz Analytics)
 
 ## 2. Purpose
 
-- **Problem Solved:** Learners need insight into their own progress, streaks, and completion rates; instructors/admins need per-quiz performance data (pass rates, score distributions, hardest questions).
+- **Problem Solved:** Learners need insight into their own progress, streaks, and completion rates; admins/admins need per-quiz performance data (pass rates, score distributions, hardest questions).
 - **Why It Exists:** The dashboard gives an at-a-glance summary (stats, per-path progress, recent activity), while the analytics layer provides deeper longitudinal metrics and quiz-level performance breakdowns.
 - **Role in Application:** It is the measurement/reporting subsystem. It aggregates data already collected by Progress, QuizAttempt/StudentAnswer, Certificate, and UserClassroom records.
 

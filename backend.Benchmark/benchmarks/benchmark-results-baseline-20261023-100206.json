@@ -1,0 +1,52 @@
+{
+  "Phase": "baseline",
+  "TimestampUtc": "2026-10-23T10:02:06.8654684Z",
+  "Server": "(localdb)\\MSSQLLocalDB",
+  "Database": "LearnPathDb_Benchmark",
+  "EngineVersion": "Microsoft SQL Server 2025 (RTM-CU3) (KB5077896) - 17.0.4025.3 (X64)",
+  "Framework": ".NET 10.0.12",
+  "DatabaseProvider": "Microsoft.EntityFrameworkCore.SqlServer 10.0.9",
+  "Dataset": {
+    "Users": 61,
+    "Paths": 20,
+    "Modules": 800,
+    "Dependencies": 860,
+    "Quizzes": 20,
+    "Progresses": 24000,
+    "SeedSeconds": 8.176648,
+    "Total": 25761
+  },
+  "BenchmarkConfiguration": "fresh DbContext per request (as in production), warmup=3, measured runs=30, connection pooling on, Stopwatch timing",
+  "Endpoints": [
+    {
+      "Endpoint": "GET /paths/public -> GetAllPublicAsync",
+      "MedianMs": 46.31,
+      "P95Ms": 59.49,
+      "QueryCount": 1
+    },
+    {
+      "Endpoint": "GET /paths/my -> GetMyPathsAsync",
+      "MedianMs": 45.67,
+      "P95Ms": 63.73,
+      "QueryCount": 1
+    },
+    {
+      "Endpoint": "GET /paths/{id} -> GetByIdAsync",
+      "MedianMs": 4.15,
+      "P95Ms": 5.68,
+      "QueryCount": 2
+    },
+    {
+      "Endpoint": "GET /progress -> GetUserProgressAsync",
+      "MedianMs": 86.26,
+      "P95Ms": 100.98,
+      "QueryCount": 41
+    },
+    {
+      "Endpoint": "GET /progress/paths/{id} -> GetPathProgressAsync",
+      "MedianMs": 3.75,
+      "P95Ms": 5.14,
+      "QueryCount": 3
+    }
+  ]
+}

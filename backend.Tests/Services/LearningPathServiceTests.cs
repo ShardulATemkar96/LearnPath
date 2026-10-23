@@ -1,5 +1,6 @@
 using FluentAssertions;
 using LearnPath.API.Data;
+using LearnPath.API.DTOs.LearningPath;
 using LearnPath.API.Entities;
 using LearnPath.API.Services.LearningPath;
 using LearnPath.Tests.Helpers;
@@ -189,5 +190,137 @@ public class LearningPathServiceTests
         (await ctx.ModuleTags.CountAsync()).Should().Be(0);
         (await ctx.QuizAttempts.CountAsync()).Should().Be(0);
         (await ctx.StudentAnswers.CountAsync()).Should().Be(0);
+    }
+
+    /* ── AddDependencyAsync ──────────────────────────────── */
+
+    [Fact]
+    public async Task AddDependency_ValidPair_PersistsDependency()
+    {
+        var (ctx, svc, ownerId) = CreateService();
+        ctx.Users.Add(EntityFactory.CreateUser(id: ownerId));
+        ctx.LearningPaths.Add(EntityFactory.CreateLearningPath(id: 1, createdById: ownerId));
+        ctx.Modules.Add(EntityFactory.CreateModule(id: 1, learningPathId: 1, order: 1));
+        ctx.Modules.Add(EntityFactory.CreateModule(id: 2, learningPathId: 1, order: 2));
+        await ctx.SaveChangesAsync();
+
+        await svc.AddDependencyAsync(1, new AddDependencyDto { ModuleId = 2, DependsOnModuleId = 1 }, ownerId);
+
+        (await ctx.ModuleDependencies.CountAsync()).Should().Be(1);
+        ctx.ModuleDependencies.Single().Should().Match<ModuleDependency>(
+            d => d.ModuleId == 2 && d.DependsOnModuleId == 1);
+    }
+
+    [Fact]
+    public async Task AddDependency_SelfDependency_ThrowsAndPersistsNothing()
+    {
+        var (ctx, svc, ownerId) = CreateService();
+        ctx.Users.Add(EntityFactory.CreateUser(id: ownerId));
+        ctx.LearningPaths.Add(EntityFactory.CreateLearningPath(id: 1, createdById: ownerId));
+        ctx.Modules.Add(EntityFactory.CreateModule(id: 1, learningPathId: 1));
+        await ctx.SaveChangesAsync();
+
+        var act = () => svc.AddDependencyAsync(
+            1, new AddDependencyDto { ModuleId = 1, DependsOnModuleId = 1 }, ownerId);
+
+        (await act.Should().ThrowAsync<ArgumentException>())
+            .WithMessage("*cannot depend on itself*");
+        (await ctx.ModuleDependencies.CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task AddDependency_DirectCycle_ThrowsAndPersistsNothing()
+    {
+        var (ctx, svc, ownerId) = CreateService();
+        ctx.Users.Add(EntityFactory.CreateUser(id: ownerId));
+        ctx.LearningPaths.Add(EntityFactory.CreateLearningPath(id: 1, createdById: ownerId));
+        ctx.Modules.Add(EntityFactory.CreateModule(id: 1, learningPathId: 1, order: 1));
+        ctx.Modules.Add(EntityFactory.CreateModule(id: 2, learningPathId: 1, order: 2));
+        ctx.ModuleDependencies.Add(new ModuleDependency { ModuleId = 2, DependsOnModuleId = 1 });
+        await ctx.SaveChangesAsync();
+
+        var act = () => svc.AddDependencyAsync(
+            1, new AddDependencyDto { ModuleId = 1, DependsOnModuleId = 2 }, ownerId);
+
+        (await act.Should().ThrowAsync<ArgumentException>())
+            .WithMessage("Adding this dependency would create a cycle.");
+        (await ctx.ModuleDependencies.CountAsync()).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task AddDependency_LongCycle_ThrowsAndPersistsNothing()
+    {
+        var (ctx, svc, ownerId) = CreateService();
+        ctx.Users.Add(EntityFactory.CreateUser(id: ownerId));
+        ctx.LearningPaths.Add(EntityFactory.CreateLearningPath(id: 1, createdById: ownerId));
+        ctx.Modules.Add(EntityFactory.CreateModule(id: 1, learningPathId: 1, order: 1));
+        ctx.Modules.Add(EntityFactory.CreateModule(id: 2, learningPathId: 1, order: 2));
+        ctx.Modules.Add(EntityFactory.CreateModule(id: 3, learningPathId: 1, order: 3));
+        ctx.ModuleDependencies.Add(new ModuleDependency { ModuleId = 2, DependsOnModuleId = 1 });
+        ctx.ModuleDependencies.Add(new ModuleDependency { ModuleId = 3, DependsOnModuleId = 2 });
+        await ctx.SaveChangesAsync();
+
+        // 1 → 2 → 3 → 1 would close the cycle.
+        var act = () => svc.AddDependencyAsync(
+            1, new AddDependencyDto { ModuleId = 1, DependsOnModuleId = 3 }, ownerId);
+
+        (await act.Should().ThrowAsync<ArgumentException>())
+            .WithMessage("Adding this dependency would create a cycle.");
+        (await ctx.ModuleDependencies.CountAsync()).Should().Be(2);
+    }
+
+    [Fact]
+    public async Task AddDependency_ModuleFromAnotherPath_ThrowsAndPersistsNothing()
+    {
+        var (ctx, svc, ownerId) = CreateService();
+        ctx.Users.Add(EntityFactory.CreateUser(id: ownerId));
+        ctx.LearningPaths.Add(EntityFactory.CreateLearningPath(id: 1, createdById: ownerId));
+        ctx.LearningPaths.Add(EntityFactory.CreateLearningPath(id: 2, createdById: ownerId));
+        ctx.Modules.Add(EntityFactory.CreateModule(id: 1, learningPathId: 1));
+        ctx.Modules.Add(EntityFactory.CreateModule(id: 2, learningPathId: 2));
+        await ctx.SaveChangesAsync();
+
+        var act = () => svc.AddDependencyAsync(
+            1, new AddDependencyDto { ModuleId = 1, DependsOnModuleId = 2 }, ownerId);
+
+        (await act.Should().ThrowAsync<ArgumentException>())
+            .WithMessage("Prerequisite module not found in this learning path.");
+        (await ctx.ModuleDependencies.CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task AddDependency_MissingModule_ThrowsAndPersistsNothing()
+    {
+        var (ctx, svc, ownerId) = CreateService();
+        ctx.Users.Add(EntityFactory.CreateUser(id: ownerId));
+        ctx.LearningPaths.Add(EntityFactory.CreateLearningPath(id: 1, createdById: ownerId));
+        ctx.Modules.Add(EntityFactory.CreateModule(id: 1, learningPathId: 1));
+        await ctx.SaveChangesAsync();
+
+        var act = () => svc.AddDependencyAsync(
+            1, new AddDependencyDto { ModuleId = 99, DependsOnModuleId = 1 }, ownerId);
+
+        (await act.Should().ThrowAsync<ArgumentException>())
+            .WithMessage("Module not found in this learning path.");
+        (await ctx.ModuleDependencies.CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task AddDependency_Duplicate_ThrowsAndKeepsSingleRow()
+    {
+        var (ctx, svc, ownerId) = CreateService();
+        ctx.Users.Add(EntityFactory.CreateUser(id: ownerId));
+        ctx.LearningPaths.Add(EntityFactory.CreateLearningPath(id: 1, createdById: ownerId));
+        ctx.Modules.Add(EntityFactory.CreateModule(id: 1, learningPathId: 1, order: 1));
+        ctx.Modules.Add(EntityFactory.CreateModule(id: 2, learningPathId: 1, order: 2));
+        ctx.ModuleDependencies.Add(new ModuleDependency { ModuleId = 2, DependsOnModuleId = 1 });
+        await ctx.SaveChangesAsync();
+
+        var act = () => svc.AddDependencyAsync(
+            1, new AddDependencyDto { ModuleId = 2, DependsOnModuleId = 1 }, ownerId);
+
+        (await act.Should().ThrowAsync<ArgumentException>())
+            .WithMessage("Dependency already exists.");
+        (await ctx.ModuleDependencies.CountAsync()).Should().Be(1);
     }
 }

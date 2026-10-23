@@ -3,7 +3,6 @@ import { Routes, Route } from "react-router-dom";
 import { ROUTES } from "../constants/routes";
 import ProtectedRoute from "./ProtectedRoute";
 import AdminRoute     from "./AdminRoute";
-import InstructorRoute from "./InstructorRoute";
 import GuestRoute     from "./GuestRoute";
 import Loader         from "../components/common/Loader/Loader";
 import MainLayout     from "../layouts/MainLayout";
@@ -101,11 +100,6 @@ const AppRoutes = () => (
                 <Route path={ROUTES.ADMIN_QUIZZES} element={<AdminQuizManagementPage />} />
                 <Route path={ROUTES.ADMIN_QUIZ_ANALYTICS} element={<AdminQuizAnalyticsPage />} />
                 <Route path={ROUTES.ADMIN_HISTORY} element={<AdminHistoryPage />} />
-              </Route>
-            </Route>
-            <Route element={<InstructorRoute />}>
-              <Route element={<AdminLayout />}>
-                <Route path={ROUTES.ADMIN_QUIZZES} element={<AdminQuizManagementPage />} />
               </Route>
             </Route>
           </Route>

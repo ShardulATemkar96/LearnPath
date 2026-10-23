@@ -75,13 +75,13 @@ A `Stopwatch` wraps the pipeline; logs `"{Method} {Path} responded {StatusCode} 
 Scoped services for each domain (`IAuthService`, `IDashboardService`, `ICommunityService`, `IAuditLogService`, `IAdminService`, …), the `CommunityRepository`, AI stack (`NvidiaProvider` via `AddHttpClient`, `AiFeedbackService`, `PromptBuilder`, `AiResponseParser`), `IHttpContextAccessor`, AutoMapper, and `UploadSettings`.
 
 ### Authorization Policies
-`AddAuthorizationBuilder`: `AdminOnly` (role Admin) and `InstructorOrAdmin` (Admin or Instructor) — used alongside `[Authorize(Roles=...)]` and attribute-level guards.
+`AddAuthorizationBuilder`: one `AdminOnly` policy requiring the `Admin` role — used alongside `[Authorize(Roles=...)]` and attribute-level guards.
 
 ### Swagger
 Swagger/OpenAPI v1 with XML doc comments, title "LearnPath API", and a Bearer (JWT) security definition wired into a global security requirement. Enabled only in development.
 
 ### Seeding & Migrations
-On startup: `db.Database.MigrateAsync()`, then `RoleSeeder` and `AdminSeeder` ensure the seed roles and Super Admin account exist.
+On startup: `db.Database.MigrateAsync()`, then `RoleSeeder` and `AdminSeeder` ensure the `Admin`/`Student` roles and the seed admin account exist. The seed account carries the `IsSuperAdmin` flag; it is not a separate role.
 
 ---
 

@@ -1,4 +1,5 @@
-﻿using LearnPath.API.Data;
+﻿using LearnPath.API.Algorithms.Graph;
+using LearnPath.API.Data;
 using LearnPath.API.DTOs.Progress;
 using LearnPath.API.Entities;
 using LearnPath.API.Interfaces.Services;
@@ -28,18 +29,29 @@ public class ProgressService : IProgressService
             .FirstOrDefaultAsync(m => m.Id == dto.ModuleId)
             ?? throw new KeyNotFoundException("Module not found.");
 
-        var depIds = module.Dependencies.Select(d => d.DependsOnModuleId).ToList();
-        if (depIds.Any())
-        {
-            var completedDepCount = await _context.Progresses
-                .CountAsync(p =>
-                    p.UserId == userId &&
-                    p.IsCompleted &&
-                    depIds.Contains(p.ModuleId));
+        // Same unlocking rules as LearningPathService / AttemptService, so
+        // completing through this endpoint cannot bypass a locked module.
+        var pathModules = await _context.Modules
+            .Where(m => m.LearningPathId == module.LearningPathId)
+            .Include(m => m.Dependencies)
+            .ToListAsync();
 
-            if (completedDepCount < depIds.Count)
-                throw new ArgumentException(
-                    "Complete all prerequisite modules first.");
+        var completedIds = (await _context.Progresses
+            .Where(p => p.UserId == userId && p.IsCompleted &&
+                        pathModules.Select(pm => pm.Id).Contains(p.ModuleId))
+            .Select(p => p.ModuleId)
+            .ToListAsync()).ToHashSet();
+
+        var moduleNodes = pathModules.Select(m =>
+            ModuleUnlockRules.Module(m.Id, m.Order, m.Dependencies.Select(d => d.DependsOnModuleId)));
+        var (orderedNodes, _) = ModuleUnlockRules.OrderModules(moduleNodes);
+
+        if (!ModuleUnlockRules.IsUnlocked(orderedNodes, dto.ModuleId, completedIds))
+        {
+            var targetNode = orderedNodes.First(n => n.Id == dto.ModuleId);
+            throw new ArgumentException(targetNode.PrerequisiteIds.Count > 0
+                ? "Complete all prerequisite modules first."
+                : "Complete the previous module to unlock this module.");
         }
 
         var existing = await _context.Progresses
@@ -133,71 +145,127 @@ public class ProgressService : IProgressService
 
     public async Task<List<PathProgressSummaryDto>> GetUserProgressAsync(string userId)
     {
-        var enrolledPathIds = await _context.Progresses
-            .Where(p => p.UserId == userId)
-            .Select(p => p.Module.LearningPathId)
-            .Distinct()
-            .ToListAsync();
-
-        var summaries = new List<PathProgressSummaryDto>();
-
-        foreach (var pathId in enrolledPathIds)
-            summaries.Add(await BuildPathSummaryInternalAsync(pathId, userId));
-
-        return summaries;
+        return await BuildPathSummariesAsync(
+            _context.LearningPaths.Where(p =>
+                p.Modules.Any(m => m.Progresses.Any(pr => pr.UserId == userId))),
+            userId);
     }
 
     public async Task<PathProgressSummaryDto> GetPathProgressAsync(
         int pathId, string userId)
     {
-        var exists = await _context.LearningPaths.AnyAsync(p => p.Id == pathId);
-        if (!exists) throw new KeyNotFoundException("Learning path not found.");
-        return await BuildPathSummaryInternalAsync(pathId, userId);
+        var summaries = await BuildPathSummariesAsync(
+            _context.LearningPaths.Where(p => p.Id == pathId), userId);
+
+        return summaries.FirstOrDefault()
+            ?? throw new KeyNotFoundException("Learning path not found.");
     }
 
-    private async Task<PathProgressSummaryDto> BuildPathSummaryInternalAsync(
-        int pathId, string userId)
+    // Previously this looped once per enrolled path: one full path load (all
+    // module columns) plus one progress query per path. Measured 41 queries
+    // and ~86ms for a student enrolled in 20 paths. Rebuilt as three flat
+    // queries: matched paths, their modules (completion timestamps inlined as
+    // a correlated subquery), and their dependency edges. Summaries are then
+    // assembled in memory with the shared ModuleUnlockRules.
+    private async Task<List<PathProgressSummaryDto>> BuildPathSummariesAsync(
+        IQueryable<Entities.LearningPath> pathQuery, string userId)
     {
-        var path = await _context.LearningPaths
-            .Include(p => p.Modules)
-                .ThenInclude(m => m.Dependencies)
-            .FirstOrDefaultAsync(p => p.Id == pathId)
-            ?? throw new KeyNotFoundException("Path not found.");
+        var pathInfos = await pathQuery
+            .Select(p => new { p.Id, p.Title })
+            .ToListAsync();
+        if (pathInfos.Count == 0) return [];
 
-        var completedIds = await _context.Progresses
-            .Where(p => p.UserId == userId && p.IsCompleted &&
-                        path.Modules.Select(m => m.Id).Contains(p.ModuleId))
-            .ToDictionaryAsync(p => p.ModuleId, p => p.CompletedAt);
+        var pathIds = pathInfos.Select(p => p.Id).ToList();
 
-        var moduleDtos = path.Modules.Select(m =>
-        {
-            var depIds = m.Dependencies.Select(d => d.DependsOnModuleId).ToList();
-            var isUnlocked = depIds.All(d => completedIds.ContainsKey(d));
-
-            return new ModuleProgressDto
+        var moduleRows = await _context.Modules
+            .Where(m => pathIds.Contains(m.LearningPathId))
+            .Select(m => new ModuleRow
             {
-                ModuleId    = m.Id,
-                Title       = m.Title,
-                IsCompleted = completedIds.ContainsKey(m.Id),
-                IsUnlocked  = isUnlocked,
-                CompletedAt = completedIds.TryGetValue(m.Id, out var dt) ? dt : null,
-            };
-        }).OrderBy(m => m.ModuleId).ToList();
+                Id = m.Id,
+                LearningPathId = m.LearningPathId,
+                Title = m.Title,
+                Order = m.Order,
+                IsCompleted = m.Progresses
+                    .Any(pr => pr.UserId == userId && pr.IsCompleted),
+                CompletedAt = m.Progresses
+                    .Where(pr => pr.UserId == userId && pr.IsCompleted)
+                    .Select(pr => (DateTime?)pr.CompletedAt)
+                    .FirstOrDefault(),
+            })
+            .ToListAsync();
 
-        var completed = moduleDtos.Count(m => m.IsCompleted);
-        var total     = moduleDtos.Count;
-        var pct       = total > 0 ? (int)Math.Round((double)completed / total * 100) : 0;
+        var moduleIds = moduleRows.Select(m => m.Id).ToList();
 
-        return new PathProgressSummaryDto
+        var dependencyRows = await _context.ModuleDependencies
+            .Where(d => moduleIds.Contains(d.ModuleId))
+            .Select(d => new { d.ModuleId, d.DependsOnModuleId })
+            .ToListAsync();
+
+        var dependenciesByModule = dependencyRows
+            .GroupBy(d => d.ModuleId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(d => d.DependsOnModuleId).ToList());
+
+        var summaries = new List<PathProgressSummaryDto>(pathInfos.Count);
+
+        foreach (var path in pathInfos)
         {
-            LearningPathId        = path.Id,
-            Title                 = path.Title,
-            TotalModules          = total,
-            CompletedModules      = completed,
-            ProgressPercent       = pct,
-            IsCertificateEligible = pct == 100,
-            Modules               = moduleDtos,
-        };
+            var rows = moduleRows
+                .Where(m => m.LearningPathId == path.Id)
+                .ToList();
+
+            var rowById = rows.ToDictionary(m => m.Id);
+            var moduleNodes = rows.Select(m => ModuleUnlockRules.Module(
+                m.Id, m.Order,
+                dependenciesByModule.GetValueOrDefault(m.Id, [])));
+
+            var (orderedNodes, _) = ModuleUnlockRules.OrderModules(moduleNodes);
+            var completedAtById = rows
+                .Where(m => m.IsCompleted)
+                .ToDictionary(m => m.Id, m => m.CompletedAt);
+
+            var moduleDtos = orderedNodes.Select(node =>
+            {
+                var m = rowById[node.Id];
+                return new ModuleProgressDto
+                {
+                    ModuleId    = m.Id,
+                    Title       = m.Title,
+                    IsCompleted = m.IsCompleted,
+                    IsUnlocked  = ModuleUnlockRules.IsUnlocked(
+                        orderedNodes, node.Id, completedAtById.Keys.ToHashSet()),
+                    CompletedAt = completedAtById.GetValueOrDefault(m.Id),
+                };
+            }).ToList();
+
+            var completed = moduleDtos.Count(m => m.IsCompleted);
+            var total     = moduleDtos.Count;
+            var pct       = total > 0 ? (int)Math.Round((double)completed / total * 100) : 0;
+
+            summaries.Add(new PathProgressSummaryDto
+            {
+                LearningPathId        = path.Id,
+                Title                 = path.Title,
+                TotalModules          = total,
+                CompletedModules      = completed,
+                ProgressPercent       = pct,
+                IsCertificateEligible = pct == 100,
+                Modules               = moduleDtos,
+            });
+        }
+
+        return summaries;
+    }
+
+    private sealed class ModuleRow
+    {
+        public int Id { get; set; }
+        public int LearningPathId { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public int Order { get; set; }
+        public bool IsCompleted { get; set; }
+        public DateTime? CompletedAt { get; set; }
     }
 
     private async Task TryIssueCertificateAsync(int pathId, string userId)

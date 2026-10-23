@@ -19,11 +19,11 @@ import { useAuth } from "../../hooks/useAuth";
 
 const LearningPathsPage = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { isAdmin, isInstructor } = useAuth();
+  const { isAdmin } = useAuth();
   const [tab, setTab] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
 
-  const canManage = isAdmin || isInstructor;
+  const canManage = isAdmin;
 
   const publicPaths = useSelector(selectPublicPaths);
   const myPaths     = useSelector(selectMyPaths);

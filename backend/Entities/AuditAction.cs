@@ -15,6 +15,8 @@ public enum AuditAction
     USER_MARKED_INVALID = 10,
     INVALID_REMOVED = 11,
     ROLE_CHANGED = 12,
+    // Legacy historical values. Retained only so old audit rows keep their meaning.
+    // No current code path may emit these actions.
     INSTRUCTOR_ASSIGNED = 13,
     INSTRUCTOR_REMOVED = 14,
     CLASSROOM_CREATED = 15,

@@ -253,10 +253,11 @@ configured in `Program.cs`."
 
 ### Q: "How do you prevent students from accessing admin routes?"
 **Answer**: "Two layers. First `[Authorize(Roles = "Admin")]` on `AdminController` and
-`[Authorize(Roles = "Admin,Instructor")]` on privileged actions, backed by policies
-`AdminOnly` and `InstructorOrAdmin`. Second, the service layer also checks ownership —
-for example `GetOwnedPathAsync` throws `UnauthorizedAccessException` if the caller
-isn't the path owner. Defense in depth: URL protection AND service-level checks."
+`[Authorize(Roles = "Admin")]` on privileged actions, backed by policies
+`AdminOnly`. Second, the service layer also checks ownership -
+for example classroom management requires `Classroom.CreatedById == userId`, and
+submission actions are scoped to their owner. Defense in depth: URL protection AND
+service-level checks."
 
 ### Q: "Describe a hard problem you solved."
 **Answer** (choose one):

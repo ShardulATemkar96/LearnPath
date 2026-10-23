@@ -108,58 +108,6 @@ public class AdminService : IAdminService
         return await BuildUserDtoAsync(user, lastLogin);
     }
 
-    public async Task<AdminUserResponseDto> UpdateUserRoleAsync(string userId, UpdateUserRoleDto dto, string actorId)
-    {
-        var user = await _userManager.FindByIdAsync(userId)
-            ?? throw new KeyNotFoundException("User not found.");
-
-        var actor = await _userManager.FindByIdAsync(actorId)
-            ?? throw new UnauthorizedAccessException("Actor not found.");
-
-        if (!actor.IsSuperAdmin)
-            throw new UnauthorizedAccessException("Only the Super Admin can change user roles.");
-
-        if (user.IsSuperAdmin)
-            throw new ArgumentException("The Super Admin account cannot be reassigned.");
-
-        var validRoles = new[] { "Admin", "Instructor", "Student" };
-        if (!validRoles.Contains(dto.Role))
-            throw new ArgumentException("Invalid role.");
-
-        var currentRoles = await _userManager.GetRolesAsync(user);
-        var oldRole = currentRoles.FirstOrDefault();
-
-        await _userManager.RemoveFromRolesAsync(user, currentRoles);
-        await _userManager.AddToRoleAsync(user, dto.Role);
-
-        await _auditLog.LogAsync(
-            AuditAction.ROLE_CHANGED,
-            "User",
-            user.Id,
-            $"Role changed for '{user.Email}' from {oldRole ?? "none"} to {dto.Role}.",
-            oldValue: oldRole,
-            newValue: dto.Role);
-
-        if (dto.Role == "Instructor")
-            await _auditLog.LogAsync(
-                AuditAction.INSTRUCTOR_ASSIGNED,
-                "User",
-                user.Id,
-                $"'{user.Email}' was assigned the Instructor role.",
-                newValue: dto.Role);
-
-        if (oldRole == "Instructor" && dto.Role != "Instructor")
-            await _auditLog.LogAsync(
-                AuditAction.INSTRUCTOR_REMOVED,
-                "User",
-                user.Id,
-                $"The Instructor role was removed from '{user.Email}'.",
-                oldValue: oldRole,
-                newValue: dto.Role);
-
-        return await BuildUserDtoAsync(user);
-    }
-
     public async Task<AdminUserResponseDto> ActivateUserAsync(string userId)
     {
         var user = await _userManager.FindByIdAsync(userId)
@@ -220,8 +168,8 @@ public class AdminService : IAdminService
         var actor = await _userManager.FindByIdAsync(actorId)
             ?? throw new UnauthorizedAccessException("Actor not found.");
 
-        if (!actor.IsSuperAdmin && !(await _userManager.IsInRoleAsync(actor, "Instructor")))
-            throw new UnauthorizedAccessException("Only the Super Admin or an Instructor can mark users invalid.");
+        if (!await _userManager.IsInRoleAsync(actor, "Admin"))
+            throw new UnauthorizedAccessException("Only an administrator can mark users invalid.");
 
         if (user.IsSuperAdmin)
             throw new ArgumentException("The Super Admin account cannot be marked invalid.");

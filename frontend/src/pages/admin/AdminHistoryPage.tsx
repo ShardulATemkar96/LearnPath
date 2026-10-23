@@ -20,7 +20,7 @@ import EmptyState from "../../components/common/EmptyState/EmptyState";
 import PaginationBar from "../../components/common/PaginationBar/PaginationBar";
 
 const PAGE_SIZE = 20;
-const ROLES = ["Admin", "Instructor", "Student"];
+const ROLES = ["Admin", "Student"];
 
 const CATEGORY_COLORS: Record<string, string> = {
   Authentication: "#6C63FF",

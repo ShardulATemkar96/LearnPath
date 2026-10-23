@@ -446,4 +446,70 @@ public class AttemptServiceTests
         var ids = result.Questions.Select(q => q.QuestionId).Distinct().ToList();
         ids.Should().HaveCount(4);
     }
+
+    /* ── Locked-module enforcement (direct API cannot bypass) ── */
+
+    private async Task<(ApplicationDbContext ctx, AttemptService svc, string userId)>
+        SeedTwoModulePathWithQuizOnSecondAsync()
+    {
+        var ctx = DbContextFactory.Create();
+        var userId = Guid.NewGuid().ToString();
+
+        ctx.QuestionBanks.Add(EntityFactory.CreateQuestionBank(id: 1, questionCount: 3));
+        ctx.Quizzes.Add(EntityFactory.CreateQuiz(id: 1, title: "Locked Quiz", questionBankId: 1,
+            questionCount: 3, status: QuizStatus.Published));
+        ctx.LearningPaths.Add(EntityFactory.CreateLearningPath(id: 1, createdById: userId));
+        ctx.Modules.Add(EntityFactory.CreateModule(id: 1, learningPathId: 1, order: 1));
+        ctx.Modules.Add(EntityFactory.CreateModule(id: 2, learningPathId: 1, order: 2, title: "M2", prereqIds: [1]));
+        ctx.ModuleQuizzes.Add(EntityFactory.CreateModuleQuiz(moduleId: 2, quizId: 1));
+        await ctx.SaveChangesAsync();
+
+        var svc = new AttemptService(ctx, new ProgressService(ctx, new FakeAuditLogService()), new FakeAuditLogService());
+        return (ctx, svc, userId);
+    }
+
+    [Fact]
+    public async Task StartAttemptAsync_UnlockedViaDag_CreatesAttempt()
+    {
+        var (ctx, svc, userId) = await SeedTwoModulePathWithQuizOnSecondAsync();
+        ctx.Progresses.Add(new Progress
+        {
+            Id = 1, UserId = userId, ModuleId = 1, IsCompleted = true, CompletedAt = DateTime.UtcNow,
+        });
+        await ctx.SaveChangesAsync();
+
+        var result = await svc.StartAttemptAsync(1, 2, userId);
+
+        result.AttemptNumber.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task StartAttemptAsync_PrerequisiteIncomplete_RejectsAndPersistsNothing()
+    {
+        var (ctx, svc, userId) = await SeedTwoModulePathWithQuizOnSecondAsync();
+
+        var act = () => svc.StartAttemptAsync(1, 2, userId);
+
+        (await act.Should().ThrowAsync<UnauthorizedAccessException>())
+            .WithMessage("*complete the previous module*");
+        (await ctx.QuizAttempts.CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task StartAttemptAsync_OtherUserProgressDoesNotUnlockModule()
+    {
+        var (ctx, svc, userId) = await SeedTwoModulePathWithQuizOnSecondAsync();
+        // A different user completed the prerequisite — must not unlock for this user.
+        ctx.Progresses.Add(new Progress
+        {
+            Id = 1, UserId = Guid.NewGuid().ToString(), ModuleId = 1, IsCompleted = true,
+            CompletedAt = DateTime.UtcNow,
+        });
+        await ctx.SaveChangesAsync();
+
+        var act = () => svc.StartAttemptAsync(1, 2, userId);
+
+        await act.Should().ThrowAsync<UnauthorizedAccessException>();
+        (await ctx.QuizAttempts.CountAsync()).Should().Be(0);
+    }
 }

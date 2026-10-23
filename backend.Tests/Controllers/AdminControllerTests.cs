@@ -202,14 +202,12 @@ public class AdminControllerTests
         {
             UserId = ownerId,
             ClassroomId = 1,
-            Role = "Instructor",
             JoinedAt = new DateTime(2026, 1, 1, 9, 0, 0, DateTimeKind.Utc),
         });
         ctx.UserClassrooms.Add(new LearnPath.API.Entities.UserClassroom
         {
             UserId = memberId,
             ClassroomId = 1,
-            Role = "Student",
             JoinedAt = new DateTime(2026, 1, 2, 9, 0, 0, DateTimeKind.Utc),
         });
 
@@ -302,8 +300,8 @@ public class AdminControllerTests
         body.Data!.MemberCount.Should().Be(2);
         body.Data.AssignmentCount.Should().Be(0);
         body.Data.Members.Should().HaveCount(2);
-        body.Data.Members.Should().Contain(m => m.Role == "Instructor" && m.FullName == "Ada Lovelace");
-        body.Data.Members.Should().Contain(m => m.Role == "Student" && m.FullName == "Grace Hopper");
+        body.Data.Members.Should().Contain(m => m.FullName == "Ada Lovelace");
+        body.Data.Members.Should().Contain(m => m.FullName == "Grace Hopper");
     }
 
     [Fact]
@@ -357,21 +355,31 @@ public class AdminControllerTests
     }
 
     [Fact]
-    public async Task UpdateClassroom_ReassignsTrainer()
+    public async Task UpdateClassroom_ReassignsManagerAndAddsMembership()
     {
         var (ctx, controller) = CreateController();
         var ownerId = Guid.NewGuid().ToString();
         var memberId = Guid.NewGuid().ToString();
+        var newManagerId = Guid.NewGuid().ToString();
         await SeedClassroomsAsync(ctx, ownerId, memberId);
+        ctx.Users.Add(EntityFactory.CreateUser(
+            id: newManagerId,
+            email: "new.manager@learnpath.dev",
+            firstName: "Katherine",
+            lastName: "Johnson"));
+        await ctx.SaveChangesAsync();
 
         var result = await controller.UpdateClassroom(1, new UpdateAdminClassroomDto
         {
             Title = "Test Classroom",
-            TrainerId = memberId,
+            TrainerId = newManagerId,
         });
 
         var body = (ApiResponse<AdminClassroomResponseDto>)((OkObjectResult)result).Value!;
-        body.Data!.CreatedById.Should().Be(memberId);
+        body.Data!.CreatedById.Should().Be(newManagerId);
+        (await ctx.Classrooms.FirstAsync(c => c.Id == 1)).CreatedById.Should().Be(newManagerId);
+        (await ctx.UserClassrooms.AnyAsync(uc =>
+            uc.ClassroomId == 1 && uc.UserId == newManagerId)).Should().BeTrue();
     }
 
     [Fact]

@@ -23,11 +23,6 @@ export const adminService = {
     return data.data;
   },
 
-  updateRole: async (userId: string, role: string): Promise<AdminUser> => {
-    const { data } = await apiClient.put(`/admin/users/${userId}/role`, { role });
-    return data.data;
-  },
-
   activateUser: async (userId: string): Promise<AdminUser> => {
     const { data } = await apiClient.put(`/admin/users/${userId}/activate`);
     return data.data;

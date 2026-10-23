@@ -27,7 +27,9 @@ using LearnPath.API.Services.Submission;
 using LearnPath.API.Services.Validation;
 using LearnPath.API.Services.User;
 using LearnPath.API.Interfaces.Services.Ai;
+using LearnPath.API.Interfaces.Services.Logging;
 using LearnPath.API.Services.Ai;
+using LearnPath.API.Services.Logging;
 using LearnPath.API.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -151,8 +153,7 @@ builder.Services.AddAuthentication(options =>
 
 // ── Authorization ─────────────────────────────────────────────
 builder.Services.AddAuthorizationBuilder()
-    .AddPolicy("AdminOnly", p => p.RequireRole("Admin"))
-    .AddPolicy("InstructorOrAdmin", p => p.RequireRole("Admin", "Instructor"));
+    .AddPolicy("AdminOnly", p => p.RequireRole("Admin"));
 
 // ── CORS ──────────────────────────────────────────────────────
 builder.Services.AddCors(options =>
@@ -204,6 +205,10 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+
+// ── Developer Logging (User Activity + System) ───────────────
+builder.Services.AddSingleton<IUserActivityLogger, UserActivityLogger>();
+builder.Services.AddSingleton<ISystemLogger, SystemLogger>();
 
 // ── Services ──────────────────────────────────────────────────
 builder.Services.AddScoped<IAuthService,         AuthService>();
@@ -280,6 +285,16 @@ builder.Services.AddSwaggerGen(options =>
 
 // ── Build ─────────────────────────────────────────────────────
 var app = builder.Build();
+
+// ── System Log: Application Started ───────────────────────────
+try
+{
+    var sysLog = app.Services.GetRequiredService<ISystemLogger>();
+    sysLog.Log($"Application started — Environment: {app.Environment.EnvironmentName} | ContentRoot: {app.Environment.ContentRootPath}");
+    // Ensure user activity log file exists so developer sees Logs/info.log immediately
+    _ = app.Services.GetRequiredService<IUserActivityLogger>();
+}
+catch { }
 
 // ── Middleware Pipeline ───────────────────────────────────────
 app.UseMiddleware<ExceptionMiddleware>();

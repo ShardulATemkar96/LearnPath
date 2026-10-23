@@ -86,11 +86,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)…
     ClockSkew = TimeSpan.Zero
 ```
 
-Then two role policies:
+Then one role policy:
 
 ```csharp
-"AdminOnly"          → RequireRole("Admin")
-"InstructorOrAdmin"  → RequireRole("Admin", "Instructor")
+"AdminOnly" → RequireRole("Admin")
 ```
 
 And the pipeline runs `app.UseAuthentication()` → `app.UseAuthorization()` → `MapControllers()`.
@@ -182,8 +181,8 @@ Every 401 (not on login/register paths):
 
 - `AuthController` — `register`, `login`, `refresh` are `[AllowAnonymous]`; `revoke` is `[Authorize]` (user id taken from claims).
 - `AuthService` + `JwtTokenGenerator` handle creation/rotation.
-- `Program.cs` sets up the JWT bearer scheme and the `AdminOnly` / `InstructorOrAdmin` policies.
-- Controllers use `[Authorize(Roles = "…")]` thorough policy checks (e.g. quiz CRUD = `Admin,Instructor`, delete = `Admin`).
+- `Program.cs` sets up the JWT bearer scheme and the `AdminOnly` policy.
+- Controllers use `[Authorize(Roles = "…")]` thorough policy checks (e.g. quiz CRUD = `Admin`, delete = `Admin`).
 
 ---
 
@@ -225,7 +224,7 @@ interceptor silently refreshes with the stored refresh token and retries — the
 > request, and a response interceptor automatically calls the refresh endpoint when it sees a 401
 > and retries the original request. The backend validates issuer, audience, lifetime, and
 > signature, and role claims feed into `[Authorize(Roles=…)]` and policies like
-> `InstructorOrAdmin`."
+> `AdminOnly`."
 
 (≈ 40–50 seconds)
 
@@ -273,5 +272,5 @@ Confirmed from source code:
 - Refresh with rotation (old token revoked) and re-check of account health.
 - Logout via `REVOKE` revoking all active refresh tokens + `LOGOUT` audit entry.
 - Full JWT bearer validation: issuer, audience, lifetime, signing key, zero clock skew (`Program.cs`).
-- Role policies `AdminOnly` and `InstructorOrAdmin`; role-based `[Authorize(Roles=…)]` across controllers.
+- Role policy `AdminOnly`; role-based `[Authorize(Roles=…)]` across controllers.
 - Frontend: localStorage token storage, request interceptor (Bearer), 401→refresh→retry response interceptor (`apiClient.ts`).

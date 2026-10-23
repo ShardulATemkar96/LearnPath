@@ -3,6 +3,7 @@ using LearnPath.API.Data;
 using LearnPath.API.DTOs.Audit;
 using LearnPath.API.Entities;
 using LearnPath.API.Interfaces.Services;
+using LearnPath.API.Interfaces.Services.Logging;
 using Microsoft.EntityFrameworkCore;
 
 namespace LearnPath.API.Services.Audit;
@@ -11,13 +12,16 @@ public class AuditLogService : IAuditLogService
 {
     private readonly ApplicationDbContext _context;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IUserActivityLogger? _activityLogger;
 
     public AuditLogService(
         ApplicationDbContext context,
-        IHttpContextAccessor httpContextAccessor)
+        IHttpContextAccessor httpContextAccessor,
+        IUserActivityLogger? activityLogger = null)
     {
         _context = context;
         _httpContextAccessor = httpContextAccessor;
+        _activityLogger = activityLogger;
     }
 
     public async Task LogAsync(
@@ -47,6 +51,33 @@ public class AuditLogService : IAuditLogService
             actor.Role));
 
         await _context.SaveChangesAsync();
+
+        // ── Developer Activity Log (console + info.log) — reuse audit event
+        // Strictly for developer runtime visibility; never break audit flow.
+        try
+        {
+            if (_activityLogger != null)
+            {
+                var activityUserId = actor.UserId;
+                var activityName = actor.Username;
+
+                // For anonymous failures, force Unknown per spec
+                if (string.IsNullOrWhiteSpace(activityUserId) || activityUserId == "unknown")
+                {
+                    activityUserId = "Unknown";
+                    activityName = "Unknown";
+                }
+                else if (string.IsNullOrWhiteSpace(activityName))
+                {
+                    activityName = "Unknown";
+                }
+                // Derive display name from email if needed, but keep as stored username
+                // Do not log sensitive data — only UserId/Name/Action/Timestamp
+
+                _activityLogger.Log(actionType, activityUserId, activityName);
+            }
+        }
+        catch { /* activity logging must never break audit */ }
     }
 
     public async Task<AuditLogListResponseDto> GetMyHistoryAsync(

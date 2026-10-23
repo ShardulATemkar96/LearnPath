@@ -32,6 +32,7 @@ public class ClassroomController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Create([FromBody] CreateClassroomDto dto)
     {
         var result = await _service.CreateAsync(dto, UserId);

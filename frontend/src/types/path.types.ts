@@ -15,6 +15,8 @@
 export interface LearningPathDetail extends LearningPath {
   modules: Module[];
   dependencies: ModuleDependency[];
+  /** False when the stored prerequisite graph contains a cycle and the API fell back to Order-based ordering. */
+  graphIsValid?: boolean;
 }
 
 export interface Module {

@@ -111,7 +111,6 @@ export interface AdminClassroomMember {
   userId: string;
   fullName: string;
   email: string;
-  role: string;
   status: string;
   invalidReason?: string | null;
   joinedAt: string;

@@ -111,7 +111,7 @@ const AssignmentDetailPage = () => {
 
   const assignment: Assignment | undefined = classroom?.assignments.find((a) => a.id === aid);
 
-  const isInstructor = classroom?.userRole === "Instructor";
+  const canManage = !!classroom?.canManage;
   const isOverdue = assignment ? new Date(assignment.dueDate) < new Date() : false;
   const status = assignment?.mySubmissionStatus;
 
@@ -126,7 +126,7 @@ const AssignmentDetailPage = () => {
     && (status === SubmissionStatus.Submitted || status === SubmissionStatus.SubmittedAgain)
     && !showUpload;
 
-  const showUploadArea = !isInstructor && (showUpload || needsUpload);
+  const showUploadArea = !canManage && (showUpload || needsUpload);
 
   const renderStatusChip = () => {
     if (!status) return null;
@@ -180,7 +180,7 @@ const AssignmentDetailPage = () => {
   if (!assignment) return null;
 
   const isUnlocked = assignment.isUnlocked ?? true;
-  const isLockedForStudent = !isInstructor && !isUnlocked;
+  const isLockedForStudent = !canManage && !isUnlocked;
 
   if (isLockedForStudent) {
     return (
@@ -331,7 +331,7 @@ const AssignmentDetailPage = () => {
         </Card>
       )}
 
-      {!isInstructor && (
+      {!canManage && (
         <Card sx={{ borderRadius: 4, mb: 3 }}>
           <CardContent sx={{ p: 3 }}>
             <Box sx={{ mb: 2 }}>

@@ -1,6 +1,6 @@
 ﻿import {
   Box, Card, CardActionArea, CardContent,
-  Chip, Stack, Typography,
+  Stack, Typography,
 } from "@mui/material";
 import {
   GroupsRounded, RouteRounded,
@@ -12,11 +12,6 @@ import { Classroom } from "../../../types/classroom.types";
 interface ClassroomCardProps {
   classroom: Classroom;
 }
-
-const ROLE_COLOR: Record<string, "primary" | "secondary" | "default"> = {
-  Instructor: "primary",
-  Student:    "secondary",
-};
 
 const ClassroomCard = ({ classroom }: ClassroomCardProps) => {
   const navigate = useNavigate();
@@ -41,7 +36,7 @@ const ClassroomCard = ({ classroom }: ClassroomCardProps) => {
         <Box
           sx={{
             height: 6,
-            background: classroom.userRole === "Instructor"
+            background: classroom.canManage
               ? "linear-gradient(90deg, #6C63FF, #9D97FF)"
               : "linear-gradient(90deg, #FF6584, #FF92A8)",
           }}
@@ -54,20 +49,14 @@ const ClassroomCard = ({ classroom }: ClassroomCardProps) => {
                 sx={{
                   width: 44, height: 44, borderRadius: 2.5, flexShrink: 0,
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  background: classroom.userRole === "Instructor"
+                  background: classroom.canManage
                     ? "rgba(108,99,255,0.1)" : "rgba(255,101,132,0.1)",
                 }}
               >
-                {classroom.userRole === "Instructor"
+                {classroom.canManage
                   ? <PersonRounded sx={{ color: "primary.main" }} />
                   : <SchoolRounded sx={{ color: "secondary.main" }} />}
               </Box>
-              <Chip
-                label={classroom.userRole}
-                size="small"
-                color={ROLE_COLOR[classroom.userRole] ?? "default"}
-                sx={{ fontWeight: 600, fontSize: "0.7rem" }}
-              />
             </Stack>
 
             <Box>

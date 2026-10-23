@@ -19,4 +19,10 @@ public class LearningPathDetailResponseDto : LearningPathResponseDto
 {
     public List<ModuleResponseDto> Modules { get; set; } = [];
     public List<ModuleDependencyResponseDto> Dependencies { get; set; } = [];
+
+    /// <summary>
+    /// False when the persisted prerequisite graph contains a directed cycle
+    /// and no valid topological ordering exists (fallback ordering is used).
+    /// </summary>
+    public bool GraphIsValid { get; set; } = true;
 }

@@ -52,12 +52,12 @@ Identity alone isn't enough — a student must not access admin endpoints.
 "Authorization answers 'what may you do?'. Once the user is authenticated, I check
 roles and policies. `[Authorize]` allows any logged-in user, `[Authorize(Roles = "Admin")]`
 restricts to admins. In my code, controllers like `AdminController` are locked to the
-Admin role, while `LearningPathController` uses `Authorize(Roles = "Admin,Instructor")`
+Admin role, while `LearningPathController` uses `Authorize(Roles = "Admin")`
 for create/update actions."
 
 ### LearnPath Example
 `AdminController` — `[Authorize(Roles = "Admin")]`; `LearningPathController` —
-`[Authorize(Roles = "Admin,Instructor")]`; policies `AdminOnly`/`InstructorOrAdmin`
+`[Authorize(Roles = "Admin")]`; policy `AdminOnly`
 in `Program.cs`.
 
 ### Remember
@@ -229,14 +229,14 @@ middleware guarantees that).
 ## 8. Roles 🔥
 
 ### What is it?
-Named permission groups (Admin, Instructor, Student) attached to users; roles become
+Named permission groups (Admin, Student) attached to users; roles become
 claims in the token and drive authorization.
 
 ### Why is it used?
 Group-based access control: check one role instead of many individual permissions.
 
 ### Interview Answer
-"Roles are named groups like Admin, Instructor, and Student. On registration I add
+"Roles are named groups like Admin, and Student. On registration I add
 the Student role automatically. On login I read the user's roles with
 `UserManager.GetRolesAsync` and put them into the token as role claims. Then
 `[Authorize(Roles = "Admin")]` checks them. Roles are seeded with `RoleSeeder` and
@@ -244,12 +244,12 @@ managed through Identity's role tables."
 
 ### LearnPath Example
 `AuthService.RegisterAsync` — `AddToRoleAsync(user, "Student")`. Token adds
-ClaimTypes.Role per role (`JwtTokenGenerator:31`). Policies `AdminOnly`,
-`InstructorOrAdmin` in Program.cs.
+ClaimTypes.Role per role (`JwtTokenGenerator:31`). Policy `AdminOnly` in Program.cs.
 
 ### Common Mistake
-- Storing the user's roles only in the token without refreshing after a role change
-— a role change takes effect after the token expires (short expiry helps).
+- Assuming an already-issued access token is re-evaluated immediately after any account change.
+  Keep access tokens short-lived and rely on refresh-token rotation; roles themselves are read-only
+  after registration or seeding.
 
 ### Remember
 - Roles = role claims in the JWT → `[Authorize(Roles=...)]`.
@@ -381,17 +381,17 @@ Restricting endpoints to specific roles using `[Authorize(Roles = "Admin")]` or
 policy-based checks (`RequireRole`).
 
 ### Why is it used?
-Fine-grained access: students, instructors, admins get different powers.
+Fine-grained access: students, admins, admins get different powers.
 
 ### Interview Answer
 "For role-based access I use `[Authorize(Roles = "Admin")]` on the admin controller
-and `[Authorize(Roles = "Admin,Instructor")]` where instructors may act. I also
-defined policies in Program.cs — `AdminOnly` and `InstructorOrAdmin` — that wrap
+and `[Authorize(Roles = "Admin")]` where admins may act. I also
+defined policies in Program.cs — `AdminOnly` — that wrap
 role requirements for reuse. Both feed off the role claims in the JWT."
 
 ### LearnPath Example
 `AdminController` class-level `[Authorize(Roles = "Admin")]`; `LearningPathController`
-create/update actions `[Authorize(Roles = "Admin,Instructor")]`; policies in
+create/update actions `[Authorize(Roles = "Admin")]`; policies in
 `Program.cs:153-155`.
 
 ### Common Mistake

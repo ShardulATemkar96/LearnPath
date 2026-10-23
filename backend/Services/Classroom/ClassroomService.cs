@@ -39,7 +39,7 @@ public class ClassroomService : IClassroomService
                 .ThenInclude(c => c.LearningPath)
             .Include(uc => uc.Classroom)
                 .ThenInclude(c => c.UserClassrooms)
-            .Select(uc => MapToResponse(uc.Classroom, uc.Role, userId))
+            .Select(uc => MapToResponse(uc.Classroom, userId))
             .ToListAsync();
     }
 
@@ -64,20 +64,19 @@ public class ClassroomService : IClassroomService
             UserId = uc.UserId,
             FullName = $"{uc.User.FirstName} {uc.User.LastName}",
             Email = uc.User.Email!,
-            Role = uc.Role,
             Status = uc.User.Status,
             InvalidReason = uc.User.InvalidReason,
             JoinedAt = uc.JoinedAt,
         }).ToList();
 
-        var isInstructor = membership.Role == "Instructor";
+        var canManage = classroom.CreatedById == userId;
         var sortedAssignments = classroom.Assignments.OrderBy(a => a.Id).ToList();
         var assignments = sortedAssignments.Select((a, idx) =>
         {
             var mySubmission = a.Submissions.FirstOrDefault(s => s.UserId == userId);
             var isCompleted = mySubmission?.Grade >= 5;
             bool isUnlocked;
-            if (isInstructor)
+            if (canManage)
             {
                 isUnlocked = true;
             }
@@ -94,7 +93,7 @@ public class ClassroomService : IClassroomService
 
             // For locked assignments, don't expose description to students
             var description = a.Description;
-            if (!isUnlocked && !isInstructor)
+            if (!isUnlocked && !canManage)
             {
                 description = string.Empty;
             }
@@ -130,7 +129,7 @@ public class ClassroomService : IClassroomService
             CreatedById = classroom.CreatedById,
             CreatedByName = $"{classroom.CreatedBy.FirstName} {classroom.CreatedBy.LastName}",
             MemberCount = classroom.UserClassrooms.Count,
-            UserRole = membership.Role,
+            CanManage = canManage,
             CreatedAt = classroom.CreatedAt,
             Members = members,
             Assignments = assignments,
@@ -155,12 +154,11 @@ public class ClassroomService : IClassroomService
         await _context.Classrooms.AddAsync(classroom);
         await _context.SaveChangesAsync();
 
-        // Auto-join as Instructor
+        // Auto-join the creator as a member; management is derived from CreatedById.
         await _context.UserClassrooms.AddAsync(new UserClassroom
         {
             UserId = userId,
             ClassroomId = classroom.Id,
-            Role = "Instructor",
         });
         await _context.SaveChangesAsync();
 
@@ -176,7 +174,7 @@ public class ClassroomService : IClassroomService
         await _context.Entry(classroom).Reference(c => c.LearningPath).LoadAsync();
         await _context.Entry(classroom).Collection(c => c.UserClassrooms).LoadAsync();
 
-        return MapToResponse(classroom, "Instructor", userId);
+        return MapToResponse(classroom, userId);
     }
 
     public async Task<ClassroomResponseDto> UpdateAsync(
@@ -200,7 +198,7 @@ public class ClassroomService : IClassroomService
             newValue: $"Title: {classroom.Title}; Description: {classroom.Description}",
             userId: userId);
 
-        return MapToResponse(classroom, "Instructor", userId);
+        return MapToResponse(classroom, userId);
     }
 
     public async Task DeleteAsync(int id, string userId)
@@ -224,7 +222,6 @@ public class ClassroomService : IClassroomService
         {
             UserId = userId,
             ClassroomId = classroom.Id,
-            Role = "Student",
         });
         await _context.SaveChangesAsync();
 
@@ -242,8 +239,11 @@ public class ClassroomService : IClassroomService
             .FirstOrDefaultAsync(uc => uc.ClassroomId == id && uc.UserId == userId)
             ?? throw new KeyNotFoundException("You are not a member.");
 
-        if (membership.Role == "Instructor")
-            throw new ArgumentException("Instructors cannot leave. Transfer ownership first.");
+        var isClassroomManager = await _context.Classrooms
+            .AnyAsync(c => c.Id == id && c.CreatedById == userId);
+
+        if (isClassroomManager)
+            throw new ArgumentException("The classroom manager cannot leave. Transfer ownership first.");
 
         _context.UserClassrooms.Remove(membership);
         await _context.SaveChangesAsync();
@@ -258,14 +258,18 @@ public class ClassroomService : IClassroomService
 
     public async Task RemoveMemberAsync(int classroomId, string memberUserId, string userId)
     {
-        await EnsureInstructorAsync(classroomId, userId);
+        await EnsureFacilitatorAsync(classroomId, userId);
+
+        var classroom = await _context.Classrooms
+            .FirstOrDefaultAsync(c => c.Id == classroomId)
+            ?? throw new KeyNotFoundException("Classroom not found.");
 
         var membership = await _context.UserClassrooms
             .FirstOrDefaultAsync(uc => uc.ClassroomId == classroomId && uc.UserId == memberUserId)
             ?? throw new KeyNotFoundException("Member not found.");
 
-        if (membership.Role == "Instructor")
-            throw new ArgumentException("Cannot remove an instructor.");
+        if (classroom.CreatedById == memberUserId)
+            throw new ArgumentException("The classroom manager cannot be removed. Transfer ownership first.");
 
         _context.UserClassrooms.Remove(membership);
         await _context.SaveChangesAsync();
@@ -293,7 +297,6 @@ public class ClassroomService : IClassroomService
                 UserId = uc.UserId,
                 FullName = $"{uc.User.FirstName} {uc.User.LastName}",
                 Email = uc.User.Email!,
-                Role = uc.Role,
                 Status = uc.User.Status,
                 InvalidReason = uc.User.InvalidReason,
                 JoinedAt = uc.JoinedAt,
@@ -304,7 +307,7 @@ public class ClassroomService : IClassroomService
     public async Task<ClassroomMemberDto> MarkInvalidAsync(
         int classroomId, string memberUserId, MarkInvalidDto dto, string userId)
     {
-        await EnsureInstructorAsync(classroomId, userId);
+        await EnsureFacilitatorAsync(classroomId, userId);
 
         if (string.IsNullOrWhiteSpace(dto.Reason))
             throw new ArgumentException("A reason is required.");
@@ -315,11 +318,17 @@ public class ClassroomService : IClassroomService
             .FirstOrDefaultAsync()
             ?? throw new KeyNotFoundException("Member not found.");
 
-        if (membership.Role != "Student")
-            throw new ArgumentException("Only students can be marked invalid.");
-
         if (membership.User.IsSuperAdmin)
             throw new ArgumentException("The Super Admin account cannot be marked invalid.");
+
+        var adminRoleId = await _context.Roles
+            .Where(r => r.Name == "Admin")
+            .Select(r => r.Id)
+            .FirstOrDefaultAsync();
+        var targetIsAdmin = adminRoleId != null && await _context.UserRoles
+            .AnyAsync(ur => ur.UserId == membership.UserId && ur.RoleId == adminRoleId);
+        if (targetIsAdmin)
+            throw new ArgumentException("Administrator accounts cannot be marked invalid.");
 
         membership.User.Status = UserStatus.Invalid;
         membership.User.InvalidReason = dto.Reason.Trim();
@@ -330,7 +339,7 @@ public class ClassroomService : IClassroomService
             AuditAction.USER_MARKED_INVALID,
             "User",
             membership.UserId,
-            $"User '{membership.User.Email}' was marked invalid by a classroom instructor.",
+            $"User '{membership.User.Email}' was marked invalid by a classroom manager.",
             oldValue: "Active",
             newValue: "Invalid",
             additionalData: $"ClassroomId: {classroomId}; Reason: {dto.Reason.Trim()}",
@@ -341,7 +350,6 @@ public class ClassroomService : IClassroomService
             UserId = membership.UserId,
             FullName = $"{membership.User.FirstName} {membership.User.LastName}",
             Email = membership.User.Email!,
-            Role = membership.Role,
             Status = membership.User.Status,
             InvalidReason = membership.User.InvalidReason,
             JoinedAt = membership.JoinedAt,
@@ -353,7 +361,7 @@ public class ClassroomService : IClassroomService
     public async Task<AssignmentResponseDto> CreateAssignmentAsync(
         int classroomId, CreateAssignmentDto dto, string userId)
     {
-        await EnsureAdminAsync(classroomId, userId);
+        await EnsureFacilitatorAsync(classroomId, userId);
 
         var assignment = new Assignment
         {
@@ -390,7 +398,7 @@ public class ClassroomService : IClassroomService
     public async Task<AssignmentResponseDto> UpdateAssignmentAsync(
         int classroomId, int assignmentId, UpdateAssignmentDto dto, string userId)
     {
-        await EnsureInstructorAsync(classroomId, userId);
+        await EnsureFacilitatorAsync(classroomId, userId);
         var assignment = await GetAssignmentAsync(assignmentId, classroomId);
 
         assignment.Title = dto.Title;
@@ -420,7 +428,7 @@ public class ClassroomService : IClassroomService
 
     public async Task DeleteAssignmentAsync(int classroomId, int assignmentId, string userId)
     {
-        await EnsureInstructorAsync(classroomId, userId);
+        await EnsureFacilitatorAsync(classroomId, userId);
         var assignment = await GetAssignmentAsync(assignmentId, classroomId);
         _context.Assignments.Remove(assignment);
         await _context.SaveChangesAsync();
@@ -648,23 +656,29 @@ public class ClassroomService : IClassroomService
     public async Task<List<SubmissionResponseDto>> GetSubmissionsAsync(
         int classroomId, int assignmentId, string userId)
     {
-        await EnsureInstructorAsync(classroomId, userId);
+        await EnsureFacilitatorAsync(classroomId, userId);
 
         var assignment = await _context.Assignments
             .FirstOrDefaultAsync(a => a.Id == assignmentId && a.ClassroomId == classroomId)
             ?? throw new KeyNotFoundException("Assignment not found.");
+
+        var classroomOwnerId = await _context.Classrooms
+            .Where(c => c.Id == classroomId)
+            .Select(c => c.CreatedById)
+            .FirstOrDefaultAsync()
+            ?? throw new KeyNotFoundException("Classroom not found.");
 
         var submissions = await _context.Submissions
             .Where(s => s.AssignmentId == assignmentId)
             .Include(s => s.User)
             .ToListAsync();
 
-        var students = await _context.UserClassrooms
-            .Where(uc => uc.ClassroomId == classroomId && uc.Role == "Student")
+        var members = await _context.UserClassrooms
+            .Where(uc => uc.ClassroomId == classroomId && uc.UserId != classroomOwnerId)
             .Include(uc => uc.User)
             .ToListAsync();
 
-        return students.Select(s =>
+        return members.Select(s =>
         {
             var sub = submissions.FirstOrDefault(x => x.UserId == s.UserId);
             return new SubmissionResponseDto
@@ -698,10 +712,10 @@ public class ClassroomService : IClassroomService
             ?? throw new KeyNotFoundException("Submission not found.");
 
         var classroomId = submission.Assignment.ClassroomId;
-        var isInstructor = await _context.UserClassrooms
-            .AnyAsync(uc => uc.ClassroomId == classroomId && uc.UserId == userId && uc.Role == "Instructor");
+        var canManage = await _context.Classrooms
+            .AnyAsync(c => c.Id == classroomId && c.CreatedById == userId);
 
-        if (!isInstructor)
+        if (!canManage)
             throw new UnauthorizedAccessException("Access denied.");
 
         return new SubmissionResponseDto
@@ -745,10 +759,10 @@ public class ClassroomService : IClassroomService
             ?? throw new KeyNotFoundException("Submission not found.");
 
         var isOwner = submission.UserId == userId;
-        var isInstructor = await _context.UserClassrooms
-            .AnyAsync(uc => uc.ClassroomId == submission.Assignment.ClassroomId && uc.UserId == userId && uc.Role == "Instructor");
+        var canManage = await _context.Classrooms
+            .AnyAsync(c => c.Id == submission.Assignment.ClassroomId && c.CreatedById == userId);
 
-        if (!isOwner && !isInstructor)
+        if (!isOwner && !canManage)
             throw new UnauthorizedAccessException("Access denied.");
 
         if (submission.StoredFilePath is null)
@@ -771,7 +785,7 @@ public class ClassroomService : IClassroomService
             ?? throw new KeyNotFoundException("Submission not found.");
 
         var classroomId = submission.Assignment.ClassroomId;
-        await EnsureInstructorAsync(classroomId, userId);
+        await EnsureFacilitatorAsync(classroomId, userId);
 
         var targetStatus = dto.Status;
         if (targetStatus != SubmissionStatus.UnderReview && targetStatus != SubmissionStatus.Reviewed)
@@ -829,7 +843,7 @@ public class ClassroomService : IClassroomService
             ?? throw new KeyNotFoundException("Submission not found.");
 
         var classroomId = submission.Assignment.ClassroomId;
-        await EnsureInstructorAsync(classroomId, userId);
+        await EnsureFacilitatorAsync(classroomId, userId);
 
         if (submission.Status is SubmissionStatus.Graded)
             throw new InvalidOperationException("Cannot return a graded submission for resubmission.");
@@ -873,7 +887,7 @@ public class ClassroomService : IClassroomService
         int classroomId, int assignmentId, int submissionId,
         GradeSubmissionDto dto, string userId)
     {
-        await EnsureInstructorAsync(classroomId, userId);
+        await EnsureFacilitatorAsync(classroomId, userId);
 
         var submission = await _context.Submissions
             .Include(s => s.User)
@@ -914,7 +928,7 @@ public class ClassroomService : IClassroomService
     public async Task<SubmissionResponseDto> VerifySubmissionAsync(
         int classroomId, int assignmentId, int submissionId, string userId)
     {
-        await EnsureInstructorAsync(classroomId, userId);
+        await EnsureFacilitatorAsync(classroomId, userId);
 
         var submission = await _context.Submissions
             .Include(s => s.User)
@@ -953,7 +967,7 @@ public class ClassroomService : IClassroomService
     public async Task<SubmissionResponseDto> CompleteSubmissionAsync(
         int classroomId, int assignmentId, int submissionId, string userId)
     {
-        await EnsureInstructorAsync(classroomId, userId);
+        await EnsureFacilitatorAsync(classroomId, userId);
 
         var submission = await _context.Submissions
             .Include(s => s.User)
@@ -997,7 +1011,7 @@ public class ClassroomService : IClassroomService
     public async Task<SubmissionResponseDto> PublishEvaluationAsync(
         int classroomId, int assignmentId, int submissionId, string userId)
     {
-        await EnsureInstructorAsync(classroomId, userId);
+        await EnsureFacilitatorAsync(classroomId, userId);
 
         var submission = await _context.Submissions
             .Include(s => s.User)
@@ -1042,7 +1056,10 @@ public class ClassroomService : IClassroomService
         var membership = await _context.UserClassrooms
             .FirstOrDefaultAsync(uc => uc.ClassroomId == classroomId && uc.UserId == userId);
         if (membership == null) return;
-        if (membership.Role == "Instructor") return;
+
+        var canManage = await _context.Classrooms
+            .AnyAsync(c => c.Id == classroomId && c.CreatedById == userId);
+        if (canManage) return;
 
         var assignments = await _context.Assignments
             .Where(a => a.ClassroomId == classroomId)
@@ -1076,32 +1093,13 @@ public class ClassroomService : IClassroomService
         return classroom;
     }
 
-    private async Task EnsureInstructorAsync(int classroomId, string userId)
+    private async Task EnsureFacilitatorAsync(int classroomId, string userId)
     {
-        var membership = await _context.UserClassrooms
-            .FirstOrDefaultAsync(uc => uc.ClassroomId == classroomId && uc.UserId == userId)
-            ?? throw new UnauthorizedAccessException("Not a member.");
+        var canManage = await _context.Classrooms
+            .AnyAsync(c => c.Id == classroomId && c.CreatedById == userId);
 
-        if (membership.Role != "Instructor")
-            throw new UnauthorizedAccessException("Instructor access required.");
-    }
-
-    private async Task EnsureAdminAsync(int classroomId, string userId)
-    {
-        var isMember = await _context.UserClassrooms
-            .AnyAsync(uc => uc.ClassroomId == classroomId && uc.UserId == userId);
-        if (!isMember) throw new UnauthorizedAccessException("Not a member.");
-
-        var adminRoleId = await _context.Roles
-            .Where(r => r.Name == "Admin")
-            .Select(r => r.Id)
-            .FirstOrDefaultAsync();
-
-        var isAdmin = adminRoleId != null && await _context.UserRoles
-            .AnyAsync(ur => ur.UserId == userId && ur.RoleId == adminRoleId);
-
-        if (!isAdmin)
-            throw new UnauthorizedAccessException("Admin access required.");
+        if (!canManage)
+            throw new UnauthorizedAccessException("Classroom management access required.");
     }
 
     private async Task<Assignment> GetAssignmentAsync(int assignmentId, int classroomId)
@@ -1115,7 +1113,7 @@ public class ClassroomService : IClassroomService
         Guid.NewGuid().ToString("N")[..8].ToUpper();
 
     private static ClassroomResponseDto MapToResponse(
-        Entities.Classroom c, string userRole, string userId) => new()
+        Entities.Classroom c, string userId) => new()
         {
             Id = c.Id,
             Title = c.Title,
@@ -1127,7 +1125,7 @@ public class ClassroomService : IClassroomService
             CreatedByName = c.CreatedBy is not null
             ? $"{c.CreatedBy.FirstName} {c.CreatedBy.LastName}" : string.Empty,
             MemberCount = c.UserClassrooms?.Count ?? 0,
-            UserRole = userRole,
+            CanManage = c.CreatedById == userId,
             CreatedAt = c.CreatedAt,
         };
 }
